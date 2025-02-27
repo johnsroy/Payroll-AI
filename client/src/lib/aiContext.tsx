@@ -97,8 +97,11 @@ export function AIProvider({ children }: { children: ReactNode }) {
         : await orchestrator.processQuery(content);
 
       // Update conversation ID if new
-      if (!currentConversationId && orchestrator.conversationId) {
-        setCurrentConversationId(orchestrator.conversationId);
+      if (!currentConversationId) {
+        const conversationId = orchestrator.getConversationId();
+        if (conversationId) {
+          setCurrentConversationId(conversationId);
+        }
       }
 
       // Add assistant response to state
