@@ -1,14 +1,6 @@
-import { supabase } from './supabase';
-import { BaseAgent } from './baseAgent';
-import { TaxCalculationAgent } from './taxCalculationAgent';
-import { ExpenseCategorizationAgent } from './expenseCategorization';
-import { ComplianceAgent } from './complianceAgent';
 import { AgentOrchestrator, AgentType } from './agentOrchestrator';
-import { searchKnowledgeBase } from './vectorUtils';
-import { performSearch, performFinancialSearch, performTaxSearch, performStateSearch, extractWebContent } from './searchTool';
-
-// Initialize OpenAI
-const apiKey = import.meta.env.VITE_OPENAI_API_KEY || '';
+import { v4 as uuidv4 } from 'uuid';
+import OpenAI from 'openai';
 
 interface AgentBrainConfig {
   userId?: string;
@@ -37,202 +29,106 @@ export class AgentBrain {
   private memory: any[] = [];
   private activeAgents: Map<AgentType, boolean> = new Map();
   private reasoningChain: any[] = [];
+  private openai: OpenAI;
 
   constructor(config: AgentBrainConfig) {
     this.userId = config.userId;
     this.companyId = config.companyId;
-    this.conversationId = config.conversationId;
-    this.model = config.model || 'gpt-4o';
-    this.enableInternetSearch = config.enableInternetSearch !== false;
-    this.enableKnowledgeBase = config.enableKnowledgeBase !== false;
-    this.retainMemory = config.retainMemory !== false;
-
-    // Initialize the agent orchestrator
+    this.conversationId = config.conversationId || uuidv4();
+    this.model = config.model || 'gpt-4o'; // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+    
+    // Initialize orchestrator
     this.orchestrator = new AgentOrchestrator({
       userId: this.userId,
       companyId: this.companyId,
       conversationId: this.conversationId
     });
-
-    // Initialize active agents map
-    this.activeAgents.set('tax', false);
-    this.activeAgents.set('expense', false);
-    this.activeAgents.set('compliance', false);
-    this.activeAgents.set('general', false);
+    
+    // Set flags
+    this.enableInternetSearch = config.enableInternetSearch !== undefined ? config.enableInternetSearch : true;
+    this.enableKnowledgeBase = config.enableKnowledgeBase !== undefined ? config.enableKnowledgeBase : true;
+    this.retainMemory = config.retainMemory !== undefined ? config.retainMemory : true;
+    
+    // Initialize OpenAI client
+    this.openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || '',
+    });
   }
 
   /**
    * Process a complex query by analyzing requirements and delegating to specialized agents
    */
   async processQuery(query: string): Promise<{
-    response: string;
-    reasoning: any[];
-    agentsConsulted: AgentType[];
-    usedInternetSearch: boolean;
-    sources?: any[];
+    response: string,
+    agentsConsulted: AgentType[],
+    reasoningChain: any[],
+    conversationId: string
   }> {
-    // Reset reasoning chain for new query
+    // Reset reasoning chain for this query
     this.reasoningChain = [];
-    this.addReasoningStep('query_analysis', { query });
-
-    // Analyze query to determine required agents and steps
-    const queryAnalysis = await this.analyzeQuery(query);
-    this.addReasoningStep('query_understanding', queryAnalysis);
-
-    // Track which agents are consulted
-    const agentsConsulted: AgentType[] = [];
-    let usedInternetSearch = false;
-    let sources: any[] = [];
-
-    // Check if we need to search the knowledge base
-    let knowledgeBaseContext = '';
-    if (this.enableKnowledgeBase && queryAnalysis.requiresKnowledgeBase) {
-      const knowledgeResults = await searchKnowledgeBase(query);
-      if (knowledgeResults.length > 0) {
-        knowledgeBaseContext = knowledgeResults.map(r => r.content).join('\n\n');
-        sources.push(...knowledgeResults.map(r => ({
-          type: 'knowledge_base',
-          id: r.id,
-          content: r.content.substring(0, 100) + '...',
-          similarity: r.similarity
-        })));
-      }
-      this.addReasoningStep('knowledge_base_search', { 
-        found: knowledgeResults.length > 0,
-        resultCount: knowledgeResults.length
-      });
-    }
-
-    // Check if we need to search the internet
-    let internetSearchContext = '';
-    if (this.enableInternetSearch && queryAnalysis.requiresInternetSearch) {
-      let searchResults;
-      
-      // Determine the type of search based on the query
-      if (queryAnalysis.queryType === 'tax') {
-        searchResults = await performTaxSearch(query);
-      } else if (queryAnalysis.queryType === 'compliance') {
-        searchResults = await performFinancialSearch(query);
-      } else if (queryAnalysis.queryType === 'state_specific' && queryAnalysis.state) {
-        searchResults = await performStateSearch(query, queryAnalysis.state);
-      } else {
-        searchResults = await performSearch({ query });
-      }
-      
-      if (searchResults.length > 0) {
-        internetSearchContext = searchResults.map(r => `Title: ${r.title}\nSource: ${r.source}\nSnippet: ${r.snippet || 'No snippet available'}`).join('\n\n');
-        sources.push(...searchResults.map(r => ({
-          type: 'internet_search',
-          title: r.title,
-          source: r.source,
-          link: r.link
-        })));
-        usedInternetSearch = true;
-      }
-      
-      this.addReasoningStep('internet_search', { 
-        found: searchResults.length > 0,
-        resultCount: searchResults.length,
-        searchType: queryAnalysis.queryType
-      });
-
-      // Extract content from most relevant result if needed
-      if (searchResults.length > 0 && queryAnalysis.requiresDetailedContent) {
-        const contentUrl = searchResults[0].link;
-        if (contentUrl) {
-          const extractedContent = await extractWebContent(contentUrl);
-          if (extractedContent) {
-            internetSearchContext += '\n\n### DETAILED CONTENT ###\n' + extractedContent;
-            this.addReasoningStep('content_extraction', { 
-              url: contentUrl,
-              contentLength: extractedContent.length
-            });
-          }
-        }
-      }
-    }
-
-    // Determine if we need multiple agents
-    let response = '';
     
-    if (queryAnalysis.requiresMultipleAgents) {
-      // Use coordinator to break down the task
-      this.addReasoningStep('multi_agent_coordination', { 
-        requiredAgents: queryAnalysis.requiredAgents 
-      });
-      
-      // Process with each required agent
-      const subQueryResponses = new Map<AgentType, string>();
-      
-      for (const agentType of queryAnalysis.requiredAgents) {
-        const agent = this.orchestrator.getAgent(agentType);
-        
-        // Create a sub-query specific to this agent
-        const agentMessage = this.createAgentSpecificQuery(query, agentType, queryAnalysis.agentSubQueries[agentType] || '');
-        
-        // Add context from knowledge base and internet search if available
-        let fullMessage = agentMessage;
-        if (knowledgeBaseContext) {
-          fullMessage += `\n\nContext from knowledge base:\n${knowledgeBaseContext}`;
-        }
-        if (internetSearchContext) {
-          fullMessage += `\n\nContext from internet search:\n${internetSearchContext}`;
-        }
-        
-        // Process with the agent
-        const agentResponse = await agent.sendMessage(fullMessage);
-        subQueryResponses.set(agentType, agentResponse);
-        agentsConsulted.push(agentType);
-        this.activeAgents.set(agentType, true);
-        
-        this.addReasoningStep(`agent_${agentType}_processing`, { 
-          query: agentMessage.substring(0, 100) + '...',
-          responseLength: agentResponse.length
-        });
-      }
-      
-      // Synthesize the responses
-      response = await this.synthesizeResponses(query, subQueryResponses, queryAnalysis);
-      
-      this.addReasoningStep('response_synthesis', { 
-        agentCount: subQueryResponses.size,
-        finalResponseLength: response.length
-      });
-    } else {
-      // Use a single agent
-      const agentType = queryAnalysis.primaryAgent;
-      agentsConsulted.push(agentType);
+    // First, analyze the query to determine which agents are needed
+    this.addReasoningStep("Query Analysis", {
+      query,
+      timestamp: new Date().toISOString()
+    });
+    
+    const queryAnalysis = await this.analyzeQuery(query);
+    const requiredAgents = queryAnalysis.requiredAgents || ['general'];
+    
+    this.addReasoningStep("Agent Selection", {
+      requiredAgents,
+      rationale: queryAnalysis.rationale || "Default agent selection"
+    });
+    
+    // Gather responses from each required agent
+    const agentResponses: Record<AgentType, string> = {};
+    const agentsConsulted: AgentType[] = [];
+    
+    for (const agentType of requiredAgents) {
+      // Mark agent as active
       this.activeAgents.set(agentType, true);
+      agentsConsulted.push(agentType);
       
-      let fullQuery = query;
-      if (knowledgeBaseContext) {
-        fullQuery += `\n\nContext from knowledge base:\n${knowledgeBaseContext}`;
-      }
-      if (internetSearchContext) {
-        fullQuery += `\n\nContext from internet search:\n${internetSearchContext}`;
-      }
+      // Create agent-specific query if needed
+      const agentSpecificQuery = queryAnalysis.agentQueries && queryAnalysis.agentQueries[agentType]
+        ? this.createAgentSpecificQuery(query, agentType, queryAnalysis.agentQueries[agentType])
+        : query;
       
-      // Process with the orchestrator
-      const result = await this.orchestrator.processQuery(fullQuery);
-      response = result.response;
+      this.addReasoningStep(`${this.getAgentName(agentType)} Query`, {
+        agentType,
+        query: agentSpecificQuery
+      });
       
-      this.addReasoningStep('single_agent_processing', { 
-        agent: agentType,
-        responseLength: response.length
+      // Process query with the appropriate agent
+      const agent = this.orchestrator.getAgent(agentType);
+      const response = await agent.sendMessage(agentSpecificQuery);
+      
+      agentResponses[agentType] = response;
+      
+      this.addReasoningStep(`${this.getAgentName(agentType)} Response`, {
+        agentType,
+        response
       });
     }
-
-    // Add to memory if enabled
+    
+    // Synthesize the responses into a coherent answer
+    this.addReasoningStep("Response Synthesis", {
+      agentResponses
+    });
+    
+    const synthesizedResponse = await this.synthesizeResponses(query, agentResponses, requiredAgents);
+    
+    // Update memory
     if (this.retainMemory) {
-      this.updateMemory(query, response, agentsConsulted);
+      this.updateMemory(query, synthesizedResponse, agentsConsulted);
     }
-
+    
     return {
-      response,
-      reasoning: this.reasoningChain,
+      response: synthesizedResponse,
       agentsConsulted,
-      usedInternetSearch,
-      sources: sources.length > 0 ? sources : undefined
+      reasoningChain: [...this.reasoningChain],
+      conversationId: this.conversationId || ''
     };
   }
 
@@ -240,62 +136,45 @@ export class AgentBrain {
    * Analyze the query to determine required agents and processing steps
    */
   private async analyzeQuery(query: string): Promise<any> {
+    const agentOptions = this.orchestrator.getAvailableAgents().map(agent => agent.type);
+    const promptForOptionsFormatted = agentOptions.map(option => `- ${option}: ${this.getAgentName(option)}`).join('\n');
+    
+    const prompt = `I need to analyze a user query to determine which specialized payroll agents should handle it.
+
+User Query: "${query}"
+
+Available Agents:
+${promptForOptionsFormatted}
+
+For complex queries, we can use multiple agents in parallel.
+
+Please provide a JSON response with the following:
+1. requiredAgents: an array of agent types that should process this query
+2. rationale: brief explanation of why these agents were selected
+3. agentQueries: an object with specialized sub-queries for each agent (if needed)
+
+Example JSON format:
+{
+  "requiredAgents": ["tax", "compliance"],
+  "rationale": "The query involves both tax calculations and compliance requirements",
+  "agentQueries": {
+    "tax": "Calculate the tax implications of...",
+    "compliance": "Check compliance requirements for..."
+  }
+}`;
+
     try {
-      const systemPrompt = `You are a query analyzer for a multi-agent payroll system. Your job is to analyze user queries to determine:
-1. The primary type of query (tax, expense, compliance, or general)
-2. Whether multiple specialized agents are needed
-3. Which agents should be consulted
-4. Whether internet search is required for up-to-date information
-5. Whether knowledge base search is required
-6. If the query is state-specific, identify the U.S. state
-7. If detailed breakdown into sub-queries is needed for different agents
-
-Return a JSON with:
-- queryType: the primary category (tax, expense, compliance, general)
-- primaryAgent: the main agent to handle this (tax, expense, compliance, general)
-- requiresMultipleAgents: boolean
-- requiredAgents: array of agent types needed (tax, expense, compliance, general)
-- requiresInternetSearch: boolean
-- requiresKnowledgeBase: boolean
-- requiresDetailedContent: boolean (whether detailed content extraction is needed)
-- state: two-letter state code if state-specific, or null
-- agentSubQueries: object with agent types as keys and specific sub-queries as values`;
-
-      // Use fetch directly with OpenAI API
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: query }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.1
-        })
+      const response = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" }
       });
 
-      const data = await response.json();
-      const analysisText = data.choices[0].message.content;
-      return JSON.parse(analysisText);
+      const content = response.choices[0].message.content;
+      return content ? JSON.parse(content) : { requiredAgents: ['general'] };
     } catch (error) {
       console.error('Error analyzing query:', error);
-      // Return a default analysis that routes to the general agent
-      return {
-        queryType: 'general',
-        primaryAgent: 'general',
-        requiresMultipleAgents: false,
-        requiredAgents: ['general'],
-        requiresInternetSearch: false,
-        requiresKnowledgeBase: true,
-        requiresDetailedContent: false,
-        state: null,
-        agentSubQueries: {}
-      };
+      return { requiredAgents: ['general'] };
     }
   }
 
@@ -303,22 +182,14 @@ Return a JSON with:
    * Create a specialized query for a specific agent type
    */
   private createAgentSpecificQuery(originalQuery: string, agentType: AgentType, suggestedSubQuery: string): string {
+    // If a suggested sub-query is provided, use it
     if (suggestedSubQuery) {
-      return suggestedSubQuery;
+      // Ensure the query maintains context from the original
+      return `Original question: "${originalQuery}"\n\nSpecific task for ${this.getAgentName(agentType)}: ${suggestedSubQuery}`;
     }
-
-    // Default sub-queries based on agent type
-    switch (agentType) {
-      case 'tax':
-        return `Focus on the tax aspects of this query: ${originalQuery}`;
-      case 'expense':
-        return `Focus on the expense categorization aspects of this query: ${originalQuery}`;
-      case 'compliance':
-        return `Focus on the compliance and regulatory aspects of this query: ${originalQuery}`;
-      case 'general':
-      default:
-        return originalQuery;
-    }
+    
+    // Otherwise return the original query
+    return originalQuery;
   }
 
   /**
@@ -326,55 +197,48 @@ Return a JSON with:
    */
   private async synthesizeResponses(
     originalQuery: string,
-    agentResponses: Map<AgentType, string>,
-    queryAnalysis: any
+    agentResponses: Record<AgentType, string>,
+    requiredAgents: AgentType[]
   ): Promise<string> {
+    // If only one agent was used, return its response directly
+    if (requiredAgents.length === 1) {
+      return agentResponses[requiredAgents[0]];
+    }
+    
+    // Otherwise, synthesize the responses
+    const agentResponsesText = requiredAgents
+      .map(agent => `${this.getAgentName(agent)} Response:\n${agentResponses[agent]}`)
+      .join('\n\n');
+    
+    const prompt = `I need to synthesize responses from multiple specialized payroll agents into a single coherent response.
+
+Original User Query: "${originalQuery}"
+
+${agentResponsesText}
+
+Please create a comprehensive, well-structured response that:
+1. Integrates insights from all agents
+2. Addresses the original query fully
+3. Avoids contradictions or redundancy
+4. Maintains a consistent tone and style
+5. Clearly identifies when different expertise areas are being addressed
+
+Your synthesized response should be comprehensive but concise, focused on providing the most valuable information to answer the original query.`;
+
     try {
-      // Create a context object with all agent responses
-      const context = Array.from(agentResponses.entries()).map(([agent, response]) => {
-        return `### ${this.getAgentName(agent)} Response:\n${response}`;
-      }).join('\n\n');
-
-      const prompt = `You are a response synthesizer for a multi-agent payroll system. The user's original query is: "${originalQuery}".
-
-Here are responses from different specialized agents:
-
-${context}
-
-Create a comprehensive, coherent response that:
-1. Directly addresses the user's question
-2. Integrates information from all agents without redundancy
-3. Resolves any contradictions or inconsistencies
-4. Presents a logical, well-structured answer
-5. Maintains a helpful, professional tone`;
-
-      // Use fetch directly with OpenAI API
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: this.model,
-          messages: [
-            { role: "system", content: "You are a response synthesizer for a multi-agent AI system." },
-            { role: "user", content: prompt }
-          ],
-          temperature: 0.7
-        })
+      const response = await this.openai.chat.completions.create({
+        model: this.model,
+        messages: [{ role: "user", content: prompt }],
       });
 
-      const data = await response.json();
-      const synthesizedResponse = data.choices[0].message.content;
-      return synthesizedResponse;
+      return response.choices[0].message.content || "Unable to synthesize a response";
     } catch (error) {
       console.error('Error synthesizing responses:', error);
       
-      // Fallback to a simple concatenation of responses
-      return Array.from(agentResponses.entries())
-        .map(([agent, response]) => `[${this.getAgentName(agent)}]\n${response}`)
-        .join('\n\n');
+      // Fallback: concatenate responses with headers
+      return requiredAgents.map(agent => 
+        `**${this.getAgentName(agent)} Perspective:**\n${agentResponses[agent]}`
+      ).join('\n\n');
     }
   }
 
@@ -382,17 +246,8 @@ Create a comprehensive, coherent response that:
    * Get a human-readable name for an agent type
    */
   private getAgentName(agentType: AgentType): string {
-    switch (agentType) {
-      case 'tax':
-        return 'Tax Calculation Agent';
-      case 'expense':
-        return 'Expense Categorization Agent';
-      case 'compliance':
-        return 'Compliance Agent';
-      case 'general':
-      default:
-        return 'General Assistant';
-    }
+    const agentMetadata = this.orchestrator.getAgentMetadata(agentType);
+    return agentMetadata ? agentMetadata.name : 'Unknown Agent';
   }
 
   /**
@@ -401,8 +256,8 @@ Create a comprehensive, coherent response that:
   private addReasoningStep(step: string, data: any): void {
     this.reasoningChain.push({
       step,
-      timestamp: new Date().toISOString(),
-      data
+      data,
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -410,16 +265,19 @@ Create a comprehensive, coherent response that:
    * Update the memory with a new interaction
    */
   private updateMemory(query: string, response: string, agents: AgentType[]): void {
-    this.memory.push({
-      timestamp: new Date().toISOString(),
+    const memoryEntry = {
+      id: uuidv4(),
       query,
       response,
-      agents
-    });
-
-    // Limit memory size
+      agents,
+      timestamp: new Date().toISOString()
+    };
+    
+    this.memory.push(memoryEntry);
+    
+    // Limit memory size (keep last 10 interactions)
     if (this.memory.length > 10) {
-      this.memory = this.memory.slice(this.memory.length - 10);
+      this.memory = this.memory.slice(-10);
     }
   }
 
@@ -435,5 +293,31 @@ Create a comprehensive, coherent response that:
    */
   getConversationId(): string | undefined {
     return this.conversationId;
+  }
+
+  /**
+   * Get the reasoning chain for the last processed query
+   */
+  getReasoningChain(): any[] {
+    return [...this.reasoningChain];
+  }
+
+  /**
+   * Get the list of active agents
+   */
+  getActiveAgents(): AgentType[] {
+    return Array.from(this.activeAgents.entries())
+      .filter(([_, active]) => active)
+      .map(([agentType, _]) => agentType);
+  }
+
+  /**
+   * Reset the agent brain
+   */
+  reset(): void {
+    this.memory = [];
+    this.reasoningChain = [];
+    this.activeAgents.clear();
+    this.orchestrator.resetAllAgents();
   }
 }

@@ -18,7 +18,7 @@ export class ExpenseCategorizationAgent extends BaseAgent {
   private standardCategories: ExpenseCategory[] = [];
   private customCategories: ExpenseCategory[] = [];
   private categorySuggestionRules: ExpenseRule[] = [];
-  private companyId?: string;
+  protected companyId?: string;
 
   constructor(config: AgentConfig) {
     // Define specialized system prompt for expense categorization agent
