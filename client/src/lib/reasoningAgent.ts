@@ -96,7 +96,10 @@ When integrating information, ensure you:
     });
     
     // Extract response
-    const assistantMessage = response.content[0].text;
+    const content = response.content[0];
+    const assistantMessage = typeof content === 'object' && 'text' in content 
+      ? content.text 
+      : JSON.stringify(content);
     
     // Store reasoning in history
     const reasoningId = uuidv4();
@@ -161,7 +164,10 @@ Format example:
     });
     
     // Extract response
-    const assistantMessage = response.content[0].text;
+    const content = response.content[0];
+    const assistantMessage = typeof content === 'object' && 'text' in content 
+      ? content.text 
+      : JSON.stringify(content);
     
     // Extract JSON from the response
     try {
@@ -232,7 +238,10 @@ Query: "${query}"
     });
     
     // Extract response
-    const assistantMessage = response.content[0].text;
+    const content = response.content[0];
+    const assistantMessage = typeof content === 'object' && 'text' in content 
+      ? content.text 
+      : JSON.stringify(content);
     
     // Calculate confidence based on agent contributions
     const weightedConfidence = this.calculateWeightedConfidence(agentContributions);
