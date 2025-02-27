@@ -1,231 +1,228 @@
 -- Enable the pgvector extension
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- Profiles table (extends Supabase auth.users)
-CREATE TABLE IF NOT EXISTS profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  first_name TEXT,
-  last_name TEXT,
-  avatar_url TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Profiles table (extends Supabase Auth users)
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id),
+    email TEXT NOT NULL,
+    full_name TEXT,
+    avatar_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Companies table
-CREATE TABLE IF NOT EXISTS companies (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  name TEXT NOT NULL,
-  legal_name TEXT,
-  tax_id TEXT,
-  business_type TEXT,
-  industry TEXT,
-  address TEXT,
-  city TEXT,
-  state TEXT,
-  zip_code TEXT,
-  country TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+CREATE TABLE companies (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    owner_id UUID NOT NULL REFERENCES profiles(id),
+    name TEXT NOT NULL,
+    industry TEXT,
+    size INTEGER,
+    state TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- User-company relationships with role
-CREATE TABLE IF NOT EXISTS company_users (
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
-  role TEXT NOT NULL CHECK (role IN ('owner', 'admin', 'manager', 'employee')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (user_id, company_id)
+-- Many-to-many relationship between users and companies
+CREATE TABLE company_users (
+    company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    role TEXT NOT NULL, -- 'admin', 'member', etc.
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (company_id, user_id)
 );
 
--- Employees table
-CREATE TABLE IF NOT EXISTS employees (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
-  first_name TEXT NOT NULL,
-  last_name TEXT NOT NULL,
-  email TEXT,
-  phone TEXT,
-  address TEXT,
-  city TEXT,
-  state TEXT,
-  zip_code TEXT,
-  country TEXT,
-  hire_date DATE,
-  employment_type TEXT CHECK (employment_type IN ('full_time', 'part_time', 'contractor')),
-  status TEXT CHECK (status IN ('active', 'inactive', 'terminated', 'on_leave')),
-  social_security_last_4 TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- AI Conversations
+CREATE TABLE ai_conversations (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES profiles(id),
+    company_id UUID REFERENCES companies(id),
+    agent_type TEXT NOT NULL, -- 'tax', 'expense', 'compliance', 'general'
+    messages JSONB NOT NULL DEFAULT '[]'::jsonb,
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Pay rates for employees
-CREATE TABLE IF NOT EXISTS employee_pay_rates (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  effective_date DATE NOT NULL,
-  pay_type TEXT CHECK (pay_type IN ('hourly', 'salary', 'commission', 'project_based')),
-  pay_rate DECIMAL(12, 2) NOT NULL,
-  pay_frequency TEXT CHECK (pay_frequency IN ('weekly', 'biweekly', 'semimonthly', 'monthly')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Tax Rates (reference data)
+CREATE TABLE tax_rates (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    country TEXT NOT NULL DEFAULT 'US',
+    state TEXT,
+    type TEXT NOT NULL, -- 'federal_income', 'state_income', 'fica_social_security', etc.
+    filing_status TEXT, -- 'single', 'married', 'head_of_household'
+    tax_year INTEGER NOT NULL,
+    min_amount NUMERIC,
+    max_amount NUMERIC,
+    rate NUMERIC NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Payroll periods
-CREATE TABLE IF NOT EXISTS payroll_periods (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  pay_date DATE NOT NULL,
-  status TEXT CHECK (status IN ('draft', 'processing', 'completed', 'canceled')),
-  processed_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Expense Categories (reference data)
+CREATE TABLE expense_categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    description TEXT,
+    tax_deductible BOOLEAN DEFAULT true,
+    company_id UUID REFERENCES companies(id), -- NULL for standard categories
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Time entries for hourly employees
-CREATE TABLE IF NOT EXISTS time_entries (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  hours_worked DECIMAL(6, 2) NOT NULL,
-  overtime_hours DECIMAL(6, 2) DEFAULT 0,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Compliance Requirements (reference data)
+CREATE TABLE compliance_requirements (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    description TEXT,
+    applies_to TEXT[] NOT NULL, -- ['all', 'small_business', etc.]
+    employee_threshold INTEGER,
+    regions TEXT[] NOT NULL, -- ['US', 'CA', 'NY', etc.]
+    deadline_type TEXT NOT NULL, -- 'fixed', 'relative', 'recurring'
+    deadline_details JSONB NOT NULL,
+    reference_url TEXT,
+    penalties TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Payroll items (earnings, deductions, taxes)
-CREATE TABLE IF NOT EXISTS payroll_items (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  payroll_period_id UUID REFERENCES payroll_periods(id) ON DELETE CASCADE,
-  employee_id UUID REFERENCES employees(id) ON DELETE CASCADE,
-  type TEXT CHECK (type IN ('earning', 'deduction', 'tax')),
-  category TEXT NOT NULL,
-  amount DECIMAL(12, 2) NOT NULL,
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Company compliance tracking
+CREATE TABLE company_compliance (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    company_id UUID NOT NULL REFERENCES companies(id),
+    requirement_id UUID NOT NULL REFERENCES compliance_requirements(id),
+    status TEXT NOT NULL, -- 'compliant', 'pending', 'late', 'exempt'
+    last_filed_date TIMESTAMP WITH TIME ZONE,
+    next_deadline TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (company_id, requirement_id)
 );
 
--- Tax information for companies
-CREATE TABLE IF NOT EXISTS company_taxes (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
-  tax_type TEXT NOT NULL,
-  tax_id TEXT NOT NULL,
-  rate DECIMAL(6, 4),
-  notes TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Knowledge base for AI (vector storage)
-CREATE TABLE IF NOT EXISTS knowledge_base (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  content TEXT NOT NULL,
-  embedding VECTOR(1536), -- OpenAI embedding dimension
-  metadata JSONB,
-  source TEXT,
-  category TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- AI conversations history
-CREATE TABLE IF NOT EXISTS ai_conversations (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  company_id UUID REFERENCES companies(id) ON DELETE CASCADE,
-  agent_type TEXT NOT NULL,
-  messages JSONB[] NOT NULL,
-  metadata JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+-- Vector embeddings for knowledge base
+CREATE TABLE knowledge_embeddings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    collection TEXT NOT NULL, -- 'tax', 'expense', 'compliance', 'general'
+    content TEXT NOT NULL,
+    embedding vector(1536) NOT NULL, -- OpenAI Ada embedding dimension
+    metadata JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create indexes for performance
-CREATE INDEX idx_knowledge_base_category ON knowledge_base(category);
-CREATE INDEX idx_employees_company_id ON employees(company_id);
-CREATE INDEX idx_payroll_periods_company_id ON payroll_periods(company_id);
-CREATE INDEX idx_time_entries_employee_id ON time_entries(employee_id);
+CREATE INDEX idx_knowledge_embeddings_collection ON knowledge_embeddings(collection);
+CREATE INDEX idx_ai_conversations_user_id ON ai_conversations(user_id);
+CREATE INDEX idx_ai_conversations_company_id ON ai_conversations(company_id);
+CREATE INDEX idx_company_users_user_id ON company_users(user_id);
+CREATE INDEX idx_tax_rates_country_state ON tax_rates(country, state);
+CREATE INDEX idx_tax_rates_tax_year ON tax_rates(tax_year);
+CREATE INDEX idx_compliance_requirements_regions ON compliance_requirements USING GIN(regions);
+CREATE INDEX idx_company_compliance_company_id ON company_compliance(company_id);
 
--- Create a function to update the updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- RLS (Row Level Security) Policies
 
--- Apply the trigger to tables with updated_at
-CREATE TRIGGER set_updated_at_profiles
-BEFORE UPDATE ON profiles
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_companies
-BEFORE UPDATE ON companies
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_employees
-BEFORE UPDATE ON employees
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_employee_pay_rates
-BEFORE UPDATE ON employee_pay_rates
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_payroll_periods
-BEFORE UPDATE ON payroll_periods
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_time_entries
-BEFORE UPDATE ON time_entries
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_company_taxes
-BEFORE UPDATE ON company_taxes
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_knowledge_base
-BEFORE UPDATE ON knowledge_base
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
-CREATE TRIGGER set_updated_at_ai_conversations
-BEFORE UPDATE ON ai_conversations
-FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-
--- Setup Row Level Security (RLS)
+-- Profiles: Users can only read their own profile
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY profiles_select_policy ON profiles
+    FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY profiles_update_policy ON profiles
+    FOR UPDATE USING (auth.uid() = id);
+
+-- Companies: Company owners and members can see their companies
 ALTER TABLE companies ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY companies_select_policy ON companies
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM company_users
+            WHERE company_users.company_id = companies.id
+            AND company_users.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY companies_insert_policy ON companies
+    FOR INSERT WITH CHECK (owner_id = auth.uid());
+
+CREATE POLICY companies_update_policy ON companies
+    FOR UPDATE USING (
+        owner_id = auth.uid() OR
+        EXISTS (
+            SELECT 1 FROM company_users
+            WHERE company_users.company_id = companies.id
+            AND company_users.user_id = auth.uid()
+            AND company_users.role = 'admin'
+        )
+    );
+
+-- Company Users: Visible to company members
 ALTER TABLE company_users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE employee_pay_rates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payroll_periods ENABLE ROW LEVEL SECURITY;
-ALTER TABLE time_entries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payroll_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE company_taxes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY company_users_select_policy ON company_users
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM company_users cu
+            WHERE cu.company_id = company_users.company_id
+            AND cu.user_id = auth.uid()
+        )
+    );
+
+-- AI Conversations: Users can only see their own conversations
 ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 
--- Create policies for access control
--- Profiles: Users can only see and edit their own profiles
-CREATE POLICY "Users can view their own profile"
-  ON profiles FOR SELECT
-  USING (auth.uid() = id);
+CREATE POLICY ai_conversations_select_policy ON ai_conversations
+    FOR SELECT USING (user_id = auth.uid());
 
-CREATE POLICY "Users can update their own profile"
-  ON profiles FOR UPDATE
-  USING (auth.uid() = id);
+CREATE POLICY ai_conversations_insert_policy ON ai_conversations
+    FOR INSERT WITH CHECK (user_id = auth.uid());
 
--- Companies: Users can access companies they're a member of
-CREATE POLICY "Users can view companies they belong to"
-  ON companies FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM company_users
-      WHERE company_users.company_id = companies.id
-      AND company_users.user_id = auth.uid()
-    )
-  );
+CREATE POLICY ai_conversations_update_policy ON ai_conversations
+    FOR UPDATE USING (user_id = auth.uid());
 
--- Additional policies would be created for each table with appropriate access rules
+-- Enable company admins to manage their own expense categories
+ALTER TABLE expense_categories ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY expense_categories_select_policy ON expense_categories
+    FOR SELECT USING (
+        company_id IS NULL OR
+        EXISTS (
+            SELECT 1 FROM company_users
+            WHERE company_users.company_id = expense_categories.company_id
+            AND company_users.user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY expense_categories_insert_policy ON expense_categories
+    FOR INSERT WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM company_users
+            WHERE company_users.company_id = expense_categories.company_id
+            AND company_users.user_id = auth.uid()
+        )
+    );
+
+-- Company compliance status visible to company members
+ALTER TABLE company_compliance ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY company_compliance_select_policy ON company_compliance
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM company_users
+            WHERE company_users.company_id = company_compliance.company_id
+            AND company_users.user_id = auth.uid()
+        )
+    );
+
+-- Reference data is publicly readable
+ALTER TABLE tax_rates ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tax_rates_select_policy ON tax_rates FOR SELECT USING (true);
+
+ALTER TABLE compliance_requirements ENABLE ROW LEVEL SECURITY;
+CREATE POLICY compliance_requirements_select_policy ON compliance_requirements FOR SELECT USING (true);
+
+-- Knowledge base is publicly readable
+ALTER TABLE knowledge_embeddings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY knowledge_embeddings_select_policy ON knowledge_embeddings FOR SELECT USING (true);

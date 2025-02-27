@@ -1,7 +1,6 @@
 import { OpenAI } from 'openai';
 import { supabase } from './supabase';
 
-// Message type that aligns with OpenAI's API
 export interface Message {
   role: 'system' | 'user' | 'assistant' | 'function';
   content: string;
@@ -39,33 +38,29 @@ export class BaseAgent {
 
   constructor(config: AgentConfig) {
     this.model = config.model || 'gpt-4o';
-    this.temperature = config.temperature ?? 0.2;
-    this.maxTokens = config.maxTokens || 2000;
+    this.temperature = config.temperature ?? 0.7;
+    this.maxTokens = config.maxTokens || 2048;
     this.systemPrompt = config.systemPrompt || 'You are a helpful assistant.';
     this.tools = config.tools || [];
-    this.memory = config.memory ?? true;
+    this.memory = config.memory !== undefined ? config.memory : true;
     this.conversationId = config.conversationId;
     this.userId = config.userId;
     this.companyId = config.companyId;
 
-    // Initialize messages with system prompt
+    // Initialize conversation history with system message
     this.messages = [
       { role: 'system', content: this.systemPrompt }
     ];
 
-    // If we have a conversation ID, we should load the conversation history
-    if (this.memory && this.conversationId) {
+    // If we have a conversation ID and memory is enabled, load the conversation
+    if (this.conversationId && this.memory) {
       this.loadConversation(this.conversationId);
     }
   }
 
-  // Load conversation history from the database
   protected async loadConversation(conversationId: string): Promise<void> {
-    if (!this.apiKey) {
-      console.error('Missing OpenAI API key');
-      return;
-    }
-    
+    if (!conversationId) return;
+
     try {
       const { data, error } = await supabase
         .from('ai_conversations')
@@ -78,232 +73,190 @@ export class BaseAgent {
         return;
       }
 
-      if (data?.messages) {
-        // Skip the system message we already added
-        this.messages = [
-          this.messages[0],
-          ...data.messages
-        ];
+      if (data?.messages && Array.isArray(data.messages)) {
+        // Keep the system message and add the loaded conversation
+        const systemMessage = this.messages[0];
+        this.messages = [systemMessage, ...data.messages];
       }
     } catch (error) {
-      console.error('Error in loadConversation:', error);
+      console.error('Error loading conversation:', error);
     }
   }
 
-  // Save conversation to the database
   protected async saveConversation(): Promise<void> {
-    if (!this.memory || !this.userId) return;
+    if (!this.conversationId || !this.userId || !this.memory) return;
 
     try {
-      // Create a new conversation if we don't have an ID
-      if (!this.conversationId) {
-        const { data, error } = await supabase
-          .from('ai_conversations')
-          .insert({
-            user_id: this.userId,
-            company_id: this.companyId,
-            agent_type: this.constructor.name,
-            messages: this.messages.slice(1), // Don't store system prompt
-            metadata: {
-              model: this.model,
-              temperature: this.temperature
-            }
-          })
-          .select()
-          .single();
+      const { error } = await supabase
+        .from('ai_conversations')
+        .update({ 
+          messages: this.messages.filter(msg => msg.role !== 'system'),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', this.conversationId);
 
-        if (error) {
-          console.error('Error creating conversation:', error);
-          return;
-        }
-
-        this.conversationId = data.id;
-      } else {
-        // Update existing conversation
-        const { error } = await supabase
-          .from('ai_conversations')
-          .update({
-            messages: this.messages.slice(1), // Don't store system prompt
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', this.conversationId);
-
-        if (error) {
-          console.error('Error updating conversation:', error);
-        }
+      if (error) {
+        console.error('Error saving conversation:', error);
       }
     } catch (error) {
-      console.error('Error in saveConversation:', error);
+      console.error('Error saving conversation:', error);
     }
   }
 
-  // Main method to interact with the agent
   async sendMessage(userMessage: string): Promise<string> {
     if (!this.apiKey) {
-      return 'API key is missing. Please provide an OpenAI API key in the environment variables.';
+      return "API key not configured. Please add your OpenAI API key to use this feature.";
     }
-    
-    // Initialize OpenAI client
-    const openai = new OpenAI({
-      apiKey: this.apiKey,
-      dangerouslyAllowBrowser: true // For client-side use
-    });
-    
-    // Add user message to history
-    this.messages.push({ role: 'user', content: userMessage });
 
     try {
-      // Query vector store for relevant context if available
-      const context = await this.getRelevantContext(userMessage);
-      if (context) {
-        this.messages.push({
-          role: 'system',
-          content: `Additional context that may be helpful for answering the query: ${context}`
-        });
-      }
-
-      // Convert our message format to OpenAI's expected format
-      const openAIMessages = this.messages.map(msg => ({
-        role: msg.role,
-        content: msg.content,
-        ...(msg.name ? { name: msg.name } : {}),
-        ...(msg.function_call ? { function_call: msg.function_call } : {})
-      }));
-
-      // Call OpenAI API
-      const response = await openai.chat.completions.create({
-        model: this.model,
-        messages: openAIMessages,
-        temperature: this.temperature,
-        max_tokens: this.maxTokens,
-        tools: this.tools.length > 0 ? this.tools : undefined,
-      });
-
-      const reply = response.choices[0].message;
-
-      // Handle function calls if needed
-      if (reply.tool_calls?.length) {
-        const results = await this.handleToolCalls(reply.tool_calls);
-        this.messages.push({
-          role: 'function',
-          name: 'function_results',
-          content: JSON.stringify(results)
-        });
-
-        // Make a follow-up call to process the function results
-        const followUpResponse = await openai.chat.completions.create({
-          model: this.model,
-          messages: openAIMessages,
-          temperature: this.temperature,
-          max_tokens: this.maxTokens,
-        });
-
-        const followUpReply = followUpResponse.choices[0].message;
-        this.messages.push({
-          role: 'assistant',
-          content: followUpReply.content || ''
-        });
-
-        // Save conversation if memory is enabled
-        if (this.memory) {
-          await this.saveConversation();
-        }
-
-        return followUpReply.content || '';
-      }
-
-      // Add assistant response to messages
-      this.messages.push({
-        role: 'assistant',
-        content: reply.content || ''
-      });
-
-      // Save conversation if memory is enabled
-      if (this.memory) {
-        await this.saveConversation();
-      }
-
-      return reply.content || '';
-    } catch (error) {
-      console.error('Error in agent:', error);
-      return 'I encountered an error while processing your request. Please try again later.';
-    }
-  }
-
-  // Get relevant context from vector store
-  protected async getRelevantContext(query: string): Promise<string | null> {
-    if (!this.apiKey) {
-      return null;
-    }
-    
-    try {
-      // Initialize OpenAI client
       const openai = new OpenAI({
         apiKey: this.apiKey,
         dangerouslyAllowBrowser: true // For client-side use
       });
+
+      // Add user message to conversation
+      this.messages.push({ role: 'user', content: userMessage });
+
+      // Check if we need to add context from vector store
+      const relevantContext = await this.getRelevantContext(userMessage);
+      if (relevantContext) {
+        // Insert the context right after the system message
+        this.messages.splice(1, 0, { 
+          role: 'system', 
+          content: `Relevant information: ${relevantContext}`
+        });
+      }
+
+      // Call OpenAI API
+      const response = await openai.chat.completions.create({
+        model: this.model,
+        messages: this.messages,
+        temperature: this.temperature,
+        max_tokens: this.maxTokens,
+        tools: this.tools.length > 0 ? this.tools.map(tool => tool.function) : undefined,
+        tool_choice: this.tools.length > 0 ? 'auto' : undefined
+      });
+
+      const responseMessage = response.choices[0].message;
       
-      // Get embedding for the query
-      const embeddingResponse = await openai.embeddings.create({
-        model: 'text-embedding-3-small',
-        input: query,
-      });
+      // Process tool calls if any
+      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+        // Add assistant message with tool calls to the conversation
+        this.messages.push({
+          role: responseMessage.role,
+          content: responseMessage.content || '',
+          tool_calls: responseMessage.tool_calls
+        } as any);
 
-      const embedding = embeddingResponse.data[0].embedding;
+        // Process each tool call
+        const toolResults = await this.handleToolCalls(responseMessage.tool_calls);
+        
+        // Add tool results to the conversation
+        for (const result of toolResults) {
+          this.messages.push({
+            role: 'tool',
+            tool_call_id: result.tool_call_id,
+            content: JSON.stringify(result.content)
+          } as any);
+        }
 
-      // Query Supabase for similar documents
-      const { data, error } = await supabase.rpc('match_documents', {
-        query_embedding: embedding,
-        match_threshold: 0.7,
-        match_count: 5
-      });
+        // Call the API again to get the final answer
+        const secondResponse = await openai.chat.completions.create({
+          model: this.model,
+          messages: this.messages,
+          temperature: this.temperature,
+          max_tokens: this.maxTokens
+        });
 
-      if (error) {
-        console.error('Error querying vector store:', error);
-        return null;
+        const secondResponseMessage = secondResponse.choices[0].message;
+        
+        // Add the final assistant message to the conversation
+        this.messages.push({
+          role: secondResponseMessage.role,
+          content: secondResponseMessage.content || ''
+        });
+
+        // Save the conversation if memory is enabled
+        if (this.memory) {
+          this.saveConversation();
+        }
+
+        return secondResponseMessage.content || '';
+      } else {
+        // No tool calls, just add the response to conversation
+        this.messages.push({
+          role: responseMessage.role,
+          content: responseMessage.content || ''
+        });
+
+        // Save the conversation if memory is enabled
+        if (this.memory) {
+          this.saveConversation();
+        }
+
+        return responseMessage.content || '';
       }
-
-      if (!data || data.length === 0) {
-        return null;
+    } catch (error: any) {
+      console.error('Error in sendMessage:', error);
+      
+      // Check for specific error types and provide appropriate messages
+      if (error.name === 'AuthenticationError') {
+        return "Authentication error: Please check your API key.";
+      } else if (error.message?.includes('rate limit')) {
+        return "You've hit the rate limit. Please wait a moment and try again.";
       }
-
-      // Concatenate relevant documents
-      return data.map((doc: any) => doc.content).join('\n\n');
-    } catch (error) {
-      console.error('Error getting relevant context:', error);
-      return null;
+      
+      return "I encountered an error while processing your request. Please try again later.";
     }
   }
 
-  // Handle tool calls (function calling)
+  protected async getRelevantContext(query: string): Promise<string | null> {
+    // In a real implementation, this would query a vector database
+    // For now, we'll return null
+    return null;
+  }
+
   protected async handleToolCalls(toolCalls: any[]): Promise<any> {
-    const results: any = {};
+    const results = [];
 
     for (const toolCall of toolCalls) {
-      const { name, arguments: args } = toolCall.function;
-      
-      // Find the tool with the matching name
-      const tool = this.tools.find(t => t.function.name === name);
-      
-      if (tool && tool.handler) {
+      const toolFunction = this.tools.find(
+        tool => tool.function.name === toolCall.function.name
+      );
+
+      if (toolFunction && toolFunction.handler) {
         try {
-          const result = await tool.handler(JSON.parse(args));
-          results[name] = result;
+          // Parse arguments
+          const args = JSON.parse(toolCall.function.arguments);
+          
+          // Call the handler
+          const result = await toolFunction.handler(args);
+          
+          results.push({
+            tool_call_id: toolCall.id,
+            content: result
+          });
         } catch (error) {
-          console.error(`Error executing tool ${name}:`, error);
-          results[name] = { error: 'Tool execution failed' };
+          console.error(`Error calling tool ${toolCall.function.name}:`, error);
+          
+          results.push({
+            tool_call_id: toolCall.id,
+            content: { error: `Failed to process tool call: ${error}` }
+          });
         }
       } else {
-        results[name] = { error: 'Tool not found' };
+        results.push({
+          tool_call_id: toolCall.id,
+          content: { error: `Tool ${toolCall.function.name} not found` }
+        });
       }
     }
 
     return results;
   }
 
-  // Clear conversation history
   clearConversation(): void {
-    this.messages = [{ role: 'system', content: this.systemPrompt }];
-    this.conversationId = undefined;
+    // Keep only the system message
+    this.messages = [this.messages[0]];
   }
 }

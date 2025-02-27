@@ -160,8 +160,8 @@ Your goal is to help businesses understand their compliance obligations and avoi
     this.federalRequirements = [
       {
         id: 'fed-941',
-        name: 'Form 941 - Employer's Quarterly Federal Tax Return',
-        description: 'Employers who withhold income taxes, social security tax, or Medicare tax from employee's paychecks or who must pay the employer's portion of social security or Medicare tax.',
+        name: 'Form 941 - Employer\'s Quarterly Federal Tax Return',
+        description: 'Employers who withhold income taxes, social security tax, or Medicare tax from employee\'s paychecks or who must pay the employer\'s portion of social security or Medicare tax.',
         applies_to: ['all'],
         regions: ['US'],
         deadline_type: 'recurring',
@@ -175,7 +175,7 @@ Your goal is to help businesses understand their compliance obligations and avoi
       },
       {
         id: 'fed-940',
-        name: 'Form 940 - Employer's Annual Federal Unemployment Tax Return',
+        name: 'Form 940 - Employer\'s Annual Federal Unemployment Tax Return',
         description: 'Employers who paid wages of $1,500 or more in any calendar quarter or had one or more employees for at least some part of a day in any 20 or more different weeks.',
         applies_to: ['all'],
         regions: ['US'],
@@ -288,7 +288,7 @@ Your goal is to help businesses understand their compliance obligations and avoi
       TX: [
         {
           id: 'tx-c3',
-          name: 'Form C-3 - Employer's Quarterly Report',
+          name: 'Form C-3 - Employer\'s Quarterly Report',
           description: 'Texas employers must file this form quarterly to report employee wages and pay unemployment insurance taxes.',
           applies_to: ['all'],
           regions: ['TX'],

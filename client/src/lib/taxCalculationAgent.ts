@@ -1,6 +1,6 @@
 import { BaseAgent, AgentConfig } from './baseAgent';
 
-// Define tax rate and tax bracket interfaces
+// Define tax rate interface
 interface TaxRate {
   type: string;
   rate: number;
@@ -8,6 +8,7 @@ interface TaxRate {
   maxThreshold?: number;
 }
 
+// Define tax bracket interface
 interface TaxBracket {
   min: number;
   max: number | null;
@@ -18,9 +19,9 @@ export class TaxCalculationAgent extends BaseAgent {
   private federalTaxBrackets: Record<string, TaxBracket[]> = {};
   private stateTaxRates: Record<string, TaxRate[]> = {};
   private ficaTaxRates: Record<string, number> = {
-    socialSecurity: 0.062, // 6.2%
-    medicare: 0.0145,      // 1.45%
-    additionalMedicare: 0.009 // 0.9% additional Medicare tax for high earners
+    socialSecurity: 0.062,
+    medicare: 0.0145,
+    additionalMedicare: 0.009
   };
   private socialSecurityWageCap = 168600; // 2024 value
   private additionalMedicareThreshold = 200000; // Individual threshold
@@ -28,17 +29,15 @@ export class TaxCalculationAgent extends BaseAgent {
   constructor(config: AgentConfig) {
     super({
       ...config,
-      systemPrompt: `You are a tax calculation specialist for payroll processing. Your expertise is in calculating accurate tax withholdings, explaining tax regulations, and answering questions about payroll taxes.
+      systemPrompt: `You are a tax calculation expert specializing in payroll taxes. Your expertise is in calculating and explaining various payroll taxes including federal income tax, state income tax, FICA taxes (Social Security and Medicare), and other employment taxes.
 
-Always provide accurate and up-to-date tax information. If you're unsure about specific rates or regulations, acknowledge the limitation and suggest where the user might find the most current information.
+Always provide accurate and helpful guidance on tax matters. When addressing tax questions:
+1. Calculate taxes based on the most current tax rates and thresholds
+2. Explain how different taxes are calculated and what factors affect them
+3. Consider filing status, allowances, and location in your calculations
+4. Provide clear breakdowns of tax calculations
 
-When calculating taxes:
-1. Be precise with numbers and percentages
-2. Show your work step-by-step
-3. Explain which tax brackets and rates you're using
-4. Consider federal, state, and FICA taxes where appropriate
-
-Your goal is to help users understand their tax obligations and make informed decisions about payroll processing.`,
+Your goal is to help users understand their tax obligations and how different factors impact their tax liability. Always note that you're providing general guidance, not official tax advice, and recommend consulting with a tax professional for specific situations.`,
       tools: [
         {
           function: {
@@ -47,23 +46,23 @@ Your goal is to help users understand their tax obligations and make informed de
             parameters: {
               type: "object",
               properties: {
-                grossPay: {
+                grossIncome: {
                   type: "number",
-                  description: "Gross pay amount for the period"
+                  description: "Gross income amount per pay period"
                 },
                 payFrequency: {
                   type: "string",
-                  enum: ["weekly", "biweekly", "semimonthly", "monthly", "quarterly", "annually"],
+                  enum: ["weekly", "biweekly", "semimonthly", "monthly", "annually"],
                   description: "Pay frequency"
                 },
                 filingStatus: {
                   type: "string",
-                  enum: ["single", "married", "head_of_household"],
-                  description: "Federal filing status"
+                  enum: ["single", "married", "headOfHousehold"],
+                  description: "Tax filing status"
                 },
                 allowances: {
                   type: "number",
-                  description: "Federal withholding allowances"
+                  description: "Number of allowances claimed"
                 },
                 state: {
                   type: "string",
@@ -74,7 +73,7 @@ Your goal is to help users understand their tax obligations and make informed de
                   description: "Year-to-date earnings before this pay period"
                 }
               },
-              required: ["grossPay", "payFrequency", "filingStatus", "state"]
+              required: ["grossIncome", "payFrequency", "filingStatus", "state"]
             }
           },
           handler: async (params: any) => {
@@ -92,13 +91,14 @@ Your goal is to help users understand their tax obligations and make informed de
                   type: "string",
                   description: "State code (e.g., CA, NY, TX)"
                 },
-                year: {
-                  type: "number",
-                  description: "Tax year (defaults to current year)"
+                filingStatus: {
+                  type: "string",
+                  enum: ["single", "married", "headOfHousehold"],
+                  description: "Tax filing status"
                 },
-                includeLocalTaxes: {
+                includeLocal: {
                   type: "boolean",
-                  description: "Whether to include local taxes if available"
+                  description: "Whether to include local tax rates"
                 }
               },
               required: ["state"]
@@ -117,7 +117,7 @@ Your goal is to help users understand their tax obligations and make informed de
 
   private async loadTaxData(): Promise<void> {
     try {
-      // In a real implementation, we might fetch this from a database or API
+      // In a real implementation, we would fetch this from a database
       // For now, we'll initialize with some default values
       this.initializeDefaultTaxData();
     } catch (error) {
@@ -126,97 +126,133 @@ Your goal is to help users understand their tax obligations and make informed de
   }
 
   private initializeDefaultTaxData(): void {
-    // 2024 Federal tax brackets (simplified)
+    // 2023 federal tax brackets (simplified)
     this.federalTaxBrackets = {
       single: [
-        { min: 0, max: 11600, rate: 0.10 },
-        { min: 11601, max: 47150, rate: 0.12 },
-        { min: 47151, max: 100525, rate: 0.22 },
-        { min: 100526, max: 191950, rate: 0.24 },
-        { min: 191951, max: 243725, rate: 0.32 },
-        { min: 243726, max: 609350, rate: 0.35 },
-        { min: 609351, max: null, rate: 0.37 }
+        { min: 0, max: 11000, rate: 0.10 },
+        { min: 11000, max: 44725, rate: 0.12 },
+        { min: 44725, max: 95375, rate: 0.22 },
+        { min: 95375, max: 182100, rate: 0.24 },
+        { min: 182100, max: 231250, rate: 0.32 },
+        { min: 231250, max: 578125, rate: 0.35 },
+        { min: 578125, max: null, rate: 0.37 }
       ],
       married: [
-        { min: 0, max: 23200, rate: 0.10 },
-        { min: 23201, max: 94300, rate: 0.12 },
-        { min: 94301, max: 201050, rate: 0.22 },
-        { min: 201051, max: 383900, rate: 0.24 },
-        { min: 383901, max: 487450, rate: 0.32 },
-        { min: 487451, max: 731200, rate: 0.35 },
-        { min: 731201, max: null, rate: 0.37 }
+        { min: 0, max: 22000, rate: 0.10 },
+        { min: 22000, max: 89450, rate: 0.12 },
+        { min: 89450, max: 190750, rate: 0.22 },
+        { min: 190750, max: 364200, rate: 0.24 },
+        { min: 364200, max: 462500, rate: 0.32 },
+        { min: 462500, max: 693750, rate: 0.35 },
+        { min: 693750, max: null, rate: 0.37 }
       ],
-      head_of_household: [
-        { min: 0, max: 16550, rate: 0.10 },
-        { min: 16551, max: 63100, rate: 0.12 },
-        { min: 63101, max: 100500, rate: 0.22 },
-        { min: 100501, max: 191950, rate: 0.24 },
-        { min: 191951, max: 243700, rate: 0.32 },
-        { min: 243701, max: 609350, rate: 0.35 },
-        { min: 609351, max: null, rate: 0.37 }
+      headOfHousehold: [
+        { min: 0, max: 15700, rate: 0.10 },
+        { min: 15700, max: 59850, rate: 0.12 },
+        { min: 59850, max: 95350, rate: 0.22 },
+        { min: 95350, max: 182100, rate: 0.24 },
+        { min: 182100, max: 231250, rate: 0.32 },
+        { min: 231250, max: 578100, rate: 0.35 },
+        { min: 578100, max: null, rate: 0.37 }
       ]
     };
 
-    // Sample state tax rates (simplified)
+    // State tax rates (simplified)
     this.stateTaxRates = {
-      CA: [{ type: 'income', rate: 0.06 }],
-      NY: [{ type: 'income', rate: 0.05 }],
-      TX: [{ type: 'income', rate: 0 }], // No state income tax
-      FL: [{ type: 'income', rate: 0 }], // No state income tax
-      WA: [{ type: 'income', rate: 0 }], // No state income tax
-      IL: [{ type: 'income', rate: 0.0495 }],
-      PA: [{ type: 'income', rate: 0.0307 }]
+      CA: [
+        { type: 'income', rate: 0.01, threshold: 0, maxThreshold: 10099 },
+        { type: 'income', rate: 0.02, threshold: 10099, maxThreshold: 23942 },
+        { type: 'income', rate: 0.04, threshold: 23942, maxThreshold: 37788 },
+        { type: 'income', rate: 0.06, threshold: 37788, maxThreshold: 52455 },
+        { type: 'income', rate: 0.08, threshold: 52455, maxThreshold: 66295 },
+        { type: 'income', rate: 0.093, threshold: 66295, maxThreshold: 338639 },
+        { type: 'income', rate: 0.103, threshold: 338639, maxThreshold: 406364 },
+        { type: 'income', rate: 0.113, threshold: 406364, maxThreshold: 677275 },
+        { type: 'income', rate: 0.123, threshold: 677275, maxThreshold: null }
+      ],
+      NY: [
+        { type: 'income', rate: 0.04, threshold: 0, maxThreshold: 8500 },
+        { type: 'income', rate: 0.045, threshold: 8500, maxThreshold: 11700 },
+        { type: 'income', rate: 0.0525, threshold: 11700, maxThreshold: 13900 },
+        { type: 'income', rate: 0.059, threshold: 13900, maxThreshold: 80650 },
+        { type: 'income', rate: 0.0597, threshold: 80650, maxThreshold: 215400 },
+        { type: 'income', rate: 0.0633, threshold: 215400, maxThreshold: 1077550 },
+        { type: 'income', rate: 0.0685, threshold: 1077550, maxThreshold: 5000000 },
+        { type: 'income', rate: 0.0882, threshold: 5000000, maxThreshold: 25000000 },
+        { type: 'income', rate: 0.103, threshold: 25000000, maxThreshold: null }
+      ],
+      TX: [
+        // Texas has no state income tax
+      ]
     };
+
+    // Add more states as needed
   }
 
   private async calculatePayrollTaxes(params: any): Promise<any> {
-    const { grossPay, payFrequency, filingStatus, allowances = 0, state, ytdEarnings = 0 } = params;
-    
-    // Calculate annual income (estimated)
+    const { 
+      grossIncome,
+      payFrequency,
+      filingStatus = 'single',
+      allowances = 0,
+      state,
+      ytdEarnings = 0
+    } = params;
+
+    // Calculate annual income based on pay frequency
     const payPeriodsPerYear = this.getPayPeriodsPerYear(payFrequency);
-    const estimatedAnnualIncome = grossPay * payPeriodsPerYear;
+    const annualIncome = grossIncome * payPeriodsPerYear;
     
-    // Calculate federal income tax
-    const federalIncomeTax = this.calculateFederalIncomeTax(
-      estimatedAnnualIncome, 
-      filingStatus, 
-      allowances
-    ) / payPeriodsPerYear;
+    // Calculate Federal Income Tax
+    const federalIncomeTax = this.calculateFederalIncomeTax(annualIncome, filingStatus, allowances) / payPeriodsPerYear;
     
-    // Calculate state income tax
-    const stateIncomeTax = this.calculateStateIncomeTax(
-      estimatedAnnualIncome, 
-      state
-    ) / payPeriodsPerYear;
+    // Calculate State Income Tax
+    const stateIncomeTax = this.calculateStateIncomeTax(annualIncome, state) / payPeriodsPerYear;
     
     // Calculate FICA taxes
-    const totalEarnings = ytdEarnings + grossPay;
-    const ficaTaxes = this.calculateFICATaxes(grossPay, ytdEarnings, totalEarnings);
+    const totalEarnings = ytdEarnings + grossIncome;
+    const ficaTaxes = this.calculateFICATaxes(grossIncome, ytdEarnings, totalEarnings);
     
-    // Calculate net pay
+    // Calculate total tax and net pay
     const totalTax = federalIncomeTax + stateIncomeTax + ficaTaxes.socialSecurity + ficaTaxes.medicare;
-    const netPay = grossPay - totalTax;
+    const netPay = grossIncome - totalTax;
     
     return {
-      grossPay,
-      federalIncomeTax: parseFloat(federalIncomeTax.toFixed(2)),
-      stateIncomeTax: parseFloat(stateIncomeTax.toFixed(2)),
-      socialSecurityTax: parseFloat(ficaTaxes.socialSecurity.toFixed(2)),
-      medicareTax: parseFloat(ficaTaxes.medicare.toFixed(2)),
-      totalTax: parseFloat(totalTax.toFixed(2)),
-      netPay: parseFloat(netPay.toFixed(2))
+      grossPay: grossIncome,
+      deductions: {
+        federalIncomeTax: parseFloat(federalIncomeTax.toFixed(2)),
+        stateIncomeTax: parseFloat(stateIncomeTax.toFixed(2)),
+        socialSecurityTax: parseFloat(ficaTaxes.socialSecurity.toFixed(2)),
+        medicareTax: parseFloat(ficaTaxes.medicare.toFixed(2)),
+        totalTax: parseFloat(totalTax.toFixed(2))
+      },
+      netPay: parseFloat(netPay.toFixed(2)),
+      annualProjection: {
+        grossIncome: parseFloat((grossIncome * payPeriodsPerYear).toFixed(2)),
+        federalIncomeTax: parseFloat((federalIncomeTax * payPeriodsPerYear).toFixed(2)),
+        stateIncomeTax: parseFloat((stateIncomeTax * payPeriodsPerYear).toFixed(2)),
+        socialSecurityTax: parseFloat((ficaTaxes.socialSecurity * payPeriodsPerYear).toFixed(2)),
+        medicareTax: parseFloat((ficaTaxes.medicare * payPeriodsPerYear).toFixed(2)),
+        totalTax: parseFloat((totalTax * payPeriodsPerYear).toFixed(2)),
+        netIncome: parseFloat((netPay * payPeriodsPerYear).toFixed(2))
+      }
     };
   }
 
   private async getTaxRates(params: any): Promise<any> {
-    const { state, year = new Date().getFullYear(), includeLocalTaxes = false } = params;
+    const { state, filingStatus = 'single' } = params;
     
-    const federalRates = this.federalTaxBrackets;
-    const stateRates = this.stateTaxRates[state] || [];
+    // Get federal tax brackets
+    const federalBrackets = this.federalTaxBrackets[filingStatus] || this.federalTaxBrackets.single;
+    
+    // Get state tax rates
+    const stateTaxRates = this.stateTaxRates[state] || [];
+    
+    // Get FICA rates
     const ficaRates = {
       socialSecurity: {
         rate: this.ficaTaxRates.socialSecurity,
-        wageCap: this.socialSecurityWageCap
+        cap: this.socialSecurityWageCap
       },
       medicare: {
         rate: this.ficaTaxRates.medicare,
@@ -225,18 +261,12 @@ Your goal is to help users understand their tax obligations and make informed de
       }
     };
     
-    // For a real implementation, we might include local tax rates here
-    const localRates = includeLocalTaxes ? [] : undefined;
-    
     return {
-      year,
-      federal: federalRates,
-      state: {
-        code: state,
-        rates: stateRates
-      },
-      fica: ficaRates,
-      local: localRates
+      federalBrackets,
+      stateTaxRates,
+      ficaRates,
+      filingStatus,
+      state
     };
   }
 
@@ -246,75 +276,97 @@ Your goal is to help users understand their tax obligations and make informed de
       case 'biweekly': return 26;
       case 'semimonthly': return 24;
       case 'monthly': return 12;
-      case 'quarterly': return 4;
       case 'annually': return 1;
       default: return 26; // Default to biweekly
     }
   }
 
   private calculateFederalIncomeTax(annualIncome: number, filingStatus: string, allowances: number): number {
-    // Apply a simplified allowance deduction
-    const allowanceValue = 4300; // 2024 value (simplified)
-    const taxableIncome = Math.max(0, annualIncome - (allowances * allowanceValue));
+    // Get the correct tax brackets based on filing status
+    const brackets = this.federalTaxBrackets[filingStatus] || this.federalTaxBrackets.single;
     
-    // Get the applicable tax brackets
-    const brackets = this.federalTaxBrackets[filingStatus as keyof typeof this.federalTaxBrackets] || this.federalTaxBrackets.single;
+    // Apply a simple standard deduction based on filing status
+    let standardDeduction = 0;
+    switch (filingStatus) {
+      case 'single': standardDeduction = 13850; break;
+      case 'married': standardDeduction = 27700; break;
+      case 'headOfHousehold': standardDeduction = 20800; break;
+      default: standardDeduction = 13850;
+    }
+    
+    // Apply allowances (simplified - $4,050 per allowance)
+    const allowanceAmount = 4050 * allowances;
+    
+    // Calculate taxable income
+    const taxableIncome = Math.max(0, annualIncome - standardDeduction - allowanceAmount);
     
     // Calculate tax using brackets
     let tax = 0;
-    for (let i = 0; i < brackets.length; i++) {
-      const bracket = brackets[i];
-      const lowerBound = bracket.min;
-      const upperBound = bracket.max === null ? Infinity : bracket.max;
+    let remainingIncome = taxableIncome;
+    
+    for (const bracket of brackets) {
+      const min = bracket.min;
+      const max = bracket.max === null ? Infinity : bracket.max;
+      const rate = bracket.rate;
       
-      if (taxableIncome > lowerBound) {
-        const taxableInThisBracket = Math.min(taxableIncome, upperBound) - lowerBound;
-        tax += taxableInThisBracket * bracket.rate;
-      }
+      if (remainingIncome <= 0) break;
       
-      if (taxableIncome <= upperBound) {
-        break;
-      }
+      const taxableAmountInBracket = Math.min(remainingIncome, max - min);
+      tax += taxableAmountInBracket * rate;
+      remainingIncome -= taxableAmountInBracket;
     }
     
     return tax;
   }
 
   private calculateStateIncomeTax(annualIncome: number, state: string): number {
-    const stateRates = this.stateTaxRates[state];
+    // Get state rates
+    const rates = this.stateTaxRates[state] || [];
     
-    if (!stateRates) {
-      return 0; // Default to 0 if state not found
+    // If no rates (e.g., TX), return 0
+    if (rates.length === 0) return 0;
+    
+    // Calculate state tax (simplified)
+    let tax = 0;
+    let remainingIncome = annualIncome;
+    
+    // Sort rates by threshold (lowest first)
+    const sortedRates = [...rates].sort((a, b) => (a.threshold || 0) - (b.threshold || 0));
+    
+    for (const rate of sortedRates) {
+      if (remainingIncome <= 0) break;
+      
+      const min = rate.threshold || 0;
+      const max = rate.maxThreshold === null ? Infinity : (rate.maxThreshold || Infinity);
+      
+      if (annualIncome > min) {
+        const taxableAmountInBracket = Math.min(remainingIncome, max - min);
+        tax += taxableAmountInBracket * rate.rate;
+        remainingIncome -= taxableAmountInBracket;
+      }
     }
     
-    // Find the income tax rate
-    const incomeTaxRate = stateRates.find(rate => rate.type === 'income');
-    
-    if (!incomeTaxRate) {
-      return 0;
-    }
-    
-    // For simplicity, we're applying a flat tax rate
-    // In a real implementation, we would apply brackets similar to federal
-    return annualIncome * incomeTaxRate.rate;
+    return tax;
   }
 
   private calculateFICATaxes(gross: number, ytdEarnings: number, totalEarnings: number): { socialSecurity: number, medicare: number } {
-    // Calculate Social Security withholding
+    // Calculate Social Security tax (subject to wage cap)
     let socialSecurity = 0;
     if (ytdEarnings < this.socialSecurityWageCap) {
-      const taxableSS = Math.min(gross, this.socialSecurityWageCap - ytdEarnings);
-      socialSecurity = taxableSS * this.ficaTaxRates.socialSecurity;
+      const taxableAmount = Math.min(gross, this.socialSecurityWageCap - ytdEarnings);
+      socialSecurity = taxableAmount * this.ficaTaxRates.socialSecurity;
     }
     
-    // Calculate Medicare withholding
+    // Calculate Medicare tax (regular + additional for high earners)
     let medicare = gross * this.ficaTaxRates.medicare;
     
-    // Additional Medicare Tax for high earners
+    // Add Additional Medicare Tax for high earners
     if (totalEarnings > this.additionalMedicareThreshold && ytdEarnings < this.additionalMedicareThreshold) {
-      const additionalTaxable = totalEarnings - this.additionalMedicareThreshold;
-      medicare += additionalTaxable * this.ficaTaxRates.additionalMedicare;
-    } else if (ytdEarnings > this.additionalMedicareThreshold) {
+      const additionalTaxableAmount = totalEarnings - Math.max(ytdEarnings, this.additionalMedicareThreshold);
+      if (additionalTaxableAmount > 0) {
+        medicare += additionalTaxableAmount * this.ficaTaxRates.additionalMedicare;
+      }
+    } else if (ytdEarnings >= this.additionalMedicareThreshold) {
       medicare += gross * this.ficaTaxRates.additionalMedicare;
     }
     
