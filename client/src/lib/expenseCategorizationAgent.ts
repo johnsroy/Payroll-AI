@@ -102,7 +102,10 @@ When responding, always:
     });
     
     // Extract response
-    const assistantMessage = response.content[0].text;
+    const content = response.content[0];
+    const assistantMessage = typeof content === 'object' && 'text' in content 
+      ? content.text 
+      : JSON.stringify(content);
     
     // Store categorization result
     const categorizationResult = this.createCategorizationResult(query, assistantMessage);

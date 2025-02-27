@@ -11,6 +11,7 @@ import BlogPage from "@/pages/blog";
 import LoginPage from "@/pages/login";
 import GetStartedPage from "@/pages/get-started-button";
 import AIAssistantPage from "@/pages/ai-assistant";
+import AgentTestPage from "@/pages/agent-test";
 
 function Router() {
   return (
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/get-started-button" component={GetStartedPage} />
       <Route path="/ai-assistant" component={AIAssistantPage} />
+      <Route path="/agent-test" component={AgentTestPage} />
       <Route component={NotFound} />
     </Switch>
   );

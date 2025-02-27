@@ -1,71 +1,41 @@
-import { v4 as uuidv4 } from 'uuid';
-
 /**
- * Configuration for all agent types
+ * Configuration options for agents
  */
 export interface AgentConfig {
-  userId?: string;
-  companyId?: string;
-  conversationId?: string;
-  enableInternetSearch?: boolean;
-  enableKnowledgeBase?: boolean;
-  retainMemory?: boolean;
+  name: string;
+  systemPrompt?: string;
+  maxTokens?: number;
+  temperature?: number;
 }
 
 /**
- * Base agent class that all specialized agents extend
+ * Base class for all specialized agents
  */
 export abstract class BaseAgent {
-  protected config: AgentConfig;
-  protected agentId: string;
-  protected conversationId: string;
+  protected name: string;
   
-  constructor(config: AgentConfig = {}) {
-    this.config = {
-      enableInternetSearch: true,
-      enableKnowledgeBase: true,
-      retainMemory: true,
-      ...config
-    };
-    
-    this.agentId = uuidv4();
-    this.conversationId = config.conversationId || uuidv4();
+  constructor(config: AgentConfig) {
+    this.name = config.name;
   }
   
   /**
-   * Gets the agent ID
+   * Get the agent's name
    */
-  public getAgentId(): string {
-    return this.agentId;
+  public getName(): string {
+    return this.name;
   }
   
   /**
-   * Gets the conversation ID
-   */
-  public getConversationId(): string {
-    return this.conversationId;
-  }
-  
-  /**
-   * Sets a new conversation ID
-   */
-  public setConversationId(conversationId: string): void {
-    this.conversationId = conversationId;
-  }
-  
-  /**
-   * Updates agent configuration
-   */
-  public updateConfig(newConfig: Partial<AgentConfig>): void {
-    this.config = {
-      ...this.config,
-      ...newConfig
-    };
-  }
-  
-  /**
-   * Reset the agent to its initial state
-   * (To be implemented by specific agent subclasses)
+   * Reset the agent state
    */
   public abstract reset(): void;
+  
+  /**
+   * Process a query and return a response with confidence score
+   */
+  public abstract processQuery(query: string): Promise<{
+    response: string;
+    confidence: number;
+    metadata?: any;
+  }>;
 }
