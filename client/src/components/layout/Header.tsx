@@ -1,14 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Clock } from "lucide-react";
 import MobileMenu from "./MobileMenu";
-import { mainNavLinks, featuresDropdown } from "@/config/navigation";
+import { mainNavLinks, featuresDropdown, resourcesDropdown, companyDropdown } from "@/config/navigation";
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [location] = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,8 +40,9 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
+            {/* Features Dropdown */}
             <div className="relative group">
-              <button className="flex items-center text-text-dark hover:text-primary transition px-2 py-1 rounded-md">
+              <Link href="/features" className="flex items-center text-text-dark hover:text-primary transition px-2 py-1 rounded-md">
                 Features
                 <svg 
                   xmlns="http://www.w3.org/2000/svg" 
@@ -56,43 +58,115 @@ export default function Header() {
                     d="M19 9l-7 7-7-7" 
                   />
                 </svg>
-              </button>
-              <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+              </Link>
+              <div className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
                 <div className="py-1">
                   {featuresDropdown.map((item, index) => (
-                    <a 
+                    <Link 
                       key={index}
                       href={item.href} 
-                      className="block px-4 py-2 text-sm text-text-dark hover:bg-accent"
+                      className="block px-4 py-2 text-sm text-text-dark hover:bg-gray-50"
                     >
                       {item.name}
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </div>
             </div>
+            
+            {/* Resources Dropdown */}
+            <div className="relative group">
+              <button className="flex items-center text-text-dark hover:text-primary transition px-2 py-1 rounded-md">
+                Resources
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 ml-1" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M19 9l-7 7-7-7" 
+                  />
+                </svg>
+              </button>
+              <div className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                <div className="py-1">
+                  {resourcesDropdown.map((item, index) => (
+                    <Link 
+                      key={index}
+                      href={item.href} 
+                      className="block px-4 py-2 text-sm text-text-dark hover:bg-gray-50"
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Main Nav Links */}
             {mainNavLinks.map((item, index) => (
-              <a 
+              <Link 
                 key={index}
                 href={item.href} 
-                className="text-text-dark hover:text-primary transition px-2 py-1 rounded-md"
+                className={`text-text-dark hover:text-primary transition px-2 py-1 rounded-md ${
+                  location === item.href ? 'text-primary font-medium' : ''
+                }`}
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
+            
+            {/* Company Dropdown */}
+            <div className="relative group">
+              <button className="flex items-center text-text-dark hover:text-primary transition px-2 py-1 rounded-md">
+                Company
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 ml-1" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M19 9l-7 7-7-7" 
+                  />
+                </svg>
+              </button>
+              <div className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                <div className="py-1">
+                  {companyDropdown.map((item, index) => (
+                    <Link 
+                      key={index}
+                      href={item.href} 
+                      className="block px-4 py-2 text-sm text-text-dark hover:bg-gray-50"
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </div>
           </nav>
 
           {/* CTA Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            <a href="#" className="text-text-dark hover:text-primary transition">
+            <Link href="/login" className="text-text-dark hover:text-primary transition">
               Login
-            </a>
-            <a 
-              href="#" 
+            </Link>
+            <Link 
+              href="/get-started-button" 
               className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition"
             >
               Get Started
-            </a>
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
