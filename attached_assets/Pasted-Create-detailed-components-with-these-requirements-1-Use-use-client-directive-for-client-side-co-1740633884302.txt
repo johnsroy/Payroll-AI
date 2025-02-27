@@ -1,0 +1,132 @@
+Create detailed components with these requirements:
+1. Use 'use client' directive for client-side components
+2. Style with Tailwind CSS utility classes for responsive design
+3. Use Lucide React for icons (from lucide-react package). Do NOT use other UI libraries unless requested
+4. Use stock photos from picsum.photos where appropriate, only valid URLs you know exist
+5. Configure next.config.js image remotePatterns to enable stock photos from picsum.photos
+6. Create root layout.tsx page that wraps necessary navigation items to all pages
+7. MUST implement the navigation elements items in their rightful place i.e. Left sidebar, Top header
+8. Accurately implement necessary grid layouts
+9. Follow proper import practices:
+   - Use @/ path aliases
+   - Keep component imports organized
+   - Update current src/app/page.tsx with new comprehensive code
+   - Don't forget root route (page.tsx) handling
+   - You MUST complete the entire prompt before stopping
+Payroll Software Landing Page Design System
+</summary_title>
+<image_analysis>
+1. Navigation Elements:
+- Top header with: Logo, Features, Pricing, Blog, Login, Get Started button
+- Secondary navigation with: Product features, Resources
+- Footer navigation with: Company info, Product links, Support
+2. Layout Components:
+- Header container: 100% width, 80px height
+- Hero section: 1200px max-width, centered
+- Feature cards: 380px width, flexible height
+- Content blocks: 800px max-width
+- Pricing table: 1000px max-width
+- FAQ accordion: 800px max-width
+3. Content Sections:
+- Hero section with illustration and CTA
+- Feature highlights with icons
+- Benefits section with illustrations
+- Pricing comparison table
+- Customer testimonials
+- FAQ accordion section
+- Footer with multi-column layout
+4. Interactive Controls:
+- Primary CTA buttons (blue)
+- Secondary buttons (white/outlined)
+- FAQ accordion toggles
+- Navigation dropdown menus
+- Login/Signup forms
+- Mobile menu hamburger
+5. Colors:
+- Primary Blue: #2563EB
+- Secondary Blue: #1E40AF
+- Text Dark: #1F2937
+- Text Light: #6B7280
+- Background: #FFFFFF
+- Accent: #F3F4F6
+6. Grid/Layout Structure:
+- 12-column grid system
+- 24px base spacing unit
+- Breakpoints: 
+  - Mobile: 320px
+  - Tablet: 768px
+  - Desktop: 1024px
+  - Wide: 1280px
+</image_analysis>
+<development_planning>
+1. Project Structure:
+
+src/
+├── components/
+│   ├── layout/
+│   │   ├── Header
+│   │   ├── Footer
+│   │   └── Navigation
+│   ├── features/
+│   │   ├── Hero
+│   │   ├── Features
+│   │   ├── Pricing
+│   │   └── FAQ
+│   └── shared/
+├── assets/
+├── styles/
+├── hooks/
+└── utils/
+
+2. Key Features:
+- Responsive navigation system
+- Interactive pricing calculator
+- FAQ accordion functionality
+- Form validation and submission
+- Smooth scroll navigation
+- Mobile-first responsive design
+3. State Management:
+typescript
+interface AppState {
+├── navigation: {
+│   ├── isMenuOpen: boolean
+│   ├── activeSection: string
+├── }
+├── pricing: {
+│   ├── selectedPlan: string
+│   ├── customFeatures: string[]
+├── }
+├── user: {
+│   ├── isAuthenticated: boolean
+│   └── preferences: UserPreferences
+└── }
+
+4. Routes:
+typescript
+const routes = [
+├── '/',
+├── '/features/*',
+├── '/pricing',
+├── '/blog/*',
+├── '/login',
+└── '/signup'
+]
+
+5. Component Architecture:
+- Atomic design pattern
+- Shared component library
+- Lazy-loaded features
+- HOC for authentication
+- Custom hooks for business logic
+6. Responsive Breakpoints:
+scss
+$breakpoints: (
+├── 'sm': '320px',
+├── 'md': '768px',
+├── 'lg': '1024px',
+└── 'xl': '1280px'
+);
+
+</development_planning>
+
+Edit
