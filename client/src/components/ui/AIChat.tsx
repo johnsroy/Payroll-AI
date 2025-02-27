@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Trash2, Loader2, User, X } from 'lucide-react';
+import { Send, Bot, Trash2, Loader2, User, X, Sparkles, Zap } from 'lucide-react';
 import { useAI } from '@/lib/aiContext';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface AIMessage {
   id: string;
@@ -80,48 +81,167 @@ export function AIChat({
   };
 
   return (
-    <Card className={cn("flex flex-col overflow-hidden", 
-      expanded ? "fixed inset-0 z-50 rounded-none" : "h-[500px] w-full max-w-md rounded-lg shadow-lg", 
-      className)}>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{
+        type: "spring",
+        stiffness: 300,
+        damping: 30,
+        delay: 0.15
+      }}
+    >
+      <Card className={cn("flex flex-col overflow-hidden", 
+        expanded ? "fixed inset-0 z-50 rounded-none" : "h-[500px] w-full max-w-md rounded-lg shadow-lg border-primary/10", 
+        className)}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      <motion.div 
+        className="flex items-center justify-between px-4 py-3 border-b bg-primary/5"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
         <div className="flex items-center gap-2">
-          <Bot className="h-5 w-5 text-primary" />
-          <div className="font-medium">
-            {activeAgentName || 'Payroll Assistant'}
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1, rotate: [0, 15, 0] }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+            className="bg-primary/10 p-1.5 rounded-full"
+          >
+            <Bot className="h-5 w-5 text-primary" />
+          </motion.div>
+          <div className="font-medium flex items-center">
+            <motion.span
+              initial={{ opacity: 0, x: -5 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3, duration: 0.2 }}
+            >
+              {activeAgentName || 'Payroll Assistant'}
+            </motion.span>
+            <motion.div 
+              className="flex h-2 w-2 ml-2 relative"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+            >
+              <motion.span 
+                className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
+              />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </motion.div>
           </div>
         </div>
-        <div className="flex gap-1">
-          <Button variant="ghost" size="icon" onClick={clearConversation} title="Clear conversation">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          {onToggleExpand && (
-            <Button variant="ghost" size="icon" onClick={onToggleExpand} title={expanded ? "Minimize" : "Maximize"}>
-              {expanded ? <X className="h-4 w-4" /> : <span className="text-xs font-bold">□</span>}
+        <div className="flex gap-2">
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={clearConversation} 
+              title="Clear conversation"
+              className="rounded-full h-8 w-8"
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
+          </motion.div>
+          {onToggleExpand && (
+            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={onToggleExpand} 
+                title={expanded ? "Minimize" : "Maximize"}
+                className="rounded-full h-8 w-8"
+              >
+                {expanded ? <X className="h-4 w-4" /> : <span className="text-xs font-bold">□</span>}
+              </Button>
+            </motion.div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground p-4">
-              <Bot className="h-10 w-10 mx-auto mb-2 text-primary/40" />
-              <p className="text-sm">How can I help you with payroll today?</p>
-              <div className="mt-4 grid gap-2">
-                <SuggestionButton onClick={(text) => setInput(text)}>
-                  How do I calculate payroll taxes?
-                </SuggestionButton>
-                <SuggestionButton onClick={(text) => setInput(text)}>
-                  What forms do I need to file this quarter?
-                </SuggestionButton>
-                <SuggestionButton onClick={(text) => setInput(text)}>
-                  Help me categorize an office supply expense
-                </SuggestionButton>
-              </div>
-            </div>
+            <motion.div 
+              className="relative text-center p-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <motion.div
+                className="absolute inset-0 -z-10 bg-gradient-to-b from-primary/5 to-transparent rounded-lg opacity-70"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 0.7 }}
+                transition={{ delay: 0.5, duration: 0.7 }}
+              />
+              
+              <motion.div
+                initial={{ scale: 0, rotate: -10 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ 
+                  type: "spring", 
+                  delay: 0.7, 
+                  stiffness: 300 
+                }}
+                className="bg-primary/10 h-16 w-16 mx-auto mb-4 rounded-full flex items-center justify-center shadow-md"
+              >
+                <motion.div
+                  animate={{ 
+                    rotate: [0, 10, -10, 0],
+                    scale: [1, 1.1, 1]
+                  }}
+                  transition={{ 
+                    duration: 4,
+                    repeat: Infinity,
+                    repeatType: "reverse"
+                  }}
+                >
+                  <Bot className="h-8 w-8 text-primary" />
+                </motion.div>
+              </motion.div>
+              
+              <motion.h3
+                className="text-lg font-semibold text-foreground mb-1"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.9 }}
+              >
+                AI Payroll Assistant
+              </motion.h3>
+              
+              <motion.p 
+                className="text-sm text-muted-foreground mb-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.1 }}
+              >
+                Powered by advanced AI agents for tax, expense, and compliance expertise
+              </motion.p>
+              
+              <motion.div 
+                className="grid gap-2"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.3 }}
+              >
+                <h4 className="text-sm font-medium mb-1">Try asking about:</h4>
+                <div className="grid gap-2">
+                  <SuggestionButton onClick={(text) => setInput(text)}>
+                    How do I calculate payroll taxes for a new employee?
+                  </SuggestionButton>
+                  <SuggestionButton onClick={(text) => setInput(text)}>
+                    What tax forms do I need to file this quarter?
+                  </SuggestionButton>
+                  <SuggestionButton onClick={(text) => setInput(text)}>
+                    Help me categorize office supplies for tax deductions
+                  </SuggestionButton>
+                  <SuggestionButton onClick={(text) => setInput(text)}>
+                    Explain 401(k) matching requirements for small businesses
+                  </SuggestionButton>
+                </div>
+              </motion.div>
+            </motion.div>
           ) : (
             messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
@@ -130,17 +250,80 @@ export function AIChat({
           
           {/* Loading indicator */}
           {isLoading && (
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Processing...</span>
-            </div>
+            <motion.div 
+              className="flex flex-col items-center p-4 text-muted-foreground"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="relative">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <motion.div 
+                  className="absolute inset-0 rounded-full"
+                  animate={{ 
+                    boxShadow: ["0 0 0 0 rgba(var(--primary), 0.2)", "0 0 0 10px rgba(var(--primary), 0)"] 
+                  }}
+                  transition={{ 
+                    duration: 1.5, 
+                    repeat: Infinity,
+                    ease: "easeOut" 
+                  }}
+                />
+              </div>
+              <div className="flex items-center mt-2">
+                <motion.span 
+                  className="text-sm font-medium"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ 
+                    delay: 0.5,
+                    duration: 0.5 
+                  }}
+                >
+                  AI thinking
+                </motion.span>
+                <motion.span
+                  className="ml-1 inline-flex"
+                  animate={{
+                    opacity: [0, 1, 1, 1, 0],
+                  }}
+                  transition={{
+                    repeat: Infinity,
+                    duration: 2,
+                    times: [0, 0.2, 0.4, 0.6, 1],
+                  }}
+                >
+                  ...
+                </motion.span>
+              </div>
+            </motion.div>
           )}
           
           {/* Error message */}
           {error && (
-            <div className="text-destructive text-sm bg-destructive/10 p-2 rounded">
-              {error}
-            </div>
+            <motion.div 
+              className="flex items-center gap-3 bg-destructive/10 p-4 rounded-lg"
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ 
+                type: "spring",
+                stiffness: 500,
+                damping: 30
+              }}
+            >
+              <div className="bg-destructive/20 h-8 w-8 rounded-full flex items-center justify-center text-destructive">
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 10, -10, 0] }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <X className="h-4 w-4" />
+                </motion.div>
+              </div>
+              <div className="flex-1">
+                <h4 className="font-medium text-destructive mb-1">Error Occurred</h4>
+                <p className="text-destructive/80 text-sm">{error}</p>
+              </div>
+            </motion.div>
           )}
           
           {/* Invisible element to scroll to */}
@@ -149,22 +332,53 @@ export function AIChat({
       </ScrollArea>
 
       {/* Input area */}
-      <form onSubmit={handleSubmit} className="border-t p-4">
-        <div className="flex gap-2">
-          <Textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask a question about payroll..."
-            className="min-h-[60px] flex-1 resize-none"
-            disabled={isLoading}
-          />
-          <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
-            <Send className="h-4 w-4" />
-          </Button>
+      <motion.form 
+        onSubmit={handleSubmit} 
+        className="border-t p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        <div className="flex gap-2 items-center">
+          <motion.div 
+            className="relative flex-1"
+            whileHover={{ scale: 1.01 }}
+            whileFocus={{ scale: 1.01 }}
+          >
+            <Textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question about payroll..."
+              className="min-h-[60px] resize-none pr-10 shadow-sm"
+              disabled={isLoading}
+            />
+            {input.length > 0 && (
+              <motion.div 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                {input.length} chars
+              </motion.div>
+            )}
+          </motion.div>
+          <motion.div
+            whileHover={{ scale: 1.1, rotate: 10 }}
+            whileTap={{ scale: 0.9 }}
+          >
+            <Button 
+              type="submit" 
+              size="icon" 
+              disabled={isLoading || !input.trim()}
+              className="rounded-full h-12 w-12 bg-primary shadow-md"
+            >
+              <Send className="h-5 w-5" />
+            </Button>
+          </motion.div>
         </div>
-      </form>
+      </motion.form>
     </Card>
   );
 }
@@ -173,21 +387,36 @@ function MessageBubble({ message }: { message: AIMessage }) {
   const isUser = message.role === 'user';
   
   return (
-    <div className={cn("flex gap-2", isUser ? "justify-end" : "justify-start")}>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.8, y: 20 }} 
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 260, damping: 20 }}
+      className={cn("flex gap-2", isUser ? "justify-end" : "justify-start")}
+    >
       {!isUser && (
-        <Avatar className="h-8 w-8 bg-primary/10">
-          <Bot className="h-4 w-4 text-primary" />
-        </Avatar>
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, type: "spring" }}
+        >
+          <Avatar className="h-8 w-8 bg-primary/10">
+            <Bot className="h-4 w-4 text-primary" />
+          </Avatar>
+        </motion.div>
       )}
-      <div className={cn(
-        "rounded-lg p-3 max-w-[80%]",
-        isUser 
-          ? "bg-primary text-primary-foreground" 
-          : "bg-muted"
-      )}>
+      <motion.div 
+        className={cn(
+          "rounded-lg p-3 max-w-[80%]",
+          isUser 
+            ? "bg-primary text-primary-foreground" 
+            : "bg-muted"
+        )}
+        whileHover={{ scale: 1.02 }}
+      >
         <div className="space-y-2">
           {message.agentName && !isUser && (
-            <Badge variant="outline" className="text-xs bg-background/50">
+            <Badge variant="outline" className="text-xs bg-background/50 flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
               {message.agentName}
             </Badge>
           )}
@@ -195,13 +424,19 @@ function MessageBubble({ message }: { message: AIMessage }) {
             {message.content}
           </div>
         </div>
-      </div>
+      </motion.div>
       {isUser && (
-        <Avatar className="h-8 w-8 bg-primary">
-          <User className="h-4 w-4 text-primary-foreground" />
-        </Avatar>
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2, type: "spring" }}
+        >
+          <Avatar className="h-8 w-8 bg-primary">
+            <User className="h-4 w-4 text-primary-foreground" />
+          </Avatar>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -213,12 +448,26 @@ function SuggestionButton({
   onClick: (text: string) => void;
 }) {
   return (
-    <Button 
-      variant="outline" 
-      className="text-sm justify-start h-auto py-2 px-3 whitespace-normal text-left" 
-      onClick={() => onClick(children?.toString() || '')}
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 500, 
+        damping: 30,
+        delay: Math.random() * 0.3 // Random delay for staggered effect
+      }}
     >
-      {children}
-    </Button>
+      <motion.button 
+        className="text-sm justify-start h-auto py-2 px-3 whitespace-normal text-left w-full group bg-background border border-input rounded-md hover:bg-accent hover:text-accent-foreground"
+        onClick={() => onClick(children?.toString() || '')}
+        whileHover={{ scale: 1.02 }}
+      >
+        <div className="flex items-center gap-2">
+          <Zap className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors duration-200" />
+          <span>{children}</span>
+        </div>
+      </motion.button>
+    </motion.div>
   );
 }
