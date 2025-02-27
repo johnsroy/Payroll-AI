@@ -1,0 +1,12 @@
+  // Get conversation ID
+  getConversationId(): string | undefined {
+    return this.conversationId;
+  }
+
+  // Get agent metadata
+  getAgentMetadata(type: AgentType): AgentMetadata {
+    return this.agentMetadata[type];
+  }
+
+  // Initialize and get an agent if needed
+  getAgent(type: AgentType): BaseAgent {
