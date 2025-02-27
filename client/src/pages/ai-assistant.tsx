@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AIChat } from '@/components/ui/AIChat';
+import { SimpleMockAIChat } from '@/components/ui/SimpleMockAIChat';
 import { useAI } from '@/lib/aiContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,8 +50,7 @@ export default function AIAssistantPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <AIChat 
-                      autoFocus={true} 
+                    <SimpleMockAIChat
                       expanded={chatExpanded} 
                       onToggleExpand={() => setChatExpanded(!chatExpanded)} 
                     />
@@ -62,7 +61,7 @@ export default function AIAssistantPage() {
           )}
 
           {chatExpanded && (
-            <AIChat 
+            <SimpleMockAIChat 
               expanded={true} 
               onToggleExpand={() => setChatExpanded(false)} 
             />

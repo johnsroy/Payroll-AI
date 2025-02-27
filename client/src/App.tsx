@@ -12,11 +12,13 @@ import LoginPage from "@/pages/login";
 import GetStartedPage from "@/pages/get-started-button";
 import AIAssistantPage from "@/pages/ai-assistant";
 import AgentTestPage from "@/pages/agent-test";
+import LandingPage from "@/pages/LandingPage";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={LandingPage} />
+      <Route path="/home" component={Home} />
       <Route path="/features" component={FeaturesPage} />
       <Route path="/pricing" component={PricingPage} />
       <Route path="/blog" component={BlogPage} />
