@@ -1,790 +1,605 @@
 import { BaseAgent, AgentConfig } from './baseAgent';
+import { v4 as uuidv4 } from 'uuid';
+import Anthropic from '@anthropic-ai/sdk';
 
-interface ComplianceRequirement {
+interface Regulation {
   id: string;
   name: string;
   description: string;
-  applies_to: string[];
-  employee_threshold?: number;
-  regions: string[];
-  deadline_type: 'fixed' | 'relative' | 'recurring';
-  deadline_details?: any;
-  reference_url?: string;
-  penalties?: string;
+  scope: string;
+  requirements: string[];
+  citations: string[];
+  lastUpdated: string;
+}
+
+interface ComplianceResult {
+  id: string;
+  query: string;
+  result: any;
+  timestamp: Date;
+  confidence: number;
 }
 
 export class ComplianceAgent extends BaseAgent {
-  private federalRequirements: ComplianceRequirement[] = [];
-  private stateRequirements: Record<string, ComplianceRequirement[]> = {};
-  private industryRequirements: Record<string, ComplianceRequirement[]> = {};
-  private companyProfile: any = null;
-
+  private anthropic: Anthropic;
+  private systemPrompt: string;
+  private model: string = 'claude-3-sonnet-20240229';
+  private temperature: number = 0.2;
+  private regulations: Map<string, Regulation> = new Map();
+  private complianceResults: ComplianceResult[] = [];
+  
   constructor(config: AgentConfig) {
-    // Define specialized system prompt for compliance agent
-    const complianceSystemPrompt = `You are a payroll compliance assistant specializing in workplace regulations. Your primary functions include:
-
-1. Providing information on federal, state, and local payroll regulations and requirements
-2. Tracking compliance deadlines for tax filings, reports, and payments
-3. Alerting about upcoming requirements and changes in regulations
-4. Answering questions about specific compliance issues
-
-When addressing compliance inquiries:
-- Specify which jurisdictions (federal, state, local) the requirements apply to
-- Note any size-based exemptions (e.g., requirements that only apply to employers with X or more employees)
-- Include filing deadlines and potential penalties for non-compliance
-- Provide links to official resources when available
-- Clarify when requirements vary by industry or worker classification
-
-Always be clear that you're providing general information, not legal advice, and recommend consulting with a qualified professional for specific situations.`;
-
-    // Initialize the agent with compliance-specific configuration
-    super({
-      ...config,
-      systemPrompt: complianceSystemPrompt,
-      temperature: 0.3, // Moderate temperature for balanced responses
+    super(config);
+    
+    // Initialize Anthropic client with API key
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY is required for ComplianceAgent');
+    }
+    
+    this.anthropic = new Anthropic({
+      apiKey
     });
     
-    // Load the company profile if available
-    if (config.companyId) {
-      this.loadCompanyProfile(config.companyId).catch(error => {
-        console.error('Error loading company profile:', error);
+    // Set up system prompt for compliance agent
+    this.systemPrompt = `You are an advanced compliance agent in a multi-agent system for payroll management.
+Your primary responsibilities are:
+
+1. Monitor and interpret regulatory requirements for payroll and HR operations
+2. Provide guidance on compliance with federal, state, and local laws
+3. Advise on documentation requirements and record-keeping practices
+4. Alert about upcoming regulatory changes and deadlines
+5. Assess compliance risks and recommend mitigation strategies
+
+You specialize in:
+- Fair Labor Standards Act (FLSA) requirements
+- Employment verification and I-9 compliance
+- Equal Employment Opportunity (EEO) regulations
+- State-specific employment laws and reporting requirements
+- Employee classification (W-2 vs. 1099) compliance
+- Leave policies (FMLA, PTO, sick leave) requirements
+
+When responding, always:
+- Cite specific laws, regulations, or guidance documents
+- Indicate jurisdictional considerations (federal, state, local)
+- Note the effective dates of regulations or requirements
+- Highlight potential compliance risks or gray areas
+- Suggest practical compliance steps or best practices`;
+
+    // Initialize regulations database
+    this.initializeRegulations();
+  }
+
+  /**
+   * Reset the agent state
+   */
+  public reset(): void {
+    this.complianceResults = [];
+    this.initializeRegulations();
+  }
+
+  /**
+   * Process a query using the compliance agent
+   */
+  public async processQuery(query: string): Promise<{ response: string; confidence: number; metadata?: any }> {
+    // Identify relevant regulations for the query
+    const relevantRegulations = this.identifyRelevantRegulations(query);
+    
+    // Create a compliance prompt based on the query and relevant regulations
+    const compliancePrompt = this.createCompliancePrompt(query, relevantRegulations);
+    
+    // Get completion from Anthropic
+    const response = await this.anthropic.messages.create({
+      model: this.model,
+      max_tokens: 1500,
+      temperature: this.temperature,
+      system: this.systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: compliancePrompt
+        }
+      ]
+    });
+    
+    // Extract response
+    const assistantMessage = response.content[0].text;
+    
+    // Store compliance result
+    const complianceResult = this.createComplianceResult(query, assistantMessage);
+    this.storeComplianceResult(complianceResult);
+    
+    return {
+      response: assistantMessage,
+      confidence: complianceResult.confidence,
+      metadata: {
+        regulationIds: relevantRegulations.map(reg => reg.id),
+        resultId: complianceResult.id
+      }
+    };
+  }
+
+  /**
+   * Initialize regulations database with current information
+   */
+  private initializeRegulations(): void {
+    // FLSA regulations
+    const flsaRegulation: Regulation = {
+      id: 'flsa',
+      name: 'Fair Labor Standards Act',
+      description: 'Federal law that establishes minimum wage, overtime pay, recordkeeping, and youth employment standards',
+      scope: 'Federal, applies to employees of enterprises with annual sales of $500,000+ or engaged in interstate commerce',
+      requirements: [
+        'Minimum wage of $7.25 per hour (federal)',
+        'Overtime pay at 1.5x regular rate for hours worked over 40 in a workweek',
+        'Recordkeeping of employee wages, hours, and other conditions of employment',
+        'Restrictions on employment of minors under 18 in certain occupations'
+      ],
+      citations: [
+        '29 U.S.C. §§ 201-219',
+        '29 C.F.R. §§ 510-794'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // FMLA regulations
+    const fmlaRegulation: Regulation = {
+      id: 'fmla',
+      name: 'Family and Medical Leave Act',
+      description: 'Federal law that provides eligible employees with unpaid, job-protected leave for family and medical reasons',
+      scope: 'Federal, applies to employers with 50+ employees within 75 miles',
+      requirements: [
+        'Up to 12 workweeks of unpaid leave in a 12-month period for qualifying conditions',
+        'Continuation of group health insurance coverage during leave',
+        'Restoration to same or equivalent position upon return from leave',
+        'Employers must provide notice of FMLA rights and maintain relevant records'
+      ],
+      citations: [
+        '29 U.S.C. §§ 2601-2654',
+        '29 C.F.R. §§ 825.100-825.803'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // ADA regulations
+    const adaRegulation: Regulation = {
+      id: 'ada',
+      name: 'Americans with Disabilities Act',
+      description: 'Federal law that prohibits discrimination against individuals with disabilities in employment and other contexts',
+      scope: 'Federal, applies to employers with 15+ employees',
+      requirements: [
+        'Prohibition of discrimination on the basis of disability in all employment practices',
+        'Requirement to provide reasonable accommodations to qualified individuals with disabilities',
+        'Medical information must be kept confidential and in separate files',
+        'Job descriptions should identify essential functions of positions'
+      ],
+      citations: [
+        '42 U.S.C. §§ 12101-12213',
+        '29 C.F.R. §§ 1630.1-1630.16'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // Title VII regulations
+    const titleViiRegulation: Regulation = {
+      id: 'title_vii',
+      name: 'Title VII of the Civil Rights Act of 1964',
+      description: 'Federal law that prohibits employment discrimination based on race, color, religion, sex, and national origin',
+      scope: 'Federal, applies to employers with 15+ employees',
+      requirements: [
+        'Prohibition of discrimination in hiring, firing, compensation, classification, promotion, training, and other terms of employment',
+        'Prohibition of harassing conduct based on protected characteristics',
+        'Employers must post notices of rights under Title VII',
+        'Employers must maintain relevant employment records'
+      ],
+      citations: [
+        '42 U.S.C. §§ 2000e-2000e-17',
+        '29 C.F.R. §§ 1600-1616'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // EEOC regulations
+    const eeocRegulation: Regulation = {
+      id: 'eeoc',
+      name: 'Equal Employment Opportunity Commission Guidelines',
+      description: 'Federal agency guidelines for enforcing anti-discrimination laws in employment',
+      scope: 'Federal, applies to employers covered by federal EEO laws',
+      requirements: [
+        'Employers must maintain records relevant to determining whether unlawful employment practices have occurred',
+        'Employers with 100+ employees must file annual EEO-1 reports',
+        'Prohibition of retaliation against individuals who file charges or participate in investigations',
+        'Guidelines for preventing and addressing workplace harassment'
+      ],
+      citations: [
+        '29 C.F.R. §§ 1600-1691',
+        'EEOC Enforcement Guidance on Retaliation and Related Issues (2016)',
+        'EEOC Enforcement Guidance on Pregnancy Discrimination (2015)'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // IRCA regulations
+    const ircaRegulation: Regulation = {
+      id: 'irca',
+      name: 'Immigration Reform and Control Act',
+      description: 'Federal law requiring employers to verify identity and employment eligibility of employees',
+      scope: 'Federal, applies to all employers regardless of size',
+      requirements: [
+        'Completion of Form I-9 for all employees within 3 business days of start of employment',
+        'Verification of identity and employment authorization documents',
+        'Retention of I-9 forms for 3 years after hire or 1 year after termination, whichever is later',
+        'Prohibition of knowingly hiring or continuing to employ unauthorized workers'
+      ],
+      citations: [
+        '8 U.S.C. §§ 1324a-1324c',
+        '8 C.F.R. §§ 274a.1-274a.14'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // FCRA regulations
+    const fcraRegulation: Regulation = {
+      id: 'fcra',
+      name: 'Fair Credit Reporting Act',
+      description: 'Federal law governing the collection and use of consumer credit information, including for employment purposes',
+      scope: 'Federal, applies to employers using consumer reports for employment decisions',
+      requirements: [
+        'Written disclosure and authorization before obtaining consumer reports',
+        'Pre-adverse action notice with copy of report and summary of rights before taking adverse action',
+        'Post-adverse action notice after taking adverse action based on consumer report',
+        'Special procedures for investigative consumer reports'
+      ],
+      citations: [
+        '15 U.S.C. §§ 1681-1681x',
+        '16 C.F.R. § 600-603'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // COBRA regulations
+    const cobraRegulation: Regulation = {
+      id: 'cobra',
+      name: 'Consolidated Omnibus Budget Reconciliation Act',
+      description: 'Federal law requiring continuation of group health coverage after qualifying events',
+      scope: 'Federal, applies to employers with 20+ employees in prior year',
+      requirements: [
+        'Continuation of group health coverage for qualified beneficiaries after qualifying events',
+        'Initial COBRA notice to employees and dependents when coverage begins',
+        'COBRA election notice within 14 days of notification of qualifying event',
+        'Maximum continuation period of 18, 29, or 36 months depending on qualifying event'
+      ],
+      citations: [
+        '29 U.S.C. §§ 1161-1169',
+        '26 C.F.R. §§ 54.4980B-1-54.4980B-10'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // California specific
+    const californiaRegulation: Regulation = {
+      id: 'california_employment',
+      name: 'California Employment Laws',
+      description: 'California state-specific employment laws that often exceed federal requirements',
+      scope: 'California employers',
+      requirements: [
+        'Minimum wage of $15.50 per hour (as of 2023)',
+        'Overtime pay for hours worked beyond 8 in a day or 40 in a week',
+        'Mandatory paid sick leave of at least 24 hours or 3 days per year',
+        'California Family Rights Act (CFRA) leave for employers with 5+ employees',
+        'Detailed requirements for final paychecks and payroll records',
+        'Meal and rest break requirements'
+      ],
+      citations: [
+        'California Labor Code',
+        'California Fair Employment and Housing Act (FEHA)',
+        'California Family Rights Act (CFRA)',
+        'Cal/OSHA regulations'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // New York specific
+    const newYorkRegulation: Regulation = {
+      id: 'new_york_employment',
+      name: 'New York Employment Laws',
+      description: 'New York state-specific employment laws that often exceed federal requirements',
+      scope: 'New York employers',
+      requirements: [
+        'Minimum wage varies by location (NYC: $15.00, Long Island & Westchester: $15.00, remainder of state: $14.20 as of 2023)',
+        'New York Paid Family Leave providing up to 12 weeks of paid leave',
+        'Paid sick leave requirements based on employer size',
+        'Specific requirements for wage notices, pay statements, and recordkeeping',
+        'Expanded workplace discrimination and harassment protections'
+      ],
+      citations: [
+        'New York Labor Law',
+        'New York State Human Rights Law',
+        'New York Paid Family Leave Law',
+        'New York Paid Sick Leave Law'
+      ],
+      lastUpdated: '2023-01-01'
+    };
+    
+    // Store all regulations
+    this.regulations.set('flsa', flsaRegulation);
+    this.regulations.set('fmla', fmlaRegulation);
+    this.regulations.set('ada', adaRegulation);
+    this.regulations.set('title_vii', titleViiRegulation);
+    this.regulations.set('eeoc', eeocRegulation);
+    this.regulations.set('irca', ircaRegulation);
+    this.regulations.set('fcra', fcraRegulation);
+    this.regulations.set('cobra', cobraRegulation);
+    this.regulations.set('california_employment', californiaRegulation);
+    this.regulations.set('new_york_employment', newYorkRegulation);
+  }
+
+  /**
+   * Identify relevant regulations for a given query
+   */
+  private identifyRelevantRegulations(query: string): Regulation[] {
+    const queryLower = query.toLowerCase();
+    const relevantRegulations: Regulation[] = [];
+    
+    // FLSA relevance
+    if (
+      queryLower.includes('wage') ||
+      queryLower.includes('overtime') ||
+      queryLower.includes('hour') ||
+      queryLower.includes('minimum wage') ||
+      queryLower.includes('flsa') ||
+      queryLower.includes('fair labor')
+    ) {
+      const flsaRegulation = this.regulations.get('flsa');
+      if (flsaRegulation) relevantRegulations.push(flsaRegulation);
+    }
+    
+    // FMLA relevance
+    if (
+      queryLower.includes('leave') ||
+      queryLower.includes('medical leave') ||
+      queryLower.includes('family leave') ||
+      queryLower.includes('fmla') ||
+      queryLower.includes('maternity') ||
+      queryLower.includes('paternity')
+    ) {
+      const fmlaRegulation = this.regulations.get('fmla');
+      if (fmlaRegulation) relevantRegulations.push(fmlaRegulation);
+    }
+    
+    // ADA relevance
+    if (
+      queryLower.includes('disability') ||
+      queryLower.includes('accommodation') ||
+      queryLower.includes('ada') ||
+      queryLower.includes('americans with disabilities')
+    ) {
+      const adaRegulation = this.regulations.get('ada');
+      if (adaRegulation) relevantRegulations.push(adaRegulation);
+    }
+    
+    // Title VII relevance
+    if (
+      queryLower.includes('discrimination') ||
+      queryLower.includes('harassment') ||
+      queryLower.includes('title vii') ||
+      queryLower.includes('civil rights') ||
+      queryLower.includes('equal opportunity')
+    ) {
+      const titleViiRegulation = this.regulations.get('title_vii');
+      if (titleViiRegulation) relevantRegulations.push(titleViiRegulation);
+    }
+    
+    // EEOC relevance
+    if (
+      queryLower.includes('eeoc') ||
+      queryLower.includes('equal employment') ||
+      queryLower.includes('discrimination report')
+    ) {
+      const eeocRegulation = this.regulations.get('eeoc');
+      if (eeocRegulation) relevantRegulations.push(eeocRegulation);
+    }
+    
+    // IRCA/I-9 relevance
+    if (
+      queryLower.includes('i-9') ||
+      queryLower.includes('immigration') ||
+      queryLower.includes('work authorization') ||
+      queryLower.includes('employment eligibility') ||
+      queryLower.includes('irca')
+    ) {
+      const ircaRegulation = this.regulations.get('irca');
+      if (ircaRegulation) relevantRegulations.push(ircaRegulation);
+    }
+    
+    // FCRA relevance
+    if (
+      queryLower.includes('background check') ||
+      queryLower.includes('credit report') ||
+      queryLower.includes('consumer report') ||
+      queryLower.includes('fcra')
+    ) {
+      const fcraRegulation = this.regulations.get('fcra');
+      if (fcraRegulation) relevantRegulations.push(fcraRegulation);
+    }
+    
+    // COBRA relevance
+    if (
+      queryLower.includes('cobra') ||
+      queryLower.includes('continuation') ||
+      queryLower.includes('health insurance termination') ||
+      queryLower.includes('benefits after')
+    ) {
+      const cobraRegulation = this.regulations.get('cobra');
+      if (cobraRegulation) relevantRegulations.push(cobraRegulation);
+    }
+    
+    // State-specific relevance
+    if (
+      queryLower.includes('california') ||
+      queryLower.includes('ca law') ||
+      queryLower.includes('ca requirement')
+    ) {
+      const californiaRegulation = this.regulations.get('california_employment');
+      if (californiaRegulation) relevantRegulations.push(californiaRegulation);
+    }
+    
+    if (
+      queryLower.includes('new york') ||
+      queryLower.includes('ny law') ||
+      queryLower.includes('ny requirement')
+    ) {
+      const newYorkRegulation = this.regulations.get('new_york_employment');
+      if (newYorkRegulation) relevantRegulations.push(newYorkRegulation);
+    }
+    
+    // If no specific relevance is found, include general federal regulations
+    if (relevantRegulations.length === 0) {
+      const flsaRegulation = this.regulations.get('flsa');
+      if (flsaRegulation) relevantRegulations.push(flsaRegulation);
+      
+      const fmlaRegulation = this.regulations.get('fmla');
+      if (fmlaRegulation) relevantRegulations.push(fmlaRegulation);
+      
+      const titleViiRegulation = this.regulations.get('title_vii');
+      if (titleViiRegulation) relevantRegulations.push(titleViiRegulation);
+    }
+    
+    return relevantRegulations;
+  }
+
+  /**
+   * Create a compliance prompt based on the query and relevant regulations
+   */
+  private createCompliancePrompt(query: string, relevantRegulations: Regulation[]): string {
+    let prompt = `I need compliance information and guidance regarding the following query:\n\n"${query}"\n\n`;
+    
+    prompt += "Here are the relevant regulations and requirements to consider:\n\n";
+    
+    relevantRegulations.forEach(regulation => {
+      prompt += `== ${regulation.name.toUpperCase()} ==\n`;
+      prompt += `Description: ${regulation.description}\n`;
+      prompt += `Scope: ${regulation.scope}\n`;
+      prompt += `Requirements:\n`;
+      
+      regulation.requirements.forEach(requirement => {
+        prompt += `- ${requirement}\n`;
       });
-    }
-    
-    // Initialize compliance data
-    this.initializeDefaultFederalRequirements();
-    this.initializeDefaultStateRequirements();
-    
-    // Define compliance tools
-    this.tools = [
-      {
-        type: "function",
-        function: {
-          name: "get_compliance_requirements",
-          description: "Get compliance requirements based on location, company size, and industry",
-          parameters: {
-            type: "object",
-            properties: {
-              state: {
-                type: "string",
-                description: "Two-letter state code (optional)"
-              },
-              employee_count: {
-                type: "number",
-                description: "Number of employees (optional)"
-              },
-              industry: {
-                type: "string",
-                description: "Industry type (optional)"
-              },
-              requirement_type: {
-                type: "string",
-                description: "Type of requirement (filing, reporting, payment, all)",
-                enum: ["filing", "reporting", "payment", "all"]
-              }
-            },
-            required: []
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "check_compliance_status",
-          description: "Check compliance status for specific requirements",
-          parameters: {
-            type: "object",
-            properties: {
-              requirement_ids: {
-                type: "array",
-                description: "Array of requirement IDs to check status for",
-                items: {
-                  type: "string"
-                }
-              },
-              company_id: {
-                type: "string",
-                description: "Company ID (optional)"
-              }
-            },
-            required: ["requirement_ids"]
-          }
-        }
-      },
-      {
-        type: "function",
-        function: {
-          name: "get_upcoming_deadlines",
-          description: "Get upcoming compliance deadlines",
-          parameters: {
-            type: "object",
-            properties: {
-              days_ahead: {
-                type: "number",
-                description: "Number of days ahead to look for deadlines"
-              },
-              state: {
-                type: "string",
-                description: "Two-letter state code (optional)"
-              },
-              requirement_type: {
-                type: "string",
-                description: "Type of requirement (filing, reporting, payment, all)",
-                enum: ["filing", "reporting", "payment", "all"]
-              }
-            },
-            required: ["days_ahead"]
-          }
-        }
-      }
-    ];
-    
-    // Load compliance data
-    this.loadComplianceData().catch(error => {
-      console.error('Error loading compliance data:', error);
+      
+      prompt += `Citations: ${regulation.citations.join(', ')}\n`;
+      prompt += `Last Updated: ${regulation.lastUpdated}\n\n`;
     });
+    
+    prompt += `Please provide comprehensive compliance guidance for this query. Your response should:
+
+1. Identify the specific regulatory requirements that apply to the situation
+2. Explain compliance obligations in clear, actionable terms
+3. Note any jurisdictional considerations (federal vs. state requirements)
+4. Highlight common compliance pitfalls or areas of risk
+5. Recommend practical compliance steps or best practices
+
+If the query touches on multiple regulatory areas, provide an integrated response that addresses all relevant aspects. If there are areas where requirements might conflict or overlap, explain how to navigate those complexities.`;
+    
+    return prompt;
   }
 
-  private async loadComplianceData(): Promise<void> {
-    // In a real implementation, this would load from a database or API
-    // For now, we'll use the default requirements
-  }
-
-  private async loadCompanyProfile(companyId?: string): Promise<void> {
-    if (!companyId) return;
+  /**
+   * Create a compliance result object
+   */
+  private createComplianceResult(query: string, response: string): ComplianceResult {
+    // Calculate confidence based on the response
+    const confidence = this.calculateConfidence(response);
     
-    try {
-      // In a real implementation, this would fetch from an API
-      // For now, use a mock profile
-      this.companyProfile = {
-        id: companyId,
-        name: "Demo Company Inc.",
-        employee_count: 45,
-        state: "CA",
-        industry: "Technology",
-        established_date: "2020-01-01"
-      };
-    } catch (error) {
-      console.error('Error loading company profile:', error);
-    }
-  }
-
-  private initializeDefaultFederalRequirements(): void {
-    this.federalRequirements = [
-      {
-        id: "fed_941",
-        name: "Form 941 - Employer's Quarterly Federal Tax Return",
-        description: "Quarterly report to reconcile withheld income taxes, Social Security, and Medicare taxes",
-        applies_to: ["all_employers"],
-        regions: ["federal"],
-        deadline_type: "recurring",
-        deadline_details: {
-          frequency: "quarterly",
-          month_days: [31, 30, 31, 31], // Last day of Apr, Jul, Oct, Jan
-          months: [4, 7, 10, 1], // Apr, Jul, Oct, Jan
-          quarters: [1, 2, 3, 4]
-        },
-        reference_url: "https://www.irs.gov/forms-pubs/about-form-941",
-        penalties: "Penalties range from 2% to 15% of unpaid tax based on how late the filing occurs"
-      },
-      {
-        id: "fed_940",
-        name: "Form 940 - Employer's Annual Federal Unemployment Tax Return",
-        description: "Annual report for Federal Unemployment Tax Act (FUTA) taxes",
-        applies_to: ["employers_with_futa_obligations"],
-        regions: ["federal"],
-        deadline_type: "fixed",
-        deadline_details: {
-          month: 1,
-          day: 31,
-          year: null
-        },
-        reference_url: "https://www.irs.gov/forms-pubs/about-form-940",
-        penalties: "Penalties of up to 25% of unpaid FUTA tax"
-      },
-      {
-        id: "fed_w2",
-        name: "Form W-2 Filing",
-        description: "Annual wage and tax statement for each employee",
-        applies_to: ["all_employers"],
-        regions: ["federal"],
-        deadline_type: "fixed",
-        deadline_details: {
-          month: 1,
-          day: 31,
-          year: null
-        },
-        reference_url: "https://www.irs.gov/forms-pubs/about-form-w2",
-        penalties: "Penalties range from $50 to $280 per form based on lateness"
-      },
-      {
-        id: "fed_1099",
-        name: "Form 1099-NEC and 1099-MISC Filing",
-        description: "Annual reporting of payments to independent contractors and miscellaneous income",
-        applies_to: ["employers_with_contractors"],
-        regions: ["federal"],
-        deadline_type: "fixed",
-        deadline_details: {
-          month: 1,
-          day: 31,
-          year: null
-        },
-        reference_url: "https://www.irs.gov/forms-pubs/about-form-1099-nec",
-        penalties: "Penalties range from $50 to $280 per form based on lateness"
-      },
-      {
-        id: "fed_eeoc",
-        name: "EEO-1 Report",
-        description: "Annual reporting of workforce demographics by job category, race, and gender",
-        applies_to: ["private_employers"],
-        employee_threshold: 100,
-        regions: ["federal"],
-        deadline_type: "fixed",
-        deadline_details: {
-          month: 5, // Typically due in May but can vary
-          day: 31,
-          year: null
-        },
-        reference_url: "https://www.eeoc.gov/employers/eeo-1-data-collection",
-        penalties: "Potential contract debarment for federal contractors and legal action"
-      },
-      {
-        id: "fed_aca",
-        name: "Affordable Care Act (ACA) Reporting",
-        description: "Annual reporting of health insurance coverage information (Forms 1095-B/C)",
-        applies_to: ["applicable_large_employers"],
-        employee_threshold: 50,
-        regions: ["federal"],
-        deadline_type: "fixed",
-        deadline_details: {
-          month: 2, // Forms to individuals by January, to IRS by February/March
-          day: 28,
-          year: null
-        },
-        reference_url: "https://www.irs.gov/affordable-care-act/employers/aca-information-center-for-applicable-large-employers-ales",
-        penalties: "Penalties range from $50 to $280 per form based on lateness"
-      },
-      {
-        id: "fed_newHire",
-        name: "New Hire Reporting",
-        description: "Reporting of newly hired employees to the National Directory of New Hires",
-        applies_to: ["all_employers"],
-        regions: ["federal"],
-        deadline_type: "relative",
-        deadline_details: {
-          days: 20,
-          event: "hire_date"
-        },
-        reference_url: "https://www.acf.hhs.gov/css/employers/new-hire-reporting",
-        penalties: "Varies by state, typically $25 per unreported employee"
-      }
-    ];
-  }
-
-  private initializeDefaultStateRequirements(): void {
-    // California requirements
-    const californiaRequirements: ComplianceRequirement[] = [
-      {
-        id: "ca_de9",
-        name: "DE 9 - Quarterly Contribution Return and Report of Wages",
-        description: "Quarterly reporting of wages and state payroll taxes in California",
-        applies_to: ["california_employers"],
-        regions: ["CA"],
-        deadline_type: "recurring",
-        deadline_details: {
-          frequency: "quarterly",
-          month_days: [31, 31, 31, 31], // Last day of Apr, Jul, Oct, Jan
-          months: [4, 7, 10, 1],
-          quarters: [1, 2, 3, 4]
-        },
-        reference_url: "https://edd.ca.gov/en/Payroll_Taxes/Forms_and_Publications",
-        penalties: "Penalties of 10% to 25% of tax due, plus interest"
-      },
-      {
-        id: "ca_de9c",
-        name: "DE 9C - Quarterly Contribution Return and Report of Wages (Continuation)",
-        description: "Detailed report of individual employee wages and withholdings in California",
-        applies_to: ["california_employers"],
-        regions: ["CA"],
-        deadline_type: "recurring",
-        deadline_details: {
-          frequency: "quarterly",
-          month_days: [31, 31, 31, 31], // Last day of Apr, Jul, Oct, Jan
-          months: [4, 7, 10, 1],
-          quarters: [1, 2, 3, 4]
-        },
-        reference_url: "https://edd.ca.gov/en/Payroll_Taxes/Forms_and_Publications",
-        penalties: "Penalties of 10% to 25% of tax due, plus interest"
-      },
-      {
-        id: "ca_cpfl",
-        name: "California Paid Family Leave (PFL) Notice",
-        description: "Required notice to employees about California's Paid Family Leave program",
-        applies_to: ["california_employers"],
-        regions: ["CA"],
-        deadline_type: "relative",
-        deadline_details: {
-          days: 0, // At time of hire and when employee requests leave
-          event: "hire_date"
-        },
-        reference_url: "https://edd.ca.gov/en/disability/Paid_Family_Leave",
-        penalties: "Potential penalties for non-compliance with notification requirements"
-      },
-      {
-        id: "ca_payDay",
-        name: "California Payday Notice",
-        description: "Requirements to post information about regular paydays",
-        applies_to: ["california_employers"],
-        regions: ["CA"],
-        deadline_type: "relative",
-        deadline_details: {
-          days: 0, // Ongoing requirement
-          event: "continuous"
-        },
-        reference_url: "https://www.dir.ca.gov/dlse/paydaynotice.pdf",
-        penalties: "Civil penalties of $50-$100 per violation"
-      }
-    ];
-    
-    // New York requirements
-    const newYorkRequirements: ComplianceRequirement[] = [
-      {
-        id: "ny_nys45",
-        name: "NYS-45 - Quarterly Combined Withholding, Wage Reporting, and Unemployment Insurance Return",
-        description: "Quarterly reporting of wages and state withholding taxes in New York",
-        applies_to: ["new_york_employers"],
-        regions: ["NY"],
-        deadline_type: "recurring",
-        deadline_details: {
-          frequency: "quarterly",
-          month_days: [31, 31, 31, 31], // Last day of Apr, Jul, Oct, Jan
-          months: [4, 7, 10, 1],
-          quarters: [1, 2, 3, 4]
-        },
-        reference_url: "https://www.tax.ny.gov/bus/ads/efile_addfaq_nys45.htm",
-        penalties: "Penalties range from $50 to percentage-based penalties on unpaid taxes"
-      },
-      {
-        id: "ny_pfl",
-        name: "New York Paid Family Leave (PFL) Notice",
-        description: "Required notice to employees about New York's Paid Family Leave program",
-        applies_to: ["new_york_employers"],
-        regions: ["NY"],
-        deadline_type: "relative",
-        deadline_details: {
-          days: 0, // At time of hire and annually
-          event: "hire_date"
-        },
-        reference_url: "https://paidfamilyleave.ny.gov/employers",
-        penalties: "Potential penalties for non-compliance with notification requirements"
-      }
-    ];
-    
-    // Texas requirements (fewer due to no state income tax)
-    const texasRequirements: ComplianceRequirement[] = [
-      {
-        id: "tx_c3",
-        name: "Form C-3 - Employer's Quarterly Report",
-        description: "Quarterly unemployment tax reporting in Texas",
-        applies_to: ["texas_employers"],
-        regions: ["TX"],
-        deadline_type: "recurring",
-        deadline_details: {
-          frequency: "quarterly",
-          month_days: [31, 31, 31, 31], // Last day of Apr, Jul, Oct, Jan
-          months: [4, 7, 10, 1],
-          quarters: [1, 2, 3, 4]
-        },
-        reference_url: "https://www.twc.texas.gov/businesses/unemployment-tax-reports-and-payments",
-        penalties: "Interest accrues at 1.5% per month on unpaid amounts"
-      },
-      {
-        id: "tx_newHire",
-        name: "Texas New Hire Reporting",
-        description: "Reporting of newly hired employees to the Texas Workforce Commission",
-        applies_to: ["texas_employers"],
-        regions: ["TX"],
-        deadline_type: "relative",
-        deadline_details: {
-          days: 20,
-          event: "hire_date"
-        },
-        reference_url: "https://www.twc.texas.gov/businesses/new-hire-reporting",
-        penalties: "Penalties of $25 per unreported employee"
-      }
-    ];
-    
-    // Add all state requirements to the map
-    this.stateRequirements = {
-      CA: californiaRequirements,
-      NY: newYorkRequirements,
-      TX: texasRequirements
-    };
-  }
-
-  private initializeDefaultIndustryRequirements(): void {
-    // Healthcare industry requirements
-    const healthcareRequirements: ComplianceRequirement[] = [
-      {
-        id: "hc_hipaa",
-        name: "HIPAA Training",
-        description: "Required training for employees on handling protected health information",
-        applies_to: ["healthcare_providers", "health_plans", "healthcare_clearinghouses"],
-        regions: ["federal"],
-        deadline_type: "relative",
-        deadline_details: {
-          days: 90,
-          event: "hire_date",
-          recurring: true,
-          recurring_period: "annual"
-        },
-        reference_url: "https://www.hhs.gov/hipaa/for-professionals/training/index.html",
-        penalties: "Civil penalties range from $100 to $50,000 per violation"
-      }
-    ];
-    
-    // Construction industry requirements
-    const constructionRequirements: ComplianceRequirement[] = [
-      {
-        id: "const_osha",
-        name: "OSHA Construction Safety Training",
-        description: "Required safety training for construction workers",
-        applies_to: ["construction"],
-        regions: ["federal"],
-        deadline_type: "relative",
-        deadline_details: {
-          days: 30,
-          event: "hire_date",
-          recurring: true,
-          recurring_period: "annual"
-        },
-        reference_url: "https://www.osha.gov/training/construction",
-        penalties: "OSHA penalties can range from $14,502 to $145,027 per violation"
-      }
-    ];
-    
-    // Add all industry requirements to the map
-    this.industryRequirements = {
-      healthcare: healthcareRequirements,
-      construction: constructionRequirements
-    };
-  }
-
-  private async getComplianceRequirements(params: any): Promise<any> {
-    const { state, employee_count, industry, requirement_type = 'all' } = params;
-    
-    // Start with federal requirements
-    let requirements = [...this.federalRequirements];
-    
-    // Add state-specific requirements if a state is specified
-    if (state && this.stateRequirements[state.toUpperCase()]) {
-      requirements = [...requirements, ...this.stateRequirements[state.toUpperCase()]];
-    }
-    
-    // Add industry-specific requirements if an industry is specified
-    if (industry && this.industryRequirements[industry.toLowerCase()]) {
-      requirements = [...requirements, ...this.industryRequirements[industry.toLowerCase()]];
-    }
-    
-    // Filter by employee threshold if employee count is provided
-    if (employee_count !== undefined) {
-      requirements = requirements.filter(req => 
-        !req.employee_threshold || employee_count >= req.employee_threshold
-      );
-    }
-    
-    // Filter by requirement type if specified
-    if (requirement_type !== 'all') {
-      // This is a simplified approach; in reality, requirements would have a type field
-      const typeKeywords: Record<string, string[]> = {
-        filing: ['form', 'filing', 'return', 'report'],
-        reporting: ['report', 'reporting', 'notice'],
-        payment: ['payment', 'tax', 'withholding', 'contribution']
-      };
-      
-      const keywords = typeKeywords[requirement_type] || [];
-      
-      if (keywords.length > 0) {
-        requirements = requirements.filter(req => 
-          keywords.some(keyword => 
-            req.name.toLowerCase().includes(keyword) || 
-            req.description.toLowerCase().includes(keyword)
-          )
-        );
-      }
-    }
-    
-    // Format the response
+    // Create and return compliance result
     return {
-      count: requirements.length,
-      requirements: requirements.map(req => ({
-        id: req.id,
-        name: req.name,
-        description: req.description,
-        regions: req.regions,
-        deadline_type: req.deadline_type,
-        deadline_details: req.deadline_details,
-        reference_url: req.reference_url,
-        penalties: req.penalties
-      }))
+      id: uuidv4(),
+      query,
+      result: response,
+      timestamp: new Date(),
+      confidence
     };
   }
 
-  private async checkComplianceStatus(params: any): Promise<any> {
-    const { requirement_ids, company_id } = params;
+  /**
+   * Store a compliance result
+   */
+  private storeComplianceResult(result: ComplianceResult): void {
+    this.complianceResults.push(result);
     
-    // In a real implementation, this would check against a database of completed requirements
-    // For this demo, we'll generate random statuses
-    
-    const statuses = requirement_ids.map((id: string) => {
-      // Find the requirement details
-      let requirement = this.federalRequirements.find(r => r.id === id);
-      
-      if (!requirement) {
-        // Check state requirements
-        for (const state in this.stateRequirements) {
-          const stateReq = this.stateRequirements[state].find(r => r.id === id);
-          if (stateReq) {
-            requirement = stateReq;
-            break;
-          }
-        }
-      }
-      
-      if (!requirement) {
-        // Check industry requirements
-        for (const industry in this.industryRequirements) {
-          const industryReq = this.industryRequirements[industry].find(r => r.id === id);
-          if (industryReq) {
-            requirement = industryReq;
-            break;
-          }
-        }
-      }
-      
-      if (!requirement) {
-        return {
-          requirement_id: id,
-          status: 'unknown',
-          details: 'Requirement not found'
-        };
-      }
-      
-      // Generate a random status for demo purposes
-      const statuses = ['completed', 'pending', 'overdue', 'not_applicable'];
-      const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-      
-      // If status is completed, generate a completed date
-      let completedDate = null;
-      let nextDueDate = null;
-      
-      if (randomStatus === 'completed') {
-        // Random date in the past 1-90 days
-        const daysAgo = Math.floor(Math.random() * 90) + 1;
-        const completedDateObj = new Date();
-        completedDateObj.setDate(completedDateObj.getDate() - daysAgo);
-        completedDate = completedDateObj.toISOString().split('T')[0];
-        
-        // If recurring, calculate next due date
-        if (requirement.deadline_type === 'recurring') {
-          nextDueDate = this.calculateNextDeadline(requirement);
-        }
-      } else if (randomStatus === 'pending') {
-        // Calculate upcoming due date
-        nextDueDate = this.calculateNextDeadline(requirement);
-      } else if (randomStatus === 'overdue') {
-        // Random date in the past 1-30 days
-        const daysAgo = Math.floor(Math.random() * 30) + 1;
-        const dueDateObj = new Date();
-        dueDateObj.setDate(dueDateObj.getDate() - daysAgo);
-        nextDueDate = dueDateObj.toISOString().split('T')[0];
-      }
-      
-      return {
-        requirement_id: id,
-        name: requirement.name,
-        status: randomStatus,
-        completed_date: completedDate,
-        next_due_date: nextDueDate,
-        details: `Status for ${requirement.name}`
-      };
-    });
-    
-    return {
-      company_id: company_id || (this.companyProfile ? this.companyProfile.id : 'unknown'),
-      statuses
-    };
+    // Limit the number of stored results
+    if (this.complianceResults.length > 100) {
+      this.complianceResults.shift();  // Remove oldest result
+    }
   }
 
-  private async getUpcomingDeadlines(params: any): Promise<any> {
-    const { days_ahead, state, requirement_type = 'all' } = params;
+  /**
+   * Calculate confidence based on the response
+   */
+  private calculateConfidence(response: string): number {
+    // Start with a baseline confidence
+    let confidence = 0.7;
     
-    // Get all applicable requirements
-    const requirementsResponse = await this.getComplianceRequirements({
-      state,
-      requirement_type
-    });
-    
-    const requirements = requirementsResponse.requirements;
-    const today = new Date();
-    const maxDate = new Date();
-    maxDate.setDate(today.getDate() + days_ahead);
-    
-    // Calculate upcoming deadlines
-    const deadlines = [];
-    
-    for (const req of requirements) {
-      const nextDeadline = this.calculateNextDeadline(req);
-      
-      if (nextDeadline) {
-        const deadlineDate = new Date(nextDeadline);
-        
-        if (deadlineDate > today && deadlineDate <= maxDate) {
-          const daysUntil = Math.ceil((deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          
-          deadlines.push({
-            requirement_id: req.id,
-            name: req.name,
-            deadline_date: nextDeadline,
-            days_until: daysUntil,
-            description: req.description,
-            penalties: req.penalties,
-            reference_url: req.reference_url
-          });
-        }
-      }
+    // Citations increase confidence
+    if (
+      response.includes('U.S.C.') || 
+      response.includes('C.F.R.') || 
+      response.includes('section') || 
+      response.includes('§')
+    ) {
+      confidence += 0.1;
     }
     
-    // Sort by deadline date
-    deadlines.sort((a, b) => {
-      return new Date(a.deadline_date || '').getTime() - new Date(b.deadline_date || '').getTime();
-    });
+    // Specific regulation names increase confidence
+    if (
+      response.includes('FLSA') || 
+      response.includes('FMLA') || 
+      response.includes('ADA') || 
+      response.includes('Title VII')
+    ) {
+      confidence += 0.1;
+    }
     
-    return {
-      count: deadlines.length,
-      deadlines
-    };
+    // Detailed guidance increases confidence
+    if (
+      response.includes('requirement') || 
+      response.includes('compliance') || 
+      response.includes('employer must') || 
+      response.includes('legally')
+    ) {
+      confidence += 0.1;
+    }
+    
+    // Uncertainty language decreases confidence
+    const uncertaintyPatterns = ["may", "might", "could", "possibly", "unclear", "limited guidance", "varies by jurisdiction"];
+    const uncertaintyCount = uncertaintyPatterns.reduce((count, pattern) => {
+      const regex = new RegExp(`\\b${pattern}\\b`, 'gi');
+      return count + (response.match(regex) || []).length;
+    }, 0);
+    
+    confidence -= Math.min(0.3, uncertaintyCount * 0.05);
+    
+    // Ensure confidence stays within [0, 1] range
+    return Math.max(0, Math.min(1, confidence));
   }
 
-  private calculateNextDeadline(requirement: ComplianceRequirement): string | null {
-    const today = new Date();
-    
-    if (requirement.deadline_type === 'fixed') {
-      // Fixed annual deadline like Jan 31 every year
-      const details = requirement.deadline_details;
-      const month: number = details.month;
-      const day: number = details.day;
-      let year = today.getFullYear();
-      
-      // If this year's deadline has passed, use next year
-      const deadlineThisYear = new Date(year, month - 1, day);
-      if (deadlineThisYear < today) {
-        year++;
-      }
-      
-      return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-    } else if (requirement.deadline_type === 'recurring') {
-      // Recurring deadlines like quarterly filings
-      const details = requirement.deadline_details;
-      
-      if (details.frequency === 'quarterly') {
-        const currentMonth = today.getMonth() + 1; // JS months are 0-11
-        const currentQuarter = Math.ceil(currentMonth / 3);
-        
-        // Find the next quarter deadline
-        let nextQuarter = currentQuarter;
-        let deadlineYear = today.getFullYear();
-        
-        // If we're close to or past this quarter's deadline, use next quarter
-        const quarterDeadlineMonth = details.months[currentQuarter - 1];
-        const quarterDeadlineDay = details.month_days[currentQuarter - 1];
-        
-        // Handle Q4 which might have deadline in next year (e.g., January)
-        let quarterDeadlineYear = deadlineYear;
-        if (currentQuarter === 4 && quarterDeadlineMonth < 4) {
-          quarterDeadlineYear++;
-        }
-        
-        const quarterDeadline = new Date(quarterDeadlineYear, quarterDeadlineMonth - 1, quarterDeadlineDay);
-        
-        if (today >= quarterDeadline) {
-          nextQuarter = currentQuarter % 4 + 1;
-          if (nextQuarter === 1) {
-            deadlineYear++;
-          }
-        }
-        
-        // Calculate the next deadline
-        const nextDeadlineMonth = details.months[nextQuarter - 1];
-        const nextDeadlineDay = details.month_days[nextQuarter - 1];
-        
-        // Handle Q4 which might have deadline in next year (e.g., January)
-        let nextDeadlineYear = deadlineYear;
-        if (nextQuarter === 1 && nextDeadlineMonth < 4) {
-          nextDeadlineYear++;
-        }
-        
-        return `${nextDeadlineYear}-${nextDeadlineMonth.toString().padStart(2, '0')}-${nextDeadlineDay.toString().padStart(2, '0')}`;
-      }
-      
-      // Handle other frequencies if needed
-      return null;
-    } else if (requirement.deadline_type === 'relative') {
-      // Relative deadlines like "20 days after hire"
-      // This would normally be calculated based on specific events tracked in the system
-      // For demo purposes, return a date a few days in the future
-      const futureDate = new Date();
-      futureDate.setDate(today.getDate() + Math.floor(Math.random() * 30) + 1); // Random date within 30 days
-      return futureDate.toISOString().split('T')[0];
-    }
-    
-    return null;
+  /**
+   * Get a regulation by ID
+   */
+  public getRegulation(id: string): Regulation | undefined {
+    return this.regulations.get(id);
   }
 
-  protected async handleToolCalls(toolCalls: any[]): Promise<any[]> {
-    const results = [];
-    
-    for (const call of toolCalls) {
-      const functionName = call.function.name;
-      const argsJson = call.function.arguments;
-      let args;
-      
-      try {
-        args = JSON.parse(argsJson);
-      } catch (e) {
-        results.push({
-          role: 'function',
-          name: functionName,
-          content: JSON.stringify({ error: 'Invalid JSON arguments' })
-        });
-        continue;
-      }
-      
-      let functionResult;
-      
-      // Call the appropriate function based on the name
-      switch (functionName) {
-        case 'get_compliance_requirements':
-          functionResult = await this.getComplianceRequirements(args);
-          break;
-        case 'check_compliance_status':
-          functionResult = await this.checkComplianceStatus(args);
-          break;
-        case 'get_upcoming_deadlines':
-          functionResult = await this.getUpcomingDeadlines(args);
-          break;
-        default:
-          functionResult = { error: `Unknown function: ${functionName}` };
-          break;
-      }
-      
-      results.push({
-        role: 'function',
-        name: functionName,
-        content: JSON.stringify(functionResult)
-      });
-    }
-    
-    return results;
+  /**
+   * Get all regulations
+   */
+  public getAllRegulations(): Regulation[] {
+    return Array.from(this.regulations.values());
+  }
+
+  /**
+   * Get all compliance results
+   */
+  public getComplianceResults(): ComplianceResult[] {
+    return this.complianceResults;
   }
 }
