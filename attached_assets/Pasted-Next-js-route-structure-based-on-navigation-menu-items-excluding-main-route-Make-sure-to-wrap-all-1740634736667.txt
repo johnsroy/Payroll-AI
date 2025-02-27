@@ -1,0 +1,169 @@
+Next.js route structure based on navigation menu items (excluding main route). Make sure to wrap all routes with the component:
+
+Routes:
+- /features
+- /pricing
+- /blog
+- /login
+- /get-started-button
+- /product-features
+- /resources
+- /company-info
+- /product-links
+- /support
+
+Page Implementations:
+/features:
+Core Purpose: Showcase product capabilities and main features
+Key Components
+- Feature cards with icons and descriptions
+- Interactive demos
+- Feature comparison table
+- Call-to-action buttons
+Layout Structure
+- Grid layout for feature cards
+- Sticky navigation
+- Responsive columns (3 on desktop, 2 on tablet, 1 on mobile)
+
+/pricing:
+Core Purpose: Display pricing plans and subscription options
+Key Components
+- Pricing cards
+- Feature comparison table
+- Payment integration
+- FAQ section
+Layout Structure
+- Horizontal pricing cards layout
+- Sticky plan comparison
+- Mobile-first stack layout
+
+/blog:
+Core Purpose: Content hub for articles and updates
+Key Components
+- Article cards
+- Category filters
+- Search functionality
+- Author profiles
+Layout Structure
+- Masonry grid layout
+- Sidebar with categories
+- Infinite scroll
+
+/login:
+Core Purpose: User authentication
+Key Components
+- Login form
+- Social login options
+- Password recovery
+- Remember me option
+Layout Structure
+- Centered card layout
+- Full-screen on mobile
+- Split screen with branding on desktop
+
+/get-started-button:
+Core Purpose: User onboarding and registration
+Key Components
+- Multi-step registration form
+- Progress indicator
+- Plan selection
+- Welcome tutorial
+Layout Structure
+- Step-by-step wizard
+- Progress bar
+- Mobile-optimized forms
+
+/product-features:
+Core Purpose: Detailed product functionality breakdown
+Key Components
+- Feature categories
+- Interactive demos
+- Use cases
+- Technical specifications
+Layout Structure
+- Tabbed interface
+- Scrollspy navigation
+- Responsive galleries
+
+/resources:
+Core Purpose: Educational and support materials hub
+Key Components
+- Documentation links
+- Tutorial videos
+- Downloadable assets
+- Knowledge base
+Layout Structure
+- Card grid layout
+- Filterable categories
+- Search functionality
+
+/company-info:
+Core Purpose: Company background and information
+Key Components
+- About section
+- Team profiles
+- Company history
+- Contact information
+Layout Structure
+- Timeline layout
+- Team grid
+- Story sections
+
+/product-links:
+Core Purpose: Product ecosystem and integrations
+Key Components
+- Integration cards
+- API documentation
+- Partner showcase
+- Use case examples
+Layout Structure
+- List view with filters
+- Category grouping
+- Responsive grid
+
+/support:
+Core Purpose: Customer support and help center
+Key Components
+- Help desk tickets
+- FAQ accordion
+- Live chat widget
+- Contact forms
+Layout Structure
+- Searchable knowledge base
+- Category cards
+- Contact options
+
+Layouts:
+MainLayout:
+- Applicable routes: All except login
+- Core components
+  - Header with navigation
+  - Footer
+  - Sidebar (where applicable)
+  - Breadcrumbs
+- Responsive behavior
+  - Collapsible navigation on mobile
+  - Fluid container widths
+  - Adaptive spacing
+
+AuthLayout
+- Applicable routes: login, get-started-button
+- Core components
+  - Minimal header
+  - Authentication forms
+  - Security notices
+- Responsive behavior
+  - Full-screen forms on mobile
+  - Centered content
+  - Flexible height
+
+ContentLayout
+- Applicable routes: blog, resources, company-info
+- Core components
+  - Content area
+  - Sidebar navigation
+  - Related content
+- Responsive behavior
+  - Stack layout on mobile
+  - Sticky sidebar on desktop
+  - Adaptive typography
