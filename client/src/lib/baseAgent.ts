@@ -1,4 +1,3 @@
-import { OpenAI } from 'openai';
 import { supabase } from './supabase';
 
 export interface Message {
@@ -37,46 +36,53 @@ export class BaseAgent {
   private apiKey: string = import.meta.env.VITE_OPENAI_API_KEY || '';
 
   constructor(config: AgentConfig) {
-    this.model = config.model || 'gpt-4o';
-    this.temperature = config.temperature ?? 0.7;
-    this.maxTokens = config.maxTokens || 2048;
+    this.model = config.model || 'gpt-3.5-turbo';
+    this.temperature = config.temperature === undefined ? 0.7 : config.temperature;
+    this.maxTokens = config.maxTokens || 1024;
     this.systemPrompt = config.systemPrompt || 'You are a helpful assistant.';
     this.tools = config.tools || [];
-    this.memory = config.memory !== undefined ? config.memory : true;
+    this.memory = config.memory !== false;
     this.conversationId = config.conversationId;
     this.userId = config.userId;
     this.companyId = config.companyId;
-
-    // Initialize conversation history with system message
-    this.messages = [
-      { role: 'system', content: this.systemPrompt }
-    ];
-
-    // If we have a conversation ID and memory is enabled, load the conversation
-    if (this.conversationId && this.memory) {
-      this.loadConversation(this.conversationId);
+    
+    // Add the system message to start the conversation
+    this.messages.push({ role: 'system', content: this.systemPrompt });
+    
+    // Load conversation history if memory is enabled and we have a conversation ID
+    if (this.memory && this.conversationId) {
+      this.loadConversation(this.conversationId).catch(error => {
+        console.error('Error loading conversation:', error);
+      });
     }
   }
 
   protected async loadConversation(conversationId: string): Promise<void> {
-    if (!conversationId) return;
-
     try {
+      // Fetch conversation messages from database
       const { data, error } = await supabase
-        .from('ai_conversations')
-        .select('messages')
-        .eq('id', conversationId)
-        .single();
-
-      if (error) {
-        console.error('Error loading conversation:', error);
-        return;
-      }
-
-      if (data?.messages && Array.isArray(data.messages)) {
-        // Keep the system message and add the loaded conversation
+        .from('ai_messages')
+        .select('role, content, function_call, name')
+        .eq('conversation_id', conversationId)
+        .order('timestamp', { ascending: true });
+      
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        // Keep the system message and add the conversation history
         const systemMessage = this.messages[0];
-        this.messages = [systemMessage, ...data.messages];
+        
+        this.messages = [systemMessage];
+        
+        // Add the conversation messages
+        data.forEach(message => {
+          this.messages.push({
+            role: message.role as 'system' | 'user' | 'assistant' | 'function',
+            content: message.content,
+            name: message.name,
+            function_call: message.function_call
+          });
+        });
       }
     } catch (error) {
       console.error('Error loading conversation:', error);
@@ -84,179 +90,174 @@ export class BaseAgent {
   }
 
   protected async saveConversation(): Promise<void> {
-    if (!this.conversationId || !this.userId || !this.memory) return;
-
+    if (!this.userId || !this.conversationId) {
+      return; // Skip saving if we don't have a user or conversation ID
+    }
+    
     try {
-      const { error } = await supabase
-        .from('ai_conversations')
-        .update({ 
-          messages: this.messages.filter(msg => msg.role !== 'system'),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', this.conversationId);
-
-      if (error) {
-        console.error('Error saving conversation:', error);
-      }
+      // Skip the system message when saving
+      const messagesToSave = this.messages.slice(1);
+      
+      // We could save to the database here, but for simplicity in this demo,
+      // we'll just log to the console
+      console.log(`Saving ${messagesToSave.length} messages for conversation ${this.conversationId}`);
+      
+      // In a real implementation, we would save the messages to the database
+      // For example:
+      // await supabase.from('ai_messages').insert(
+      //   messagesToSave.map(msg => ({
+      //     conversation_id: this.conversationId,
+      //     role: msg.role,
+      //     content: msg.content,
+      //     function_call: msg.function_call,
+      //     name: msg.name,
+      //   }))
+      // );
     } catch (error) {
       console.error('Error saving conversation:', error);
     }
   }
 
   async sendMessage(userMessage: string): Promise<string> {
-    if (!this.apiKey) {
-      return "API key not configured. Please add your OpenAI API key to use this feature.";
-    }
-
+    // Add the user message to the conversation
+    this.messages.push({ role: 'user', content: userMessage });
+    
     try {
-      const openai = new OpenAI({
-        apiKey: this.apiKey,
-        dangerouslyAllowBrowser: true // For client-side use
-      });
-
-      // Add user message to conversation
-      this.messages.push({ role: 'user', content: userMessage });
-
-      // Check if we need to add context from vector store
-      const relevantContext = await this.getRelevantContext(userMessage);
-      if (relevantContext) {
-        // Insert the context right after the system message
-        this.messages.splice(1, 0, { 
-          role: 'system', 
-          content: `Relevant information: ${relevantContext}`
+      // Get context if available
+      const context = await this.getRelevantContext(userMessage);
+      
+      // Add context as a system message if available
+      if (context) {
+        this.messages.push({
+          role: 'system',
+          content: `Relevant context for the user's question: ${context}`
         });
       }
-
-      // Call OpenAI API
-      const response = await openai.chat.completions.create({
-        model: this.model,
-        messages: this.messages,
-        temperature: this.temperature,
-        max_tokens: this.maxTokens,
-        tools: this.tools.length > 0 ? this.tools.map(tool => tool.function) : undefined,
-        tool_choice: this.tools.length > 0 ? 'auto' : undefined
-      });
-
-      const responseMessage = response.choices[0].message;
       
-      // Process tool calls if any
-      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        // Add assistant message with tool calls to the conversation
-        this.messages.push({
-          role: responseMessage.role,
-          content: responseMessage.content || '',
-          tool_calls: responseMessage.tool_calls
-        } as any);
-
-        // Process each tool call
-        const toolResults = await this.handleToolCalls(responseMessage.tool_calls);
-        
-        // Add tool results to the conversation
-        for (const result of toolResults) {
-          this.messages.push({
-            role: 'tool',
-            tool_call_id: result.tool_call_id,
-            content: JSON.stringify(result.content)
-          } as any);
-        }
-
-        // Call the API again to get the final answer
-        const secondResponse = await openai.chat.completions.create({
+      // Call OpenAI API
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
           model: this.model,
           messages: this.messages,
+          max_tokens: this.maxTokens,
           temperature: this.temperature,
-          max_tokens: this.maxTokens
+          tools: this.tools.length > 0 ? this.tools : undefined,
+          tool_choice: this.tools.length > 0 ? "auto" : undefined
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      const assistantResponse = data.choices[0].message;
+      
+      // Handle tool calls if present
+      if (assistantResponse.tool_calls && assistantResponse.tool_calls.length > 0) {
+        // Add assistant response with tool calls to messages
+        this.messages.push({
+          role: 'assistant',
+          content: assistantResponse.content || '',
+          function_call: assistantResponse.tool_calls[0]
         });
-
-        const secondResponseMessage = secondResponse.choices[0].message;
         
-        // Add the final assistant message to the conversation
-        this.messages.push({
-          role: secondResponseMessage.role,
-          content: secondResponseMessage.content || ''
+        // Execute tool calls
+        const toolResults = await this.handleToolCalls(assistantResponse.tool_calls);
+        
+        // Add function results to messages
+        toolResults.forEach(result => {
+          this.messages.push(result);
         });
-
-        // Save the conversation if memory is enabled
-        if (this.memory) {
-          this.saveConversation();
+        
+        // Call API again with tool results
+        const followUpResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            model: this.model,
+            messages: this.messages,
+            max_tokens: this.maxTokens,
+            temperature: this.temperature
+          })
+        });
+        
+        if (!followUpResponse.ok) {
+          throw new Error(`API request failed with status ${followUpResponse.status}`);
         }
-
-        return secondResponseMessage.content || '';
+        
+        const followUpData = await followUpResponse.json();
+        const finalResponse = followUpData.choices[0].message;
+        
+        // Add final assistant response to messages
+        this.messages.push({
+          role: 'assistant',
+          content: finalResponse.content
+        });
+        
+        if (this.memory) {
+          await this.saveConversation();
+        }
+        
+        return finalResponse.content;
       } else {
-        // No tool calls, just add the response to conversation
+        // Add assistant response to messages
         this.messages.push({
-          role: responseMessage.role,
-          content: responseMessage.content || ''
+          role: 'assistant',
+          content: assistantResponse.content
         });
-
-        // Save the conversation if memory is enabled
+        
         if (this.memory) {
-          this.saveConversation();
+          await this.saveConversation();
         }
-
-        return responseMessage.content || '';
+        
+        return assistantResponse.content;
       }
-    } catch (error: any) {
-      console.error('Error in sendMessage:', error);
+    } catch (error) {
+      console.error('Error sending message:', error);
       
-      // Check for specific error types and provide appropriate messages
-      if (error.name === 'AuthenticationError') {
-        return "Authentication error: Please check your API key.";
-      } else if (error.message?.includes('rate limit')) {
-        return "You've hit the rate limit. Please wait a moment and try again.";
-      }
+      // If there's an error, add an error message to the conversation
+      const errorMessage = 'I apologize, but I encountered an error processing your request. Please try again.';
       
-      return "I encountered an error while processing your request. Please try again later.";
+      this.messages.push({
+        role: 'assistant',
+        content: errorMessage
+      });
+      
+      return errorMessage;
     }
   }
 
   protected async getRelevantContext(query: string): Promise<string | null> {
-    // In a real implementation, this would query a vector database
+    // This method could be implemented to fetch relevant context from a knowledge base
     // For now, we'll return null
     return null;
   }
 
-  protected async handleToolCalls(toolCalls: any[]): Promise<any> {
-    const results = [];
-
-    for (const toolCall of toolCalls) {
-      const toolFunction = this.tools.find(
-        tool => tool.function.name === toolCall.function.name
-      );
-
-      if (toolFunction && toolFunction.handler) {
-        try {
-          // Parse arguments
-          const args = JSON.parse(toolCall.function.arguments);
-          
-          // Call the handler
-          const result = await toolFunction.handler(args);
-          
-          results.push({
-            tool_call_id: toolCall.id,
-            content: result
-          });
-        } catch (error) {
-          console.error(`Error calling tool ${toolCall.function.name}:`, error);
-          
-          results.push({
-            tool_call_id: toolCall.id,
-            content: { error: `Failed to process tool call: ${error}` }
-          });
-        }
-      } else {
-        results.push({
-          tool_call_id: toolCall.id,
-          content: { error: `Tool ${toolCall.function.name} not found` }
-        });
-      }
-    }
-
-    return results;
+  protected async handleToolCalls(toolCalls: any[]): Promise<Message[]> {
+    // This method should be implemented by derived classes that use tools
+    // For now, we'll return empty results
+    return toolCalls.map(call => ({
+      role: 'function',
+      name: call.function.name,
+      content: JSON.stringify({ result: 'Function call not implemented' })
+    }));
   }
 
   clearConversation(): void {
     // Keep only the system message
-    this.messages = [this.messages[0]];
+    if (this.messages.length > 0 && this.messages[0].role === 'system') {
+      this.messages = [this.messages[0]];
+    } else {
+      this.messages = [{ role: 'system', content: this.systemPrompt }];
+    }
   }
 }

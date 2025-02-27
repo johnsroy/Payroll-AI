@@ -1,11 +1,10 @@
-import { OpenAI } from 'openai';
-import { supabase } from './supabase';
 import { BaseAgent } from './baseAgent';
 import { TaxCalculationAgent } from './taxCalculationAgent';
 import { ExpenseCategorizationAgent } from './expenseCategorization';
 import { ComplianceAgent } from './complianceAgent';
+import { v4 as uuidv4 } from 'uuid';
+import { supabase } from './supabase';
 
-// Define agent types
 export type AgentType = 'tax' | 'expense' | 'compliance' | 'general';
 
 interface AgentMetadata {
@@ -29,51 +28,52 @@ export class AgentOrchestrator {
     tax: null,
     expense: null,
     compliance: null,
-    general: null,
+    general: null
   };
+  
   private agentMetadata: Record<AgentType, AgentMetadata> = {
     tax: {
       type: 'tax',
-      name: 'Tax Calculator',
-      description: 'Specializes in tax calculations and payroll tax information',
+      name: 'Tax Calculation Agent',
+      description: 'Specialized in tax calculations and regulations',
       capabilities: [
-        'Calculate payroll taxes based on income and location',
-        'Explain tax regulations and requirements',
-        'Provide information about tax rates and filing deadlines',
-        'Analyze tax implications of business decisions'
+        'Calculate payroll taxes including FICA, federal, and state withholdings',
+        'Provide up-to-date tax rates and thresholds',
+        'Explain tax forms and filing requirements',
+        'Estimate tax liabilities for planning purposes'
       ]
     },
     expense: {
       type: 'expense',
-      name: 'Expense Categorizer',
-      description: 'Specializes in categorizing and tracking business expenses',
+      name: 'Expense Categorization Agent',
+      description: 'Expert in expense categorization and deductions',
       capabilities: [
-        'Categorize expenses based on description and amount',
-        'Provide tax deduction information for different expense types',
-        'Suggest expense categories for business transactions',
-        'Help create custom expense categories for specific needs'
+        'Categorize expenses according to IRS guidelines',
+        'Identify tax-deductible business expenses',
+        'Recommend expense allocation strategies',
+        'Match expenses to appropriate accounting categories'
       ]
     },
     compliance: {
       type: 'compliance',
-      name: 'Compliance Advisor',
-      description: 'Specializes in payroll compliance and regulatory requirements',
+      name: 'Compliance Agent',
+      description: 'Specialized in payroll compliance and regulations',
       capabilities: [
-        'Track filing deadlines for tax and regulatory forms',
-        'Explain compliance requirements based on company profile',
-        'Monitor compliance status for various requirements',
-        'Provide insights on upcoming regulatory changes'
+        'Track federal, state, and local compliance requirements',
+        'Monitor upcoming filing deadlines',
+        'Provide guidance on employment regulations',
+        'Audit payroll processes for compliance issues'
       ]
     },
     general: {
       type: 'general',
-      name: 'Payroll Assistant',
-      description: 'General payroll assistant that can help with various queries',
+      name: 'General Payroll Assistant',
+      description: 'General assistance with payroll questions',
       capabilities: [
-        'Answer general questions about payroll processing',
-        'Provide information about the payroll software',
-        'Offer guidance on basic payroll concepts',
-        'Route complex queries to specialized agents'
+        'Answer common payroll questions',
+        'Explain payroll terminology and concepts',
+        'Guide you to specialized agents for complex tasks',
+        'Provide general payroll best practices'
       ]
     }
   };
@@ -84,13 +84,13 @@ export class AgentOrchestrator {
     this.conversationId = config.conversationId;
   }
 
-  // Initialize an agent if needed
-  private getAgent(type: AgentType): BaseAgent {
+  getAgent(type: AgentType): BaseAgent {
     if (!this.agents[type]) {
       const config = {
+        conversationId: this.conversationId,
         userId: this.userId,
         companyId: this.companyId,
-        conversationId: this.conversationId ? `${this.conversationId}_${type}` : undefined
+        memory: true
       };
 
       switch (type) {
@@ -104,16 +104,10 @@ export class AgentOrchestrator {
           this.agents[type] = new ComplianceAgent(config);
           break;
         case 'general':
+        default:
           this.agents[type] = new BaseAgent({
             ...config,
-            systemPrompt: `You are a helpful payroll assistant. Your role is to provide general guidance on payroll topics and direct more specialized questions to the appropriate expert agents. You can help with basic payroll concepts, software usage questions, and general information.
-
-For specialized topics, you should identify when another agent would be better suited to handle the query:
-- Tax Calculator for tax calculations and payroll tax information
-- Expense Categorizer for categorizing and tracking business expenses
-- Compliance Advisor for regulatory requirements and deadlines
-
-Respond helpfully to general questions, but for specialized topics, explain that you'll route the query to the appropriate expert.`
+            systemPrompt: "You are a helpful payroll assistant. Answer questions about payroll, taxes, and related topics in a clear and concise manner."
           });
           break;
       }
@@ -122,199 +116,169 @@ Respond helpfully to general questions, but for specialized topics, explain that
     return this.agents[type]!;
   }
 
-  // Determine which agent should handle the query
   private async routeQuery(query: string): Promise<AgentType> {
-    const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-    if (!apiKey) {
-      console.warn('Missing OpenAI API key. Defaulting to general agent.');
+    // Use natural language understanding to route to the appropriate agent
+    // For simplicity, we'll use some basic keyword matching here
+    const lowerQuery = query.toLowerCase();
+    
+    if (/tax|taxes|withholding|fica|medicare|social security|w-2|w-4|1099/i.test(lowerQuery)) {
+      return 'tax';
+    } else if (/expense|receipt|categorize|deduct|business expense|travel|meals|entertainment/i.test(lowerQuery)) {
+      return 'expense';
+    } else if (/compliance|regulation|deadline|file|form|requirement|law|legal/i.test(lowerQuery)) {
+      return 'compliance';
+    } else {
       return 'general';
-    }
-
-    try {
-      // Initialize OpenAI client
-      const openai = new OpenAI({
-        apiKey,
-        dangerouslyAllowBrowser: true // For client-side use
-      });
-      
-      const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a query router for a multi-agent payroll system. Your job is to determine which specialized agent should handle the user's query.
-
-Available agents:
-- tax: Tax Calculator - handles tax calculations, rates, and filing information
-- expense: Expense Categorizer - handles expense categorization and tax deductions
-- compliance: Compliance Advisor - handles regulatory compliance and filing deadlines
-- general: Payroll Assistant - handles general payroll questions and software usage
-
-Analyze the user query and return ONLY the agent type as a single word (tax, expense, compliance, or general) that is best suited to handle it.`
-          },
-          {
-            role: 'user',
-            content: query
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 10
-      });
-
-      const agentType = response.choices[0].message.content?.toLowerCase().trim() as AgentType;
-
-      // Validate that the returned type is valid
-      if (['tax', 'expense', 'compliance', 'general'].includes(agentType)) {
-        return agentType;
-      }
-
-      // Default to general agent if invalid response
-      return 'general';
-    } catch (error) {
-      console.error('Error routing query:', error);
-      return 'general'; // Default to general agent on error
     }
   }
 
-  // Main method to handle user queries
   async processQuery(query: string): Promise<{
     response: string;
     agentType: AgentType;
     agentName: string;
   }> {
-    try {
-      // Route the query to the appropriate agent
-      const agentType = await this.routeQuery(query);
-      const agent = this.getAgent(agentType);
-      
-      // Send the query to the agent
-      const response = await agent.sendMessage(query);
-      
-      // Save the conversation if we have a user ID
-      if (this.userId && !this.conversationId) {
-        this.saveConversation(query, response, agentType);
-      }
-      
-      return {
-        response,
-        agentType,
-        agentName: this.agentMetadata[agentType].name
-      };
-    } catch (error) {
-      console.error('Error processing query:', error);
-      return {
-        response: 'I encountered an error while processing your request. Please try again later.',
-        agentType: 'general',
-        agentName: 'Payroll Assistant'
-      };
+    // Determine which agent should handle this query
+    const agentType = await this.routeQuery(query);
+    const agent = this.getAgent(agentType);
+    
+    // Process the query with the selected agent
+    const response = await agent.sendMessage(query);
+    
+    // Create a new conversation if we don't have an ID yet
+    if (!this.conversationId) {
+      this.conversationId = uuidv4();
     }
+    
+    // Save the conversation for future reference
+    await this.saveConversation(query, response, agentType);
+    
+    return {
+      response,
+      agentType,
+      agentName: this.agentMetadata[agentType].name
+    };
   }
 
-  // Save conversation to database
   private async saveConversation(query: string, response: string, agentType: AgentType): Promise<void> {
-    if (!this.userId) return;
-
+    if (!this.userId || !this.conversationId) {
+      return; // Skip saving if we don't have a user or conversation ID
+    }
+    
     try {
-      const { data, error } = await supabase
+      // Check if the conversation exists
+      const { data: existingConversation } = await supabase
         .from('ai_conversations')
-        .insert({
-          user_id: this.userId,
-          company_id: this.companyId,
-          agent_type: agentType,
-          messages: [
-            { role: 'user', content: query },
-            { role: 'assistant', content: response }
-          ],
-          metadata: {
-            orchestrator: true,
-            agent_name: this.agentMetadata[agentType].name
-          }
-        })
-        .select()
+        .select('id')
+        .eq('id', this.conversationId)
         .single();
-
-      if (error) {
-        console.error('Error saving conversation:', error);
-        return;
+      
+      if (!existingConversation) {
+        // Create a new conversation record
+        await supabase
+          .from('ai_conversations')
+          .insert({
+            id: this.conversationId,
+            user_id: this.userId,
+            company_id: this.companyId,
+            title: query.slice(0, 50) + (query.length > 50 ? '...' : ''),
+            created_at: new Date().toISOString()
+          });
       }
-
-      this.conversationId = data.id;
+      
+      // Add the message to the conversation
+      await supabase
+        .from('ai_messages')
+        .insert([
+          {
+            conversation_id: this.conversationId,
+            role: 'user',
+            content: query,
+            timestamp: new Date().toISOString()
+          },
+          {
+            conversation_id: this.conversationId,
+            role: 'assistant',
+            content: response,
+            agent_type: agentType,
+            timestamp: new Date().toISOString()
+          }
+        ]);
+      
     } catch (error) {
       console.error('Error saving conversation:', error);
+      // Continue even if saving fails
     }
   }
 
-  // Continue an existing conversation
   async continueConversation(query: string): Promise<{
     response: string;
     agentType: AgentType;
     agentName: string;
   }> {
     if (!this.conversationId) {
+      // If no conversation ID, start a new one
       return this.processQuery(query);
     }
-
+    
+    // Determine which agent last responded to this conversation
+    let lastAgentType: AgentType = 'general';
+    
     try {
-      // Get the conversation history to determine which agent was used
-      const { data, error } = await supabase
-        .from('ai_conversations')
-        .select('agent_type, metadata')
-        .eq('id', this.conversationId)
-        .single();
-
-      if (error) {
-        console.error('Error retrieving conversation:', error);
-        return this.processQuery(query);
+      const { data } = await supabase
+        .from('ai_messages')
+        .select('agent_type')
+        .eq('conversation_id', this.conversationId)
+        .eq('role', 'assistant')
+        .order('timestamp', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0 && data[0].agent_type) {
+        lastAgentType = data[0].agent_type as AgentType;
       }
-
-      // Get the agent type from the conversation
-      const agentType = data.agent_type as AgentType;
-      
-      // Use the same agent for continuity
-      const agent = this.getAgent(agentType);
-      
-      // Send the query to the agent
-      const response = await agent.sendMessage(query);
-      
-      return {
-        response,
-        agentType,
-        agentName: this.agentMetadata[agentType].name
-      };
     } catch (error) {
-      console.error('Error continuing conversation:', error);
-      return this.processQuery(query);
+      console.error('Error fetching last agent type:', error);
     }
+    
+    // Use the last agent used, but re-analyze if the query seems different
+    const newAgentType = await this.routeQuery(query);
+    const agentType = newAgentType === 'general' ? lastAgentType : newAgentType;
+    
+    // Get the agent and send the message
+    const agent = this.getAgent(agentType);
+    const response = await agent.sendMessage(query);
+    
+    // Save the continued conversation
+    await this.saveConversation(query, response, agentType);
+    
+    return {
+      response,
+      agentType,
+      agentName: this.agentMetadata[agentType].name
+    };
   }
 
-  // Get available agents and their capabilities
   getAvailableAgents(): AgentMetadata[] {
     return Object.values(this.agentMetadata);
   }
 
-  // Reset conversation with a specific agent
   resetAgent(type: AgentType): void {
     if (this.agents[type]) {
       this.agents[type]!.clearConversation();
     }
   }
 
-  // Reset all conversations
   resetAllAgents(): void {
-    for (const type of Object.keys(this.agents) as AgentType[]) {
-      if (this.agents[type]) {
-        this.agents[type]!.clearConversation();
+    Object.keys(this.agents).forEach(type => {
+      if (this.agents[type as AgentType]) {
+        this.agents[type as AgentType]!.clearConversation();
       }
-    }
-    this.conversationId = undefined;
+    });
   }
 
-  // Get conversation ID
   getConversationId(): string | undefined {
     return this.conversationId;
   }
 
-  // Get agent metadata
   getAgentMetadata(type: AgentType): AgentMetadata {
     return this.agentMetadata[type];
   }

@@ -1,6 +1,5 @@
 import { BaseAgent, AgentConfig } from './baseAgent';
 
-// Define expense category interface
 interface ExpenseCategory {
   id: string;
   name: string;
@@ -9,7 +8,6 @@ interface ExpenseCategory {
   business_type?: string[];
 }
 
-// Define expense rule interface
 interface ExpenseRule {
   keywords: string[];
   category_id: string;
@@ -20,551 +18,610 @@ export class ExpenseCategorizationAgent extends BaseAgent {
   private standardCategories: ExpenseCategory[] = [];
   private customCategories: ExpenseCategory[] = [];
   private categorySuggestionRules: ExpenseRule[] = [];
-  protected companyId?: string;
+  private companyId?: string;
 
   constructor(config: AgentConfig) {
+    // Define specialized system prompt for expense categorization agent
+    const expenseSystemPrompt = `You are an expense categorization assistant specialized in business expenses. Your primary functions are:
+
+1. Categorize business expenses based on descriptions, vendors, and amounts
+2. Provide information on tax-deductibility of different expense types
+3. Suggest appropriate business expense categories for receipts and transactions
+4. Explain expense categorization best practices and regulatory requirements
+
+When categorizing expenses:
+- Consider both the vendor/merchant and the expense description
+- Apply appropriate tax deductibility rules based on current regulations
+- Note any special documentation requirements for the expense type
+- Provide confidence levels for your categorizations when uncertain
+- Consider context such as business type and employee role when available
+
+Be precise about tax deductibility but remind users that tax rules change regularly and can vary by location. Recommend consulting with a tax professional for definitive answers on complex cases.`;
+
+    // Initialize the agent with expense-specific configuration
     super({
       ...config,
-      systemPrompt: `You are an expense categorization expert specializing in business expenses and their tax implications. Your expertise is in helping businesses properly categorize expenses and understand their tax deductibility.
-
-Always provide accurate and helpful guidance on expense matters. When addressing expense questions:
-1. Help identify the most appropriate category for business expenses
-2. Explain tax implications of different expense categories
-3. Provide context about deductibility rules and limitations
-4. Suggest record-keeping best practices
-
-Your goal is to help businesses maximize legitimate tax deductions while maintaining compliance with tax regulations. Always note that you're providing general guidance, not official tax advice, and recommend consulting with a tax professional for specific situations.`,
-      tools: [
-        {
-          function: {
-            name: "categorizeExpense",
-            description: "Categorize an expense based on description and amount",
-            parameters: {
-              type: "object",
-              properties: {
-                description: {
-                  type: "string",
-                  description: "Description of the expense"
-                },
-                amount: {
-                  type: "number",
-                  description: "Amount of the expense"
-                },
-                date: {
-                  type: "string",
-                  description: "Date of the expense (YYYY-MM-DD)"
-                },
-                vendor: {
-                  type: "string",
-                  description: "Vendor or merchant name"
-                }
-              },
-              required: ["description"]
-            }
-          },
-          handler: async (params: any) => {
-            return await this.categorizeExpense(params);
-          }
-        },
-        {
-          function: {
-            name: "getExpenseCategories",
-            description: "Get available expense categories",
-            parameters: {
-              type: "object",
-              properties: {
-                includeCustom: {
-                  type: "boolean",
-                  description: "Whether to include custom categories"
-                },
-                filterTaxDeductible: {
-                  type: "boolean",
-                  description: "Filter to only tax deductible categories"
-                }
-              }
-            }
-          },
-          handler: async (params: any) => {
-            return await this.getExpenseCategories(params);
-          }
-        },
-        {
-          function: {
-            name: "createCustomCategory",
-            description: "Create a custom expense category",
-            parameters: {
-              type: "object",
-              properties: {
-                name: {
-                  type: "string",
-                  description: "Name of the category"
-                },
-                description: {
-                  type: "string",
-                  description: "Description of the category"
-                },
-                tax_deductible: {
-                  type: "boolean",
-                  description: "Whether expenses in this category are tax deductible"
-                }
-              },
-              required: ["name", "tax_deductible"]
-            }
-          },
-          handler: async (params: any) => {
-            return await this.createCustomCategory(params);
-          }
-        }
-      ]
+      systemPrompt: expenseSystemPrompt,
+      temperature: 0.2, // Low temperature for more precise responses
     });
-
+    
+    // Store company ID for custom categories
     this.companyId = config.companyId;
     
-    // Load categories and rules
-    this.loadCategoriesAndRules();
+    // Initialize standard categories and rules
+    this.initializeDefaultCategories();
+    this.initializeDefaultRules();
+    
+    // Load any custom categories
+    this.loadCategoriesAndRules().catch(error => {
+      console.error('Error loading categories and rules:', error);
+    });
+    
+    // Define expense categorization tools
+    this.tools = [
+      {
+        type: "function",
+        function: {
+          name: "categorize_expense",
+          description: "Categorize an expense based on its details",
+          parameters: {
+            type: "object",
+            properties: {
+              amount: {
+                type: "number",
+                description: "The expense amount"
+              },
+              description: {
+                type: "string",
+                description: "Description of the expense"
+              },
+              vendor: {
+                type: "string",
+                description: "Name of the vendor or merchant"
+              },
+              date: {
+                type: "string",
+                description: "Date of the expense (YYYY-MM-DD)"
+              },
+              business_type: {
+                type: "string",
+                description: "Type of business (optional)"
+              }
+            },
+            required: ["amount", "description"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "get_expense_categories",
+          description: "Get available expense categories",
+          parameters: {
+            type: "object",
+            properties: {
+              include_custom: {
+                type: "boolean",
+                description: "Whether to include custom categories"
+              },
+              business_type: {
+                type: "string",
+                description: "Filter categories by business type"
+              },
+              tax_deductible_only: {
+                type: "boolean",
+                description: "Filter to only tax-deductible categories"
+              }
+            },
+            required: []
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_custom_category",
+          description: "Create a new custom expense category",
+          parameters: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "Name of the new category"
+              },
+              description: {
+                type: "string",
+                description: "Description of the category"
+              },
+              tax_deductible: {
+                type: "boolean",
+                description: "Whether expenses in this category are tax deductible"
+              },
+              business_type: {
+                type: "array",
+                description: "Types of businesses this category applies to",
+                items: {
+                  type: "string"
+                }
+              }
+            },
+            required: ["name", "description", "tax_deductible"]
+          }
+        }
+      }
+    ];
   }
 
   private async loadCategoriesAndRules(): Promise<void> {
-    try {
-      // In a real implementation, we would fetch this from a database
-      // For now, we'll initialize with some default values
-      this.initializeDefaultCategories();
-      this.initializeDefaultRules();
-    } catch (error) {
-      console.error('Error loading categories and rules:', error);
+    if (this.companyId) {
+      try {
+        // In a real implementation, load custom categories from database
+        // For now we'll just use the defaults
+      } catch (error) {
+        console.error('Error loading custom categories and rules:', error);
+      }
     }
   }
 
   private initializeDefaultCategories(): void {
+    // Standard business expense categories with tax guidance
     this.standardCategories = [
       {
-        id: 'office_supplies',
-        name: 'Office Supplies',
-        description: 'Items used in daily office operations such as stationery, paper, pens, etc.',
+        id: "meals_entertainment",
+        name: "Meals & Entertainment",
+        description: "Business meals and entertainment expenses",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'rent',
-        name: 'Rent or Lease',
-        description: 'Payments for office space, buildings, land, or equipment leases.',
+        id: "travel",
+        name: "Travel",
+        description: "Business travel expenses including airfare, hotels, and transportation",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'utilities',
-        name: 'Utilities',
-        description: 'Expenses for electricity, water, gas, internet, phone services, etc.',
+        id: "office_supplies",
+        name: "Office Supplies",
+        description: "Office supplies and equipment under $2,500",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'travel',
-        name: 'Travel',
-        description: 'Business travel expenses including airfare, hotels, transportation, etc.',
+        id: "advertising",
+        name: "Advertising & Marketing",
+        description: "Advertising, marketing, and promotion expenses",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'meals',
-        name: 'Meals & Entertainment',
-        description: 'Business meals with clients, team meals, entertainment expenses, etc.',
+        id: "professional_services",
+        name: "Professional Services",
+        description: "Legal, accounting, consulting, and other professional services",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'software',
-        name: 'Software & Subscriptions',
-        description: 'Software licenses, SaaS subscriptions, online tools, etc.',
+        id: "rent",
+        name: "Rent & Utilities",
+        description: "Office rent, utilities, and related expenses",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'professional_services',
-        name: 'Professional Services',
-        description: 'Legal, accounting, consulting, and other professional services.',
+        id: "software_subscription",
+        name: "Software & Subscriptions",
+        description: "Software licenses, cloud services, and subscriptions",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'insurance',
-        name: 'Insurance',
-        description: 'Business insurance premiums including liability, property, workers comp, etc.',
+        id: "telecommunications",
+        name: "Telecommunications",
+        description: "Phone, internet, and other communication expenses",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'marketing',
-        name: 'Marketing & Advertising',
-        description: 'Expenses for promoting business including ads, marketing materials, etc.',
+        id: "vehicle",
+        name: "Vehicle Expenses",
+        description: "Business vehicle expenses including mileage, fuel, and maintenance",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'training',
-        name: 'Training & Education',
-        description: 'Employee training, courses, workshops, conferences, etc.',
+        id: "insurance",
+        name: "Insurance",
+        description: "Business insurance premiums",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'vehicle',
-        name: 'Vehicle Expenses',
-        description: 'Business vehicle costs including fuel, maintenance, parking, tolls, etc.',
+        id: "training",
+        name: "Training & Education",
+        description: "Business-related training, education, and professional development",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'equipment',
-        name: 'Equipment',
-        description: 'Purchase of computers, machinery, furniture, etc.',
+        id: "dues_subscriptions",
+        name: "Dues & Subscriptions",
+        description: "Professional memberships, dues, and non-software subscriptions",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'dues_subscriptions',
-        name: 'Dues & Subscriptions',
-        description: 'Membership fees, professional subscriptions, publications, etc.',
+        id: "employee_benefits",
+        name: "Employee Benefits",
+        description: "Employee benefits and perks",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'maintenance',
-        name: 'Maintenance & Repairs',
-        description: 'Costs to maintain or repair business property or equipment.',
+        id: "bank_fees",
+        name: "Bank & Financial Fees",
+        description: "Bank fees, merchant fees, and financial service charges",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'bank_fees',
-        name: 'Bank & Credit Card Fees',
-        description: 'Fees for business accounts, merchant services, transaction fees, etc.',
+        id: "taxes_licenses",
+        name: "Taxes & Licenses",
+        description: "Business taxes, licenses, and permits",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'payroll',
-        name: 'Payroll',
-        description: 'Employee wages, salaries, bonuses, and associated costs.',
+        id: "charitable_contributions",
+        name: "Charitable Contributions",
+        description: "Donations to charitable organizations",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'benefits',
-        name: 'Employee Benefits',
-        description: 'Health insurance, retirement contributions, and other employee benefits.',
+        id: "office_equipment",
+        name: "Office Equipment",
+        description: "Depreciable office equipment over $2,500",
         tax_deductible: true,
-        business_type: ['all']
+        business_type: ["all"]
       },
       {
-        id: 'taxes',
-        name: 'Taxes & Licenses',
-        description: 'Business taxes, licenses, permits, fees, etc.',
-        tax_deductible: true,
-        business_type: ['all']
-      },
-      {
-        id: 'charitable',
-        name: 'Charitable Contributions',
-        description: 'Donations to qualified charitable organizations.',
-        tax_deductible: true,
-        business_type: ['all']
-      },
-      {
-        id: 'personal',
-        name: 'Personal Expenses',
-        description: 'Non-business related personal expenses (not tax deductible).',
+        id: "personal",
+        name: "Personal (Non-deductible)",
+        description: "Personal expenses (not business-related)",
         tax_deductible: false,
-        business_type: ['all']
+        business_type: ["all"]
       }
     ];
   }
 
   private initializeDefaultRules(): void {
+    // Rules to suggest expense categories based on keywords
     this.categorySuggestionRules = [
       {
-        keywords: ['paper', 'pen', 'stapler', 'clip', 'folder', 'ink', 'toner', 'printer', 'cartridge', 'staples', 'office depot', 'officemax'],
-        category_id: 'office_supplies',
+        keywords: ["meal", "restaurant", "lunch", "dinner", "breakfast", "cafe", "coffee", "food"],
+        category_id: "meals_entertainment",
         confidence: 0.8
       },
       {
-        keywords: ['rent', 'lease', 'office space', 'building', 'property management', 'landlord'],
-        category_id: 'rent',
+        keywords: ["flight", "airline", "hotel", "motel", "lodging", "accommodation", "taxi", "uber", "lyft", "car rental"],
+        category_id: "travel",
         confidence: 0.9
       },
       {
-        keywords: ['electricity', 'water', 'gas', 'power', 'energy', 'internet', 'phone', 'telecom', 'utility', 'water bill', 'electric bill', 'at&t', 'verizon', 'comcast', 'spectrum'],
-        category_id: 'utilities',
+        keywords: ["staples", "office depot", "paper", "pens", "ink", "toner", "office supplies"],
+        category_id: "office_supplies",
         confidence: 0.85
       },
       {
-        keywords: ['airplane', 'flight', 'hotel', 'motel', 'airbnb', 'uber', 'lyft', 'taxi', 'rental car', 'airline', 'delta', 'southwest', 'united', 'american airlines', 'marriott', 'hilton', 'expedia', 'travelocity'],
-        category_id: 'travel',
+        keywords: ["ad", "advertising", "facebook ads", "google ads", "marketing", "promotion", "billboard"],
+        category_id: "advertising",
+        confidence: 0.9
+      },
+      {
+        keywords: ["lawyer", "attorney", "legal", "accountant", "accounting", "consultant", "consulting"],
+        category_id: "professional_services",
+        confidence: 0.9
+      },
+      {
+        keywords: ["rent", "lease", "electric", "utilities", "water", "gas", "office space"],
+        category_id: "rent",
         confidence: 0.85
       },
       {
-        keywords: ['restaurant', 'lunch', 'dinner', 'breakfast', 'coffee', 'meal', 'catering', 'food', 'starbucks', 'grubhub', 'doordash', 'ubereats'],
-        category_id: 'meals',
+        keywords: ["software", "saas", "license", "adobe", "microsoft", "subscription", "aws", "azure", "cloud"],
+        category_id: "software_subscription",
+        confidence: 0.85
+      },
+      {
+        keywords: ["phone", "mobile", "internet", "telecom", "telecommunications", "cell", "data plan"],
+        category_id: "telecommunications",
         confidence: 0.8
       },
       {
-        keywords: ['software', 'subscription', 'license', 'app', 'microsoft', 'google', 'adobe', 'saas', 'zoom', 'slack', 'dropbox', 'salesforce', 'github', 'aws', 'azure'],
-        category_id: 'software',
-        confidence: 0.9
-      },
-      {
-        keywords: ['lawyer', 'attorney', 'legal', 'accounting', 'accountant', 'cpa', 'consultant', 'consulting', 'professional', 'bookkeeper', 'tax preparation'],
-        category_id: 'professional_services',
-        confidence: 0.85
-      },
-      {
-        keywords: ['insurance', 'policy', 'premium', 'coverage', 'liability', 'geico', 'state farm', 'allstate', 'nationwide', 'progressive'],
-        category_id: 'insurance',
-        confidence: 0.9
-      },
-      {
-        keywords: ['advertising', 'marketing', 'promotion', 'ad', 'campaign', 'facebook ad', 'google ad', 'billboard', 'flyer', 'brochure', 'website', 'seo', 'sem'],
-        category_id: 'marketing',
-        confidence: 0.85
-      },
-      {
-        keywords: ['training', 'education', 'workshop', 'seminar', 'conference', 'course', 'class', 'certification', 'udemy', 'coursera', 'skillshare', 'edx'],
-        category_id: 'training',
+        keywords: ["fuel", "gas", "mileage", "parking", "toll", "auto", "car", "vehicle", "maintenance"],
+        category_id: "vehicle",
         confidence: 0.8
       },
       {
-        keywords: ['gas', 'fuel', 'auto', 'vehicle', 'car', 'truck', 'mileage', 'parking', 'toll', 'oil change', 'maintenance', 'repair', 'tire', 'shell', 'exxon', 'chevron', 'bp'],
-        category_id: 'vehicle',
-        confidence: 0.8
-      },
-      {
-        keywords: ['computer', 'laptop', 'monitor', 'printer', 'server', 'equipment', 'machinery', 'furniture', 'desk', 'chair', 'hardware', 'dell', 'hp', 'apple', 'lenovo', 'ikea'],
-        category_id: 'equipment',
-        confidence: 0.8
-      },
-      {
-        keywords: ['dues', 'membership', 'subscription', 'journal', 'magazine', 'publication', 'association', 'organization', 'chamber of commerce'],
-        category_id: 'dues_subscriptions',
-        confidence: 0.8
-      },
-      {
-        keywords: ['maintenance', 'repair', 'cleaning', 'janitor', 'fix', 'service', 'plumber', 'electrician', 'hvac'],
-        category_id: 'maintenance',
-        confidence: 0.75
-      },
-      {
-        keywords: ['bank fee', 'service charge', 'transaction fee', 'wire fee', 'credit card fee', 'processing fee', 'merchant', 'stripe', 'paypal', 'square'],
-        category_id: 'bank_fees',
+        keywords: ["insurance", "premium", "liability", "coverage"],
+        category_id: "insurance",
         confidence: 0.9
       },
       {
-        keywords: ['salary', 'wage', 'payroll', 'bonus', 'commission', 'compensation', 'employee', 'staff', 'contractor', 'adp', 'paychex', 'gusto'],
-        category_id: 'payroll',
-        confidence: 0.9
-      },
-      {
-        keywords: ['health insurance', 'dental', 'vision', 'retirement', '401k', 'pension', 'benefit', 'wellness', 'blue cross', 'aetna', 'cigna', 'united healthcare', 'fidelity', 'vanguard'],
-        category_id: 'benefits',
+        keywords: ["training", "course", "seminar", "conference", "workshop", "education", "certification"],
+        category_id: "training",
         confidence: 0.85
       },
       {
-        keywords: ['tax', 'license', 'permit', 'fee', 'registration', 'incorporation', 'filing', 'irs', 'state tax', 'property tax', 'sales tax'],
-        category_id: 'taxes',
+        keywords: ["membership", "dues", "subscription", "magazine", "journal", "association"],
+        category_id: "dues_subscriptions",
+        confidence: 0.8
+      },
+      {
+        keywords: ["benefit", "health", "wellness", "gym", "retirement", "401k", "pension"],
+        category_id: "employee_benefits",
         confidence: 0.85
       },
       {
-        keywords: ['donation', 'charity', 'charitable', 'nonprofit', 'contribution', 'red cross', 'united way', 'salvation army'],
-        category_id: 'charitable',
+        keywords: ["bank fee", "transaction fee", "service charge", "wire transfer", "merchant fee"],
+        category_id: "bank_fees",
         confidence: 0.9
       },
       {
-        keywords: ['personal', 'private', 'family', 'gift', 'household', 'non-business', 'grocery', 'clothing', 'entertainment'],
-        category_id: 'personal',
+        keywords: ["tax", "license", "permit", "registration", "filing fee"],
+        category_id: "taxes_licenses",
+        confidence: 0.9
+      },
+      {
+        keywords: ["donation", "charitable", "contribution", "nonprofit", "charity"],
+        category_id: "charitable_contributions",
+        confidence: 0.9
+      },
+      {
+        keywords: ["laptop", "computer", "equipment", "furniture", "capital", "asset", "machinery"],
+        category_id: "office_equipment",
+        confidence: 0.8
+      },
+      {
+        keywords: ["personal", "gift", "non-business", "private"],
+        category_id: "personal",
         confidence: 0.7
       }
     ];
   }
 
   private async categorizeExpense(params: any): Promise<any> {
-    const { description, amount = 0, date, vendor = '' } = params;
+    const { amount, description, vendor = '', date, business_type } = params;
     
-    const combinedText = `${description} ${vendor}`.toLowerCase();
+    // Combine description and vendor for better keyword matching
+    const textToMatch = `${description} ${vendor}`.toLowerCase();
     
-    // Search for matching categories based on rules
+    // Get all available categories
+    const allCategories = [...this.standardCategories, ...this.customCategories];
+    
+    // Match against rules to find potential categories
     const matches: { category: ExpenseCategory, confidence: number }[] = [];
     
-    // Check against standard categories
     for (const rule of this.categorySuggestionRules) {
-      let matchCount = 0;
-      for (const keyword of rule.keywords) {
-        if (combinedText.includes(keyword.toLowerCase())) {
-          matchCount++;
-        }
-      }
+      // Check if any keywords match
+      const matchingKeywords = rule.keywords.filter(keyword => 
+        textToMatch.includes(keyword.toLowerCase())
+      );
       
-      if (matchCount > 0) {
-        const category = this.standardCategories.find(c => c.id === rule.category_id) ||
-                         this.customCategories.find(c => c.id === rule.category_id);
+      if (matchingKeywords.length > 0) {
+        // Calculate confidence based on number of matching keywords
+        const keywordMatchRatio = matchingKeywords.length / rule.keywords.length;
+        const adjustedConfidence = rule.confidence * keywordMatchRatio;
+        
+        // Find the category for this rule
+        const category = allCategories.find(cat => cat.id === rule.category_id);
         
         if (category) {
-          // Adjust confidence based on number of keyword matches
-          const adjustedConfidence = rule.confidence * (matchCount / rule.keywords.length);
-          
-          matches.push({
-            category,
-            confidence: adjustedConfidence
-          });
+          // Check if this category applies to the business type
+          if (!business_type || !category.business_type || 
+              category.business_type.includes('all') || 
+              category.business_type.includes(business_type)) {
+            
+            matches.push({
+              category,
+              confidence: adjustedConfidence
+            });
+          }
         }
-      }
-    }
-    
-    // Check against custom categories
-    for (const customCategory of this.customCategories) {
-      if (combinedText.includes(customCategory.name.toLowerCase())) {
-        matches.push({
-          category: customCategory,
-          confidence: 0.9 // High confidence for direct name match
-        });
       }
     }
     
     // Sort matches by confidence
     matches.sort((a, b) => b.confidence - a.confidence);
     
-    // Return top matches and confidence levels
+    // Get top 3 suggestions
+    const topSuggestions = matches.slice(0, 3);
+    
+    // Include tax notes based on the best match
+    const taxNotes = topSuggestions.length > 0 
+      ? this.getTaxNotes(topSuggestions[0].category.id, amount, description)
+      : "Unable to determine tax status without a category match.";
+    
     return {
-      expense: {
+      expense_details: {
+        amount,
         description,
-        amount,
-        date,
-        vendor
+        vendor,
+        date
       },
-      suggestions: matches.slice(0, 3).map(match => ({
-        category_id: match.category.id,
-        category_name: match.category.name,
-        confidence: parseFloat(match.confidence.toFixed(2)),
-        tax_deductible: match.category.tax_deductible
-      })),
-      tax_notes: this.getTaxNotes(
-        matches.length > 0 ? matches[0].category.id : undefined,
-        amount,
-        description
-      )
+      categorization: {
+        best_match: topSuggestions.length > 0 ? {
+          category_id: topSuggestions[0].category.id,
+          category_name: topSuggestions[0].category.name,
+          confidence: parseFloat(topSuggestions[0].confidence.toFixed(2)),
+          tax_deductible: topSuggestions[0].category.tax_deductible
+        } : null,
+        alternative_suggestions: topSuggestions.slice(1).map(match => ({
+          category_id: match.category.id,
+          category_name: match.category.name,
+          confidence: parseFloat(match.confidence.toFixed(2)),
+          tax_deductible: match.category.tax_deductible
+        }))
+      },
+      tax_notes: taxNotes
     };
   }
 
   private async getExpenseCategories(params: any): Promise<any> {
-    const { includeCustom = true, filterTaxDeductible = false } = params || {};
+    const { include_custom = true, business_type, tax_deductible_only = false } = params;
     
+    // Start with standard categories
     let categories = [...this.standardCategories];
     
-    if (includeCustom) {
+    // Add custom categories if requested
+    if (include_custom) {
       categories = [...categories, ...this.customCategories];
     }
     
-    if (filterTaxDeductible) {
-      categories = categories.filter(category => category.tax_deductible);
+    // Filter by business type if specified
+    if (business_type) {
+      categories = categories.filter(cat => 
+        !cat.business_type || 
+        cat.business_type.includes('all') || 
+        cat.business_type.includes(business_type)
+      );
     }
     
-    // Sort alphabetically by name
-    categories.sort((a, b) => a.name.localeCompare(b.name));
+    // Filter by tax deductibility if requested
+    if (tax_deductible_only) {
+      categories = categories.filter(cat => cat.tax_deductible);
+    }
     
+    // Format the response
     return {
-      categories: categories.map(c => ({
-        id: c.id,
-        name: c.name,
-        description: c.description,
-        tax_deductible: c.tax_deductible
-      })),
-      total: categories.length
+      count: categories.length,
+      categories: categories.map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        description: cat.description,
+        tax_deductible: cat.tax_deductible,
+        business_type: cat.business_type
+      }))
     };
   }
 
   private async createCustomCategory(params: any): Promise<any> {
-    const { name, description = '', tax_deductible = false } = params;
+    const { name, description, tax_deductible, business_type = ['all'] } = params;
     
-    // Generate a simple ID based on name
-    const id = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    // Generate a unique ID for the new category
+    const id = `custom_${name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
     
-    // Check if ID already exists
-    const existingCategory = this.standardCategories.find(c => c.id === id) ||
-                            this.customCategories.find(c => c.id === id);
-    
-    if (existingCategory) {
-      return {
-        success: false,
-        error: 'Category with similar name already exists',
-        existing_category: {
-          id: existingCategory.id,
-          name: existingCategory.name
-        }
-      };
-    }
-    
-    // Create new category
+    // Create the new category
     const newCategory: ExpenseCategory = {
       id,
       name,
       description,
       tax_deductible,
-      business_type: ['custom']
+      business_type
     };
     
     // Add to custom categories
     this.customCategories.push(newCategory);
     
-    // In a real implementation, we would save this to the database
+    // In a real implementation, save to database here
     
     return {
       success: true,
-      category: {
-        id: newCategory.id,
-        name: newCategory.name,
-        description: newCategory.description,
-        tax_deductible: newCategory.tax_deductible
-      }
+      category: newCategory
     };
   }
 
   private getTaxNotes(categoryId: string | undefined, amount: number, description: string): string {
     if (!categoryId) {
-      return 'Unable to determine tax status without a category.';
+      return "Unable to provide tax guidance without a category.";
     }
     
-    const category = this.standardCategories.find(c => c.id === categoryId) ||
-                      this.customCategories.find(c => c.id === categoryId);
+    // Get the category
+    const category = [...this.standardCategories, ...this.customCategories]
+      .find(cat => cat.id === categoryId);
     
     if (!category) {
-      return 'Category not found.';
+      return "Category not found. Unable to provide tax guidance.";
     }
     
+    // Generate appropriate tax notes based on the category
     if (!category.tax_deductible) {
-      return 'This expense does not appear to be tax deductible for business purposes.';
+      return "This expense appears to be non-deductible. Personal expenses are generally not deductible for business purposes.";
     }
     
-    let notes = 'This expense is generally tax deductible as a business expense.';
+    let notes = `This expense is generally tax-deductible as a ${category.name} expense.`;
     
-    // Add category-specific notes
+    // Add category-specific tax notes
     switch (categoryId) {
-      case 'meals':
-        notes += ' Note that business meals are typically limited to 50% deductibility.';
+      case "meals_entertainment":
+        notes += " Note that meals are typically only 50% deductible for tax purposes. Keep detailed records including who was present and the business purpose.";
         break;
-      case 'vehicle':
-        notes += ' Keep detailed mileage logs for business use of vehicles.';
+      case "travel":
+        notes += " Business travel expenses are deductible when the primary purpose is business. Keep all receipts and document the business purpose.";
         break;
-      case 'equipment':
+      case "vehicle":
+        notes += " Vehicle expenses can be deducted either using actual expenses or the standard mileage rate. Maintain a detailed mileage log.";
+        break;
+      case "charitable_contributions":
+        notes += " Charitable contributions may be deductible, but restrictions apply. Obtain receipts for all donations.";
+        break;
+      case "office_equipment":
         if (amount > 2500) {
-          notes += ' Items over $2,500 may need to be depreciated rather than expensed.';
+          notes += " Equipment purchases over $2,500 may need to be depreciated rather than expensed immediately. Consider Section 179 deduction or bonus depreciation rules.";
         }
         break;
-      case 'charitable':
-        notes += ' Ensure the organization is a qualified tax-exempt entity to claim deduction.';
-        break;
-      case 'travel':
-        notes += ' Business travel is fully deductible, but mixed personal/business trips require allocation.';
-        break;
     }
     
+    notes += " Tax rules change frequently. Consult with a tax professional for definitive guidance.";
+    
     return notes;
+  }
+  
+  protected async handleToolCalls(toolCalls: any[]): Promise<any[]> {
+    const results = [];
+    
+    for (const call of toolCalls) {
+      const functionName = call.function.name;
+      const argsJson = call.function.arguments;
+      let args;
+      
+      try {
+        args = JSON.parse(argsJson);
+      } catch (e) {
+        results.push({
+          role: 'function',
+          name: functionName,
+          content: JSON.stringify({ error: 'Invalid JSON arguments' })
+        });
+        continue;
+      }
+      
+      let functionResult;
+      
+      // Call the appropriate function based on the name
+      switch (functionName) {
+        case 'categorize_expense':
+          functionResult = await this.categorizeExpense(args);
+          break;
+        case 'get_expense_categories':
+          functionResult = await this.getExpenseCategories(args);
+          break;
+        case 'create_custom_category':
+          functionResult = await this.createCustomCategory(args);
+          break;
+        default:
+          functionResult = { error: `Unknown function: ${functionName}` };
+          break;
+      }
+      
+      results.push({
+        role: 'function',
+        name: functionName,
+        content: JSON.stringify(functionResult)
+      });
+    }
+    
+    return results;
   }
 }
