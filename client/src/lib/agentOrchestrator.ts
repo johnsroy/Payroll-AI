@@ -308,4 +308,14 @@ Analyze the user query and return ONLY the agent type as a single word (tax, exp
     }
     this.conversationId = undefined;
   }
+
+  // Get conversation ID
+  getConversationId(): string | undefined {
+    return this.conversationId;
+  }
+
+  // Get agent metadata
+  getAgentMetadata(type: AgentType): AgentMetadata {
+    return this.agentMetadata[type];
+  }
 }
