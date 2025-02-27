@@ -1,13 +1,11 @@
-"use client";
-
-import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, Trash2, Loader2, User } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
-import { Avatar } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+import { useState, useRef, useEffect } from "react";
+import { Send, Bot, Trash2, Loader2, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
+import { Avatar } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 interface SimpleMockAIChatProps {
   className?: string;
@@ -20,15 +18,15 @@ export function SimpleMockAIChat({
   expanded = false,
   onToggleExpand
 }: SimpleMockAIChatProps) {
-  const [input, setInput] = useState('');
-  const [messages, setMessages] = useState<Array<{id: string; role: 'user' | 'assistant'; content: string}>>([]);
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<Array<{id: string; role: "user" | "assistant"; content: string}>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isLoading]);
 
@@ -38,19 +36,19 @@ export function SimpleMockAIChat({
       // Add user message
       const newUserMessage = {
         id: Date.now().toString(),
-        role: 'user' as const,
+        role: "user" as const,
         content: input.trim()
       };
       
       setMessages(prev => [...prev, newUserMessage]);
-      setInput('');
+      setInput("");
       setIsLoading(true);
       
       // Simulate AI response after a delay
       setTimeout(() => {
         const newAssistantMessage = {
           id: (Date.now() + 1).toString(),
-          role: 'assistant' as const,
+          role: "assistant" as const,
           content: `I'm a demo AI assistant. You asked: "${input.trim()}". In a real implementation, this would be processed by our specialized AI agents.`
         };
         
@@ -61,7 +59,7 @@ export function SimpleMockAIChat({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit(e);
     }
@@ -106,7 +104,7 @@ export function SimpleMockAIChat({
               title={expanded ? "Minimize" : "Maximize"}
               className="rounded-full h-8 w-8"
             >
-              {expanded ? <span>×</span> : <span className="text-xs font-bold">□</span>}
+              {expanded ? <span>X</span> : <span className="text-xs font-bold">[]</span>}
             </Button>
           )}
         </div>
@@ -155,15 +153,15 @@ export function SimpleMockAIChat({
             </div>
           ) : (
             messages.map((message) => (
-              <div key={message.id} className={cn("flex gap-2", message.role === 'user' ? "justify-end" : "justify-start")}>
-                {message.role !== 'user' && (
+              <div key={message.id} className={cn("flex gap-2", message.role === "user" ? "justify-end" : "justify-start")}>
+                {message.role !== "user" && (
                   <Avatar className="h-8 w-8 bg-primary/10">
                     <Bot className="h-4 w-4 text-primary" />
                   </Avatar>
                 )}
                 <div className={cn(
                   "rounded-lg p-3 max-w-[80%]",
-                  message.role === 'user' 
+                  message.role === "user" 
                     ? "bg-primary text-primary-foreground" 
                     : "bg-muted"
                 )}>
@@ -171,7 +169,7 @@ export function SimpleMockAIChat({
                     {message.content}
                   </div>
                 </div>
-                {message.role === 'user' && (
+                {message.role === "user" && (
                   <Avatar className="h-8 w-8 bg-primary">
                     <User className="h-4 w-4 text-primary-foreground" />
                   </Avatar>
