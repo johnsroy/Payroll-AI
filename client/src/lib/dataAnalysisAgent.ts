@@ -307,7 +307,20 @@ For financial forecasts, be clear about the assumptions made and the confidence 
       });
       
       // Extract the response text
-      const responseText = response.content[0].text;
+      // Extract the response text
+      let responseText = '';
+      if (response.content && response.content.length > 0) {
+        const firstContent = response.content[0];
+        if (typeof firstContent === 'object') {
+          if ('text' in firstContent) {
+            responseText = firstContent.text as string;
+          } else {
+            responseText = JSON.stringify(firstContent);
+          }
+        } else {
+          responseText = String(firstContent);
+        }
+      }
       
       // Add the response to conversation history
       this.addMessage('assistant', responseText);
@@ -334,7 +347,7 @@ For financial forecasts, be clear about the assumptions made and the confidence 
         },
         toolCalls: toolCallResults
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error processing query in Data Analysis Agent:', error);
       
       // Return a graceful error response
@@ -342,7 +355,7 @@ For financial forecasts, be clear about the assumptions made and the confidence 
         response: "I'm sorry, I encountered an error while processing your data analysis question. Please try rephrasing your question or try again later.",
         confidence: 0.1,
         metadata: {
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         }
       };
     }
