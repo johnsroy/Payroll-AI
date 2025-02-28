@@ -1,10 +1,10 @@
 // Landing page with all sections
 import React from 'react';
-import SimpleNav from './SimpleNav';
-import SimpleHero from './SimpleHero';
-import SimpleFeaturesSection from './SimpleFeaturesSection';
-import SimpleDemoSection from './SimpleDemoSection';
-import SimpleFooter from './SimpleFooter';
+import SimpleNav from './SimpleNav.tsx';
+import SimpleHero from './SimpleHero.tsx';
+import SimpleFeaturesSection from './SimpleFeaturesSection.tsx';
+import SimpleDemoSection from './SimpleDemoSection.tsx';
+import SimpleFooter from './SimpleFooter.tsx';
 
 function NewApp() {
   return (

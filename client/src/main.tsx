@@ -1,9 +1,26 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import NewApp from "./NewApp";
+import App from "./App";
+import "./index.css";
 
-// Skip importing CSS to test if that's an issue
-// import "./index.css";
+// Ensure we have styles for the whole page
+const globalStyles = `
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+`;
+
+// Create a style element and append it to head
+const styleEl = document.createElement('style');
+styleEl.innerHTML = globalStyles;
+document.head.appendChild(styleEl);
 
 // Get the root element
 const rootElement = document.getElementById("root");
@@ -18,6 +35,6 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <NewApp />
+    <App />
   </React.StrictMode>
 );

@@ -1,168 +1,153 @@
 import React from 'react';
-import { Link } from 'wouter';
 
-const LandingPage: React.FC = () => {
+export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="py-4 px-6 bg-primary text-primary-foreground">
+        <div className="container mx-auto flex justify-between items-center">
+          <div className="flex items-center">
+            <span className="text-2xl font-bold">PayrollPro AI</span>
+          </div>
+          
+          <nav className="hidden md:flex space-x-6">
+            <a href="#features" className="hover:text-white/80 transition-colors">Features</a>
+            <a href="#benefits" className="hover:text-white/80 transition-colors">Benefits</a>
+            <a href="#pricing" className="hover:text-white/80 transition-colors">Pricing</a>
+          </nav>
+          
+          <div className="flex items-center space-x-4">
+            <button className="bg-white text-primary px-4 py-2 rounded-md hover:bg-white/90 transition-colors">
+              Get Started
+            </button>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Intelligent Payroll Management Powered by AI
-            </h1>
-            <p className="text-xl mb-8">
-              Streamline your payroll operations with our advanced multi-agent AI system. Save time, reduce errors, and gain valuable insights.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/agents">
-                <span className="bg-white text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg font-medium text-center cursor-pointer inline-block">
-                  Try AI Playground
-                </span>
-              </Link>
-              <a href="#features" className="bg-blue-500 hover:bg-blue-400 text-white px-6 py-3 rounded-lg font-medium text-center">
-                Explore Features
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Our AI-Powered Solutions</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              PayrollPro AI offers a suite of specialized AI agents designed to handle every aspect of payroll management.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6 text-blue-600">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+      <main className="flex-grow">
+        <section className="py-16 px-6 bg-gradient-to-b from-primary/20 to-transparent">
+          <div className="container mx-auto max-w-6xl">
+            <div className="flex flex-col md:flex-row items-center gap-12">
+              <div className="md:w-1/2 space-y-6">
+                <h1 className="text-4xl md:text-5xl font-bold leading-tight">
+                  AI-Powered Payroll Management System
+                </h1>
+                <p className="text-lg text-muted-foreground">
+                  Streamline your payroll operations with intelligent automation, compliance checking, 
+                  and seamless cloud integration.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button className="bg-primary text-primary-foreground px-6 py-3 rounded-md font-medium">
+                    Start Free Trial
+                  </button>
+                  <button className="bg-secondary text-secondary-foreground px-6 py-3 rounded-md font-medium">
+                    Watch Demo
+                  </button>
+                </div>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Tax Calculator Agent</h3>
-              <p className="text-gray-600 mb-4">
-                Handles all tax calculations with precision and accuracy, staying up-to-date with the latest tax regulations.
-              </p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Federal and state tax calculations</li>
-                <li>• FICA and Medicare withholdings</li>
-                <li>• Year-end tax preparation</li>
-              </ul>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6 text-blue-600">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+              <div className="md:w-1/2 flex justify-center">
+                <div className="w-full max-w-md aspect-video bg-muted rounded-lg flex items-center justify-center text-muted-foreground">
+                  Payroll Dashboard Preview
+                </div>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Compliance Advisor Agent</h3>
-              <p className="text-gray-600 mb-4">
-                Stays up-to-date with changing regulations and alerts you to deadlines and compliance requirements.
-              </p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Regulatory compliance monitoring</li>
-                <li>• Deadline tracking and reminders</li>
-                <li>• Compliance risk assessment</li>
-              </ul>
             </div>
+          </div>
+        </section>
 
-            <div className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className="w-6 h-6 text-blue-600">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
+        {/* Features Section */}
+        <section id="features" className="py-16 px-6">
+          <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold mb-4">Powerful Features</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Designed to simplify payroll management through intelligent automation and seamless integration
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[
+                {
+                  title: 'Multi-Agent Intelligence',
+                  description: 'Our system utilizes specialized AI agents for tax calculations, compliance checking, and data analysis.'
+                },
+                {
+                  title: 'Cloud Integration',
+                  description: 'Connect to your existing cloud services with OAuth and upload data files with a simple drag-and-drop interface.'
+                },
+                {
+                  title: 'Zapier Workflows',
+                  description: 'Seamlessly integrate with 3000+ apps through our Zapier connector to automate your entire payroll ecosystem.'
+                },
+                {
+                  title: 'Compliance Checking',
+                  description: 'Stay compliant with automated tax regulation checks and updates for federal, state, and local jurisdictions.'
+                },
+                {
+                  title: 'Data Analysis',
+                  description: 'Get actionable insights from your payroll data with powerful analytics and visualization tools.'
+                },
+                {
+                  title: 'Secure Infrastructure',
+                  description: 'Enterprise-grade security ensures your sensitive payroll data remains protected at all times.'
+                }
+              ].map((feature, index) => (
+                <div key={index} className="bg-card p-6 rounded-lg shadow-sm border border-border">
+                  <h3 className="font-bold text-xl mb-3">{feature.title}</h3>
+                  <p className="text-muted-foreground">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Simple Demo Section */}
+        <section id="demo" className="py-16 px-6 bg-muted">
+          <div className="container mx-auto max-w-6xl">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold mb-4">Try It Yourself</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Ask our AI assistant about any payroll-related question and get instant, accurate answers
+              </p>
+            </div>
+            
+            <div className="max-w-2xl mx-auto bg-card p-6 rounded-lg shadow-sm border border-border">
+              <div className="mb-4 p-4 bg-muted rounded-lg">
+                <p className="text-muted-foreground">
+                  Example responses will appear here...
+                </p>
               </div>
-              <h3 className="text-xl font-semibold mb-2">Expense Categorizer Agent</h3>
-              <p className="text-gray-600 mb-4">
-                Automatically categorizes expenses and identifies tax deduction opportunities to maximize savings.
-              </p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Smart expense classification</li>
-                <li>• Tax deduction identification</li>
-                <li>• Custom categorization rules</li>
-              </ul>
+              
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  placeholder="Ask about payroll, taxes, or compliance..."
+                  className="flex-grow px-4 py-2 bg-background border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <button className="bg-primary text-primary-foreground px-4 py-2 rounded-md">
+                  Ask
+                </button>
+              </div>
             </div>
           </div>
+        </section>
+      </main>
 
-          <div className="mt-12 text-center">
-            <Link href="/agents">
-              <span className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
-                Try Our AI Agents Now
-              </span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Our multi-agent AI system works together to provide comprehensive payroll solutions.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">1</div>
-              <h3 className="text-xl font-semibold mb-2">Upload Your Data</h3>
-              <p className="text-gray-600">
-                Securely upload your payroll and financial data to our platform.
-              </p>
+      {/* Footer */}
+      <footer className="py-12 px-6 bg-muted border-t border-border">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-6">PayrollPro AI</h2>
+            <div className="flex justify-center space-x-6 mb-8">
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">About</a>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Features</a>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">Contact</a>
             </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">2</div>
-              <h3 className="text-xl font-semibold mb-2">AI Analysis</h3>
-              <p className="text-gray-600">
-                Our specialized AI agents analyze your data for insights and opportunities.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">3</div>
-              <h3 className="text-xl font-semibold mb-2">Review Recommendations</h3>
-              <p className="text-gray-600">
-                Review AI-generated insights, calculations, and compliance recommendations.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-4">4</div>
-              <h3 className="text-xl font-semibold mb-2">Implement Solutions</h3>
-              <p className="text-gray-600">
-                Apply the AI recommendations to optimize your payroll operations.
-              </p>
-            </div>
+            <p className="text-muted-foreground">&copy; 2025 PayrollPro AI. All rights reserved.</p>
           </div>
         </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-16 bg-blue-600 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Transform Your Payroll Management?</h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Join thousands of businesses using PayrollPro AI to streamline their payroll operations.
-          </p>
-          <Link href="/agents">
-            <span className="bg-white text-blue-600 px-8 py-4 rounded-lg font-medium text-lg hover:bg-blue-50 transition-colors cursor-pointer inline-block">
-              Get Started Today
-            </span>
-          </Link>
-        </div>
-      </section>
+      </footer>
     </div>
   );
-};
-
-export default LandingPage;
+}
