@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Briefcase Body -->
+        <rect fill="#EC4899" x="40" y="80" width="120" height="80" rx="10"></rect>
+        
+        <!-- Briefcase Top -->
+        <rect fill="#EC4899" x="40" y="70" width="120" height="20" rx="5"></rect>
+        
+        <!-- Handle -->
+        <rect fill="#EC4899" x="85" y="60" width="30" height="10" rx="5"></rect>
+        
+        <!-- Handle Connection -->
+        <rect fill="#EC4899" x="85" y="70" width="10" height="5"></rect>
+        <rect fill="#EC4899" x="105" y="70" width="10" height="5"></rect>
+        
+        <!-- Briefcase Front Design -->
+        <rect fill="#FFFFFF" x="60" y="110" width="80" height="40" rx="5"></rect>
+        
+        <!-- Lock -->
+        <rect fill="#FFCD56" x="95" y="100" width="10" height="15" rx="2"></rect>
+        <circle fill="#FFCD56" cx="100" cy="105" r="5"></circle>
+        
+        <!-- Files/Papers -->
+        <rect fill="#FFFFFF" x="70" y="60" width="30" height="40" rx="2" transform="rotate(-10 70 60)"></rect>
+        <rect fill="#EAEAEA" x="75" y="65" width="20" height="2" rx="1" transform="rotate(-10 75 65)"></rect>
+        <rect fill="#EAEAEA" x="75" y="70" width="15" height="2" rx="1" transform="rotate(-10 75 70)"></rect>
+        
+        <!-- Dollar Sign -->
+        <text font-family="Arial" font-size="24" font-weight="bold" fill="#EC4899">
+            <tspan x="85" y="135">$$$</tspan>
+        </text>
+    </g>
+</svg>

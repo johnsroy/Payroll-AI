@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Background Circle -->
+        <circle fill="#E0E7FF" cx="100" cy="100" r="80"></circle>
+        
+        <!-- Database -->
+        <path d="M70,70 C70,61.716 83.432,55 100,55 C116.568,55 130,61.716 130,70 L130,130 C130,138.284 116.568,145 100,145 C83.432,145 70,138.284 70,130 L70,70 Z" fill="#4F46E5"></path>
+        
+        <!-- Database Top Layer -->
+        <path d="M100,55 C116.568,55 130,61.716 130,70 C130,78.284 116.568,85 100,85 C83.432,85 70,78.284 70,70 C70,61.716 83.432,55 100,55 Z" fill="#818CF8"></path>
+        
+        <!-- Database Middle Layer -->
+        <path d="M100,85 C116.568,85 130,91.716 130,100 C130,108.284 116.568,115 100,115 C83.432,115 70,108.284 70,100 C70,91.716 83.432,85 100,85 Z" fill="#818CF8"></path>
+        
+        <!-- Connection Lines -->
+        <line x1="130" y1="100" x2="160" y2="100" stroke="#4F46E5" stroke-width="3" stroke-linecap="round"></line>
+        <line x1="40" y1="100" x2="70" y2="100" stroke="#4F46E5" stroke-width="3" stroke-linecap="round"></line>
+        
+        <!-- Little People Icons -->
+        <circle fill="#C084FC" cx="30" cy="100" r="10"></circle>
+        <rect fill="#FFFFFF" x="25" y="95" width="10" height="6" rx="3"></rect>
+        
+        <circle fill="#C084FC" cx="170" cy="100" r="10"></circle>
+        <rect fill="#FFFFFF" x="165" y="95" width="10" height="6" rx="3"></rect>
+        
+        <!-- Data Icons -->
+        <rect fill="#FFFFFF" x="85" y="65" width="30" height="5" rx="2.5"></rect>
+        <rect fill="#FFFFFF" x="85" y="95" width="30" height="5" rx="2.5"></rect>
+        <rect fill="#FFFFFF" x="85" y="125" width="30" height="5" rx="2.5"></rect>
+        
+        <!-- Number -->
+        <circle fill="#FFFFFF" cx="40" cy="40" r="15"></circle>
+        <text font-family="Arial" font-size="20" font-weight="bold" fill="#4F46E5">
+            <tspan x="34" y="47">1</tspan>
+        </text>
+    </g>
+</svg>

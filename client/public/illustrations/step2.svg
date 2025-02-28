@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <!-- Background Circle -->
+        <circle fill="#DBEAFE" cx="100" cy="100" r="80"></circle>
+        
+        <!-- Settings Gear -->
+        <path d="M100,65 L105,65 L107,75 C109.668,75.6379 112.168,76.6379 114.454,77.959 L123.301,72.959 L126.159,75.817 L121.159,84.664 C122.48,86.9504 123.48,89.4504 124.118,92.118 L134.118,94.118 L134.118,99.118 L124.118,101.118 C123.48,103.786 122.48,106.286 121.159,108.572 L126.159,117.419 L123.301,120.277 L114.454,115.277 C112.168,116.598 109.668,117.598 107,118.236 L105,128.236 L100,128.236 L98,118.236 C95.332,117.598 92.832,116.598 90.546,115.277 L81.699,120.277 L78.841,117.419 L83.841,108.572 C82.52,106.286 81.52,103.786 80.882,101.118 L70.882,99.118 L70.882,94.118 L80.882,92.118 C81.52,89.4504 82.52,86.9504 83.841,84.664 L78.841,75.817 L81.699,72.959 L90.546,77.959 C92.832,76.6379 95.332,75.6379 98,75 L100,65 Z" fill="#3B82F6"></path>
+        
+        <!-- Inner Circle -->
+        <circle fill="#FFFFFF" cx="100" cy="97" r="20"></circle>
+        
+        <!-- Robot Face -->
+        <circle fill="#3B82F6" cx="90" cy="92" r="5"></circle>
+        <circle fill="#3B82F6" cx="110" cy="92" r="5"></circle>
+        <path d="M90,107 C93.333,110.333 96.667,112 100,112 C103.333,112 106.667,110.333 110,107" stroke="#3B82F6" stroke-width="3" stroke-linecap="round"></path>
+        
+        <!-- Brain Nodes -->
+        <circle fill="#FCA5A5" cx="70" cy="40" r="8"></circle>
+        <circle fill="#FCA5A5" cx="130" cy="40" r="8"></circle>
+        <circle fill="#FCA5A5" cx="50" cy="70" r="8"></circle>
+        <circle fill="#FCA5A5" cx="150" cy="70" r="8"></circle>
+        <circle fill="#FCA5A5" cx="40" cy="110" r="8"></circle>
+        <circle fill="#FCA5A5" cx="160" cy="110" r="8"></circle>
+        <circle fill="#FCA5A5" cx="70" cy="140" r="8"></circle>
+        <circle fill="#FCA5A5" cx="130" cy="140" r="8"></circle>
+        
+        <!-- Connection Lines -->
+        <line x1="70" y1="40" x2="130" y2="40" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        <line x1="70" y1="40" x2="50" y2="70" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        <line x1="130" y1="40" x2="150" y2="70" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        <line x1="50" y1="70" x2="40" y2="110" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        <line x1="150" y1="70" x2="160" y2="110" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        <line x1="40" y1="110" x2="70" y2="140" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        <line x1="160" y1="110" x2="130" y2="140" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        <line x1="70" y1="140" x2="130" y2="140" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-dasharray="4,2"></line>
+        
+        <!-- Number -->
+        <circle fill="#FFFFFF" cx="40" cy="40" r="15"></circle>
+        <text font-family="Arial" font-size="20" font-weight="bold" fill="#3B82F6">
+            <tspan x="34" y="47">2</tspan>
+        </text>
+    </g>
+</svg>
