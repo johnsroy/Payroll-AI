@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import React from 'react';
+import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 
 interface AnimatedFeatureCardProps {
@@ -15,60 +15,44 @@ export function AnimatedFeatureCard({
   description,
   index = 0 
 }: AnimatedFeatureCardProps) {
-  const controls = useAnimation();
-  const [ref, inView] = useInView({
+  const { ref, inView } = useInView({
     threshold: 0.1,
-    triggerOnce: true
+    triggerOnce: true,
   });
-
-  useEffect(() => {
-    if (inView) {
-      controls.start('visible');
-    }
-  }, [controls, inView]);
-
-  const cardVariants = {
-    hidden: { y: 50, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.5,
-        delay: index * 0.1,
-        ease: 'easeOut'
-      }
-    }
-  };
-
-  const iconVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: {
-      scale: 1,
-      opacity: 1,
-      transition: {
-        duration: 0.5,
-        delay: index * 0.1 + 0.2,
-        ease: 'easeOut'
-      }
-    }
-  };
 
   return (
     <motion.div
       ref={ref}
-      initial="hidden"
-      animate={controls}
-      variants={cardVariants}
-      className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
+      initial={{ opacity: 0, y: 50 }}
+      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      className="group flex flex-col p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700"
     >
-      <motion.div 
-        variants={iconVariants}
-        className="rounded-full bg-blue-100 w-12 h-12 flex items-center justify-center mb-4"
-      >
+      <div className="rounded-lg p-3 bg-indigo-50 dark:bg-indigo-900/30 w-fit mb-4 text-indigo-600 dark:text-indigo-300">
         {icon}
-      </motion.div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-600">{description}</p>
+      </div>
+      <h3 className="text-lg font-semibold mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
+        {title}
+      </h3>
+      <p className="text-gray-600 dark:text-gray-300">
+        {description}
+      </p>
+      <div className="mt-4 flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400">
+        <span className="group-hover:underline transition-all">Learn more</span>
+        <svg 
+          className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" 
+          fill="none"
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth={2} 
+            d="M9 5l7 7-7 7" 
+          />
+        </svg>
+      </div>
     </motion.div>
   );
 }

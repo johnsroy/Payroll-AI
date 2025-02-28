@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Clock Illustration</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#F5F7FF" x="0" y="0" width="200" height="200"></rect>
+        <g transform="translate(40.000000, 40.000000)">
+            <circle fill="#FFFFFF" cx="60" cy="60" r="60"></circle>
+            <circle fill="#4F46E5" cx="60" cy="60" r="55"></circle>
+            <circle fill="#FFFFFF" cx="60" cy="60" r="50"></circle>
+            <circle fill="#22D3EE" cx="60" cy="60" r="5"></circle>
+            <rect fill="#4F46E5" x="59" y="30" width="2" height="30" rx="1"></rect>
+            <rect fill="#4F46E5" x="59" y="60" width="25" height="2" rx="1"></rect>
+            <circle fill="#FFFFFF" cx="15" cy="60" r="3"></circle>
+            <circle fill="#FFFFFF" cx="105" cy="60" r="3"></circle>
+            <circle fill="#FFFFFF" cx="60" cy="15" r="3"></circle>
+            <circle fill="#FFFFFF" cx="60" cy="105" r="3"></circle>
+            <rect fill="#4F46E5" x="10" y="57" width="10" height="6" rx="3"></rect>
+            <rect fill="#4F46E5" x="100" y="57" width="10" height="6" rx="3"></rect>
+            <rect fill="#4F46E5" x="57" y="10" width="6" height="10" rx="3"></rect>
+            <rect fill="#4F46E5" x="57" y="100" width="6" height="10" rx="3"></rect>
+        </g>
+    </g>
+</svg>
