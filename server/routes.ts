@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { getAgents, processQuery } from "./api/agent";
+import { getAvailableAgents, processAgentQuery, processMultiAgentQuery } from "./api/agent-brain";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
@@ -12,6 +13,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Agent API endpoints - new implementation
   app.get('/api/agents', getAgents);
   app.post('/api/query', processQuery);
+  
+  // Multi-agent API endpoints
+  app.get('/api/brain/agents', getAvailableAgents);
+  app.post('/api/brain/query/single', processAgentQuery);
+  app.post('/api/brain/query/multi', processMultiAgentQuery);
   
   // Keep old endpoints for backward compatibility
   app.get('/api/agent/available', getAgents);

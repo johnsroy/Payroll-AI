@@ -254,10 +254,19 @@ export async function getAvailableAgents(_req: Request, res: Response) {
 // Process multi-agent query using the reasoning engine to coordinate
 export async function processMultiAgentQuery(req: Request, res: Response) {
   try {
+    console.log('Processing multi-agent query:', req.body);
     const { query, userId, companyId } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
+    }
+    
+    // Check if API keys are available
+    if (!process.env.ANTHROPIC_API_KEY || !process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ 
+        error: 'Missing API keys', 
+        details: 'ANTHROPIC_API_KEY and OPENAI_API_KEY are required for multi-agent processing'
+      });
     }
 
     // First, use the reasoning agent to determine which specialized agents to consult

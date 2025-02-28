@@ -58,12 +58,28 @@ export interface MultiAgentResponse {
  * Get a list of available agents
  */
 export async function getAvailableAgents(): Promise<AgentMetadata[]> {
-  const response = await apiRequest<{ agents: AgentMetadata[] }>({
-    method: "GET",
-    path: "/api/agent/available"
-  });
-  
-  return response.agents;
+  try {
+    // First try to get agents from the brain API
+    const response = await apiRequest<{ agents: AgentMetadata[] }>({
+      method: "GET",
+      path: "/api/brain/agents"
+    });
+    
+    return response.agents;
+  } catch (error) {
+    // Fallback to the old API if brain API fails
+    try {
+      const response = await apiRequest<AgentMetadata[]>({
+        method: "GET",
+        path: "/api/agent/available"
+      });
+      
+      return Array.isArray(response) ? response : [];
+    } catch (fallbackError) {
+      console.error("Failed to fetch agents from both APIs:", fallbackError);
+      return [];
+    }
+  }
 }
 
 /**
@@ -75,16 +91,31 @@ export async function processAgentQuery(
   userId?: string,
   companyId?: string
 ): Promise<AgentResponse> {
-  return await apiRequest<AgentResponse>({
-    method: "POST",
-    path: "/api/agent/query",
-    data: {
-      query,
-      agentType,
-      userId,
-      companyId
-    }
-  });
+  try {
+    // First try with the brain API
+    return await apiRequest<AgentResponse>({
+      method: "POST",
+      path: "/api/brain/query/single",
+      data: {
+        query,
+        agentType,
+        userId,
+        companyId
+      }
+    });
+  } catch (error) {
+    // Fallback to the old API if brain API fails
+    return await apiRequest<AgentResponse>({
+      method: "POST",
+      path: "/api/agent/query",
+      data: {
+        query,
+        agentType,
+        userId,
+        companyId
+      }
+    });
+  }
 }
 
 /**
@@ -98,7 +129,7 @@ export async function processMultiAgentQuery(
 ): Promise<MultiAgentResponse> {
   return await apiRequest<MultiAgentResponse>({
     method: "POST",
-    path: "/api/agent/multi-query",
+    path: "/api/brain/query/multi",
     data: {
       query,
       userId,

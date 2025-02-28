@@ -30,15 +30,27 @@ export interface AgentResponse {
  */
 export async function getAvailableAgents(): Promise<AgentMetadata[]> {
   try {
-    const response = await fetch('/api/agents');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch agents: ${response.statusText}`);
+    // Try the official endpoint
+    try {
+      const response = await fetch('/api/brain/agents');
+      if (response.ok) {
+        const data = await response.json();
+        return data.agents || [];
+      }
+    } catch (error) {
+      console.error('Error fetching from brain/agents endpoint:', error);
     }
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching available agents:', error);
+
+    // Try the alternate endpoints
+    try {
+      const response = await fetch('/api/agents');
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error('Error fetching from agents endpoint:', error);
+    }
     
-    // Try the alternate endpoint (for backward compatibility)
     try {
       const altResponse = await fetch('/api/agent/available');
       if (altResponse.ok) {
@@ -81,6 +93,9 @@ export async function getAvailableAgents(): Promise<AgentMetadata[]> {
         description: 'Provides logical analysis and reasoning for complex queries'
       }
     ];
+  } catch (error) {
+    console.error('Error in getAvailableAgents:', error);
+    throw error;
   }
 }
 
@@ -92,7 +107,27 @@ export async function processAgentQuery(
   agentType: AgentType = 'reasoning',
 ): Promise<AgentResponse> {
   try {
-    // Try the primary endpoint
+    // Try the brain/query/single endpoint (newer API)
+    try {
+      const brainResponse = await fetch('/api/brain/query/single', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          agentType,
+        }),
+      });
+
+      if (brainResponse.ok) {
+        return await brainResponse.json();
+      }
+    } catch (brainError) {
+      console.error('Error with brain/query/single endpoint:', brainError);
+    }
+    
+    // Try the standard endpoint
     try {
       const response = await fetch('/api/query', {
         method: 'POST',
@@ -109,28 +144,30 @@ export async function processAgentQuery(
         return await response.json();
       }
     } catch (primaryError) {
-      console.error('Error with primary endpoint:', primaryError);
+      console.error('Error with query endpoint:', primaryError);
     }
     
-    // Try the alternate endpoint
-    const altResponse = await fetch('/api/agent/query', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query,
-        agentType,
-      }),
-    });
+    // Try the agent/query endpoint (for backward compatibility)
+    try {
+      const altResponse = await fetch('/api/agent/query', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          agentType,
+        }),
+      });
 
-    if (altResponse.ok) {
-      return await altResponse.json();
+      if (altResponse.ok) {
+        return await altResponse.json();
+      }
+    } catch (altError) {
+      console.error('Error with agent/query endpoint:', altError);
     }
     
-    throw new Error(`All API endpoints failed`);
-  } catch (error) {
-    console.error('Error processing agent query:', error);
+    console.error('All API endpoints failed');
     
     // Return mock response if API is not available
     return {
@@ -143,6 +180,23 @@ export async function processAgentQuery(
       metadata: {
         source: 'mock',
         processingTime: 1.2,
+      }
+    };
+  } catch (error) {
+    console.error('Error processing agent query:', error);
+    
+    // Return mock response if there's an unexpected error
+    return {
+      id: 'mock-id-' + Date.now(),
+      query,
+      response: `This is a simulated response to your query: "${query}" from the ${agentType} agent. In a production environment, this would be processed by our AI model.`,
+      agentType,
+      agentName: getAgentName(agentType),
+      timestamp: new Date().toISOString(),
+      metadata: {
+        source: 'mock',
+        processingTime: 1.2,
+        error: error instanceof Error ? error.message : String(error)
       }
     };
   }
