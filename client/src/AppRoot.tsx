@@ -3,6 +3,10 @@ import { Route, Switch, Link } from 'wouter';
 import FullLandingPage from './pages/FullLandingPage';
 import SimpleAgentPlayground from './pages/SimpleAgentPlayground';
 import DataConnectionPage from './pages/data-connection';
+import WorkflowHomePage from './pages/workflow-home';
+import WorkflowDataConnectionPage from './pages/workflow/data-connection';
+import WorkflowReviewPage from './pages/workflow/review';
+import WorkflowImplementPage from './pages/workflow/implement';
 
 const AppRoot: React.FC = () => {
   return (
