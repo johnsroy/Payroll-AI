@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="150px" height="150px" viewBox="0 0 150 150" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <g transform="translate(30.000000, 15.000000)">
+      <!-- Robot Head -->
+      <rect fill="#4F46E5" x="15" y="0" width="60" height="50" rx="10"></rect>
+      <!-- Robot Eyes -->
+      <circle fill="#FFFFFF" cx="30" y="20" r="8"></circle>
+      <circle fill="#FFFFFF" cx="60" y="20" r="8"></circle>
+      <circle fill="#000000" cx="30" y="20" r="4"></circle>
+      <circle fill="#000000" cx="60" y="20" r="4"></circle>
+      <!-- Robot Antenna -->
+      <rect fill="#4F46E5" x="40" y="-10" width="10" height="15" rx="5"></rect>
+      <circle fill="#FF5757" cx="45" y="-12" r="5"></circle>
+      <!-- Robot Mouth -->
+      <rect fill="#FFFFFF" x="32" y="35" width="25" height="6" rx="3"></rect>
+      <!-- Robot Body -->
+      <rect fill="#6366F1" x="20" y="50" width="50" height="60" rx="8"></rect>
+      <!-- Robot Control Panel -->
+      <rect fill="#F9FAFB" x="30" y="60" width="30" height="20" rx="3"></rect>
+      <circle fill="#FF5757" cx="37" y="70" r="3"></circle>
+      <circle fill="#34D399" cx="45" y="70" r="3"></circle>
+      <circle fill="#3B82F6" cx="53" y="70" r="3"></circle>
+      <!-- Robot Arms -->
+      <rect fill="#818CF8" x="0" y="55" width="20" height="10" rx="5"></rect>
+      <rect fill="#818CF8" x="70" y="55" width="20" height="10" rx="5"></rect>
+      <!-- Robot Legs -->
+      <rect fill="#4F46E5" x="30" y="110" width="10" height="25" rx="5"></rect>
+      <rect fill="#4F46E5" x="50" y="110" width="10" height="25" rx="5"></rect>
+      <!-- Robot Feet -->
+      <rect fill="#312E81" x="25" y="130" width="20" height="5" rx="2.5"></rect>
+      <rect fill="#312E81" x="45" y="130" width="20" height="5" rx="2.5"></rect>
+    </g>
+  </g>
+</svg>

@@ -1,23 +1,15 @@
-import React from "react";
 import { createRoot } from "react-dom/client";
-import AppRoot from "./AppRoot";
-import "./index.css";
-import { Toaster } from "@/components/ui/toaster";
+import SimpleApp from "./SimpleApp";
+// Leaving out CSS import to see if it causes issues
 
-// Get the root element
+// Create a very simple element to display for debugging
 const rootElement = document.getElementById("root");
-
-// Check if the root element exists
-if (!rootElement) {
-  console.error("Root element not found");
-  throw new Error("Root element not found");
+if (rootElement) {
+  rootElement.innerHTML = "<h1>Basic HTML Test</h1>";
 }
 
-// Create the root and render the app
+// Skip React rendering to isolate issues
+/*
 const root = createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <AppRoot />
-    <Toaster />
-  </React.StrictMode>
-);
+root.render(<SimpleApp />);
+*/
