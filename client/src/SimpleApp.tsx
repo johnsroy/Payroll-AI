@@ -320,7 +320,7 @@ function SimpleApp() {
                 imageSrc: "https://randomuser.me/api/portraits/men/2.jpg"
               },
               {
-                quote: "I'm amazed how the AI categorizes our expenses with such accuracy. Tax time is no longer stressful - everything is organized perfectly.",
+                quote: "I am amazed how the AI categorizes our expenses with such accuracy. Tax time is no longer stressful - everything is organized perfectly.",
                 author: "Emma Rodriguez",
                 role: "Accountant, Global Services LLC",
                 imageSrc: "https://randomuser.me/api/portraits/women/3.jpg"
