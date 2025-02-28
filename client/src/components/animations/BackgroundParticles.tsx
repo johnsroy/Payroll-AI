@@ -1,91 +1,70 @@
-import React, { useCallback } from 'react';
-import Particles from 'react-tsparticles';
-import type { Container, Engine } from 'tsparticles-engine';
-import { loadFull } from 'tsparticles';
+import React from 'react';
+import { motion } from 'framer-motion';
 
 export function BackgroundParticles() {
-  const particlesInit = useCallback(async (engine: Engine) => {
-    // Initialize the tsParticles instance
-    await loadFull(engine);
-  }, []);
-
-  const particlesLoaded = useCallback(async (container: Container | undefined) => {
-    // Particles container loaded
-  }, []);
+  // Creates an array of 50 particles with random positions
+  const particles = Array.from({ length: 50 }).map((_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    y: Math.random() * 100,
+    size: Math.random() * 2 + 1,
+    duration: Math.random() * 20 + 10
+  }));
 
   return (
-    <Particles
-      id="tsparticles"
-      init={particlesInit}
-      loaded={particlesLoaded}
-      className="absolute inset-0 -z-10"
-      options={{
-        fpsLimit: 60,
-        interactivity: {
-          events: {
-            onClick: {
-              enable: false,
-              mode: "push",
-            },
-            onHover: {
-              enable: true,
-              mode: "repulse",
-            },
-            resize: true,
-          },
-          modes: {
-            push: {
-              quantity: 4,
-            },
-            repulse: {
-              distance: 100,
-              duration: 0.4,
-            },
-          },
-        },
-        particles: {
-          color: {
-            value: "#3b82f6", // blue-500
-          },
-          links: {
-            color: "#93c5fd", // blue-300
-            distance: 150,
-            enable: true,
-            opacity: 0.3,
-            width: 1,
-          },
-          collisions: {
-            enable: true,
-          },
-          move: {
-            direction: "none",
-            enable: true,
-            outModes: {
-              default: "bounce",
-            },
-            random: false,
-            speed: 1,
-            straight: false,
-          },
-          number: {
-            density: {
-              enable: true,
-              area: 800,
-            },
-            value: 50,
-          },
-          opacity: {
-            value: 0.3,
-          },
-          shape: {
-            type: "circle",
-          },
-          size: {
-            value: { min: 1, max: 3 },
-          },
-        },
-        detectRetina: true,
-      }}
-    />
+    <div className="absolute inset-0 overflow-hidden -z-10">
+      {particles.map((particle) => (
+        <motion.div
+          key={particle.id}
+          className="absolute rounded-full bg-blue-500 opacity-30"
+          style={{
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+          }}
+          animate={{
+            x: [0, Math.random() * 50 - 25, 0],
+            y: [0, Math.random() * 50 - 25, 0],
+          }}
+          transition={{
+            duration: particle.duration,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      ))}
+      
+      {/* Particle connections using SVG lines */}
+      <svg className="absolute inset-0 w-full h-full">
+        {particles.slice(0, 20).map((particle, index) => (
+          <React.Fragment key={`connection-${particle.id}`}>
+            {particles.slice(index + 1, index + 5).map((connectedParticle) => (
+              <motion.line
+                key={`line-${particle.id}-${connectedParticle.id}`}
+                x1={`${particle.x}%`}
+                y1={`${particle.y}%`}
+                x2={`${connectedParticle.x}%`}
+                y2={`${connectedParticle.y}%`}
+                stroke="#93c5fd"
+                strokeWidth="1"
+                strokeOpacity="0.2"
+                animate={{
+                  x1: [0, Math.random() * 2 - 1, 0],
+                  y1: [0, Math.random() * 2 - 1, 0],
+                  x2: [0, Math.random() * 2 - 1, 0],
+                  y2: [0, Math.random() * 2 - 1, 0],
+                }}
+                transition={{
+                  duration: (particle.duration + connectedParticle.duration) / 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              />
+            ))}
+          </React.Fragment>
+        ))}
+      </svg>
+    </div>
   );
 }
