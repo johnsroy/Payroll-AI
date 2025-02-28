@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import SimpleRoutingApp from "./SimpleRoutingApp";
+import MinimalApp from "./MinimalApp";
 import "./index.css";
 
 // Get the root element
@@ -16,6 +16,6 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <SimpleRoutingApp />
+    <MinimalApp />
   </React.StrictMode>
 );

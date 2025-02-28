@@ -1,23 +1,10 @@
 import React from 'react';
 
-const Home = () => (
-  <div className="p-6">
-    <h1 className="text-2xl font-bold">PayrollPro AI</h1>
-    <p className="mt-2">Simple app to test for syntax errors</p>
-  </div>
-);
-
-const MinimalApp: React.FC = () => {
+const MinimalApp = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm p-4">
-        <div className="container mx-auto">
-          <h1 className="text-xl font-bold text-blue-600">PayrollPro AI</h1>
-        </div>
-      </header>
-      <main className="container mx-auto py-6">
-        <Home />
-      </main>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h1 style={{ color: '#4a6cf7' }}>PayrollPro AI</h1>
+      <p>Welcome to our AI-powered payroll platform.</p>
     </div>
   );
 };
