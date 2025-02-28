@@ -12,47 +12,105 @@ interface AnimatedFeatureCardProps {
 export function AnimatedFeatureCard({ 
   icon, 
   title, 
-  description,
+  description, 
   index = 0 
 }: AnimatedFeatureCardProps) {
-  const { ref, inView } = useInView({
-    threshold: 0.1,
+  const [ref, inView] = useInView({
     triggerOnce: true,
+    threshold: 0.1
   });
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 50 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group flex flex-col p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 border border-gray-100 dark:border-gray-700"
+      className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-all"
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        visible: { 
+          opacity: 1, 
+          y: 0, 
+          transition: { 
+            duration: 0.5,
+            delay: index * 0.1 
+          } 
+        }
+      }}
+      initial="hidden"
+      animate={inView ? "visible" : "hidden"}
+      whileHover={{ y: -5 }}
     >
-      <div className="rounded-lg p-3 bg-indigo-50 dark:bg-indigo-900/30 w-fit mb-4 text-indigo-600 dark:text-indigo-300">
+      <motion.div 
+        className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4"
+        initial={{ scale: 0 }}
+        animate={inView ? { scale: 1, rotate: [0, 10, 0] } : { scale: 0 }}
+        transition={{ 
+          type: "spring",
+          stiffness: 260,
+          damping: 20,
+          delay: index * 0.1 + 0.2
+        }}
+      >
         {icon}
-      </div>
-      <h3 className="text-lg font-semibold mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors">
+      </motion.div>
+
+      <motion.h3 
+        className="text-xl font-semibold mb-2"
+        initial={{ opacity: 0, x: -10 }}
+        animate={inView ? { opacity: 1, x: 0 } : { opacity: 0, x: -10 }}
+        transition={{ delay: index * 0.1 + 0.3 }}
+      >
         {title}
-      </h3>
-      <p className="text-gray-600 dark:text-gray-300">
+      </motion.h3>
+
+      <motion.p 
+        className="text-gray-600 mb-4"
+        initial={{ opacity: 0 }}
+        animate={inView ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ delay: index * 0.1 + 0.4 }}
+      >
         {description}
-      </p>
-      <div className="mt-4 flex items-center text-sm font-medium text-indigo-600 dark:text-indigo-400">
-        <span className="group-hover:underline transition-all">Learn more</span>
-        <svg 
-          className="ml-1 h-4 w-4 group-hover:translate-x-1 transition-transform" 
-          fill="none"
-          viewBox="0 0 24 24" 
-          stroke="currentColor"
+      </motion.p>
+
+      <motion.ul 
+        className="text-sm text-gray-600 space-y-1"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { 
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1,
+              delayChildren: index * 0.1 + 0.5
+            }
+          }
+        }}
+        initial="hidden"
+        animate={inView ? "visible" : "hidden"}
+      >
+        <motion.li 
+          variants={{
+            hidden: { opacity: 0, x: -20 },
+            visible: { opacity: 1, x: 0 }
+          }}
         >
-          <path 
-            strokeLinecap="round" 
-            strokeLinejoin="round" 
-            strokeWidth={2} 
-            d="M9 5l7 7-7 7" 
-          />
-        </svg>
-      </div>
+          • Specialized AI analysis
+        </motion.li>
+        <motion.li 
+          variants={{
+            hidden: { opacity: 0, x: -20 },
+            visible: { opacity: 1, x: 0 }
+          }}
+        >
+          • Real-time updates
+        </motion.li>
+        <motion.li 
+          variants={{
+            hidden: { opacity: 0, x: -20 },
+            visible: { opacity: 1, x: 0 }
+          }}
+        >
+          • Comprehensive reporting
+        </motion.li>
+      </motion.ul>
     </motion.div>
   );
 }

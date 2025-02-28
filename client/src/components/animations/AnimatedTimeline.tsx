@@ -13,8 +13,24 @@ interface AnimatedTimelineProps {
 }
 
 export function AnimatedTimeline({ items }: AnimatedTimelineProps) {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.3
+      }
+    }
+  };
+  
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-12">
+    <motion.div 
+      className="grid grid-cols-1 md:grid-cols-4 gap-8"
+      variants={containerVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.1 }}
+    >
       {items.map((item, index) => (
         <TimelineStep
           key={item.number}
@@ -22,9 +38,10 @@ export function AnimatedTimeline({ items }: AnimatedTimelineProps) {
           title={item.title}
           description={item.description}
           index={index}
+          isLast={index === items.length - 1}
         />
       ))}
-    </div>
+    </motion.div>
   );
 }
 
@@ -33,35 +50,104 @@ interface TimelineStepProps {
   title: string;
   description: string;
   index: number;
+  isLast: boolean;
 }
 
-function TimelineStep({ number, title, description, index }: TimelineStepProps) {
-  const { ref, inView } = useInView({
-    threshold: 0.2,
+function TimelineStep({ number, title, description, index, isLast }: TimelineStepProps) {
+  const [ref, inView] = useInView({
     triggerOnce: true,
+    threshold: 0.2
   });
-
+  
   return (
-    <motion.div
+    <motion.div 
       ref={ref}
-      initial={{ opacity: 0, y: 30 }}
-      animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
       className="flex flex-col items-center text-center"
+      variants={{
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0 }
+      }}
+      transition={{ 
+        duration: 0.6,
+        type: "spring",
+        stiffness: 100,
+        damping: 15
+      }}
     >
-      <div className="relative mb-4">
-        <div className="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center z-10 relative">
-          <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{number}</span>
-        </div>
+      <motion.div 
+        className="relative w-20 h-20 mb-6"
+        initial={{ scale: 0 }}
+        animate={inView ? { scale: 1, rotate: [0, 10, 0] } : {}}
+        transition={{ 
+          type: "spring",
+          stiffness: 260,
+          damping: 20,
+          delay: index * 0.1 + 0.2
+        }}
+      >
+        {/* Circle background with pulsing animation */}
+        <motion.div 
+          className="absolute inset-0 rounded-full bg-blue-600"
+          animate={{
+            boxShadow: inView 
+              ? ['0 0 0 0 rgba(59, 130, 246, 0)', '0 0 0 8px rgba(59, 130, 246, 0.2)', '0 0 0 0 rgba(59, 130, 246, 0)']
+              : '0 0 0 0 rgba(59, 130, 246, 0)'
+          }}
+          transition={{
+            duration: 2.5,
+            repeat: Infinity,
+            repeatType: "loop",
+            ease: "easeInOut",
+            delay: index * 0.2 + 0.3
+          }}
+        />
         
-        {/* Show connector line between steps, except for the last one */}
-        {index < 2 && (
-          <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-indigo-200 dark:bg-indigo-800 -z-10 transform -translate-y-1/2" style={{ width: 'calc(100% - 2rem)' }} />
-        )}
-      </div>
+        {/* Number */}
+        <div className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-white">
+          {number}
+        </div>
+      </motion.div>
       
-      <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">{title}</h3>
-      <p className="text-gray-600 dark:text-gray-300">{description}</p>
+      <motion.h3 
+        className="text-xl font-semibold mb-2 text-blue-700"
+        initial={{ opacity: 0 }}
+        animate={inView ? { opacity: 1 } : {}}
+        transition={{ delay: index * 0.1 + 0.5 }}
+      >
+        {title}
+      </motion.h3>
+      
+      <motion.p 
+        className="text-gray-600"
+        initial={{ opacity: 0 }}
+        animate={inView ? { opacity: 1 } : {}}
+        transition={{ delay: index * 0.1 + 0.7 }}
+      >
+        {description}
+      </motion.p>
+      
+      {/* Connector line (visible on mobile only) */}
+      {!isLast && (
+        <motion.div 
+          className="w-0.5 h-8 bg-blue-200 my-4 md:hidden"
+          initial={{ scaleY: 0 }}
+          animate={inView ? { scaleY: 1 } : {}}
+          transition={{ delay: index * 0.1 + 0.8 }}
+        />
+      )}
+      
+      {/* Connector line (visible on desktop only) */}
+      {!isLast && (
+        <div className="hidden md:block absolute left-1/2 top-10 w-full h-0.5">
+          <motion.div 
+            className="h-full bg-blue-200"
+            initial={{ scaleX: 0 }}
+            animate={inView ? { scaleX: 1 } : {}}
+            transition={{ delay: index * 0.1 + 0.4, duration: 0.8 }}
+            style={{ transformOrigin: 'left' }}
+          />
+        </div>
+      )}
     </motion.div>
   );
 }

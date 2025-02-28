@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
-import { loadSlim } from 'tsparticles-slim';
-import type { Engine } from 'tsparticles-engine';
 import Particles from 'react-tsparticles';
+import { loadSlim } from 'tsparticles-slim';
+import { Engine } from 'tsparticles-engine';
 
 export function BackgroundParticles() {
   const particlesInit = useCallback(async (engine: Engine) => {
@@ -18,35 +18,13 @@ export function BackgroundParticles() {
             value: "transparent",
           },
         },
-        fpsLimit: 120,
-        interactivity: {
-          events: {
-            onClick: {
-              enable: false,
-              mode: "push",
-            },
-            onHover: {
-              enable: true,
-              mode: "repulse",
-            },
-            resize: true,
-          },
-          modes: {
-            push: {
-              quantity: 4,
-            },
-            repulse: {
-              distance: 100,
-              duration: 0.4,
-            },
-          },
-        },
+        fpsLimit: 60,
         particles: {
           color: {
-            value: "#4F46E5",
+            value: "#3b82f6",
           },
           links: {
-            color: "#4F46E5",
+            color: "#3b82f6",
             distance: 150,
             enable: true,
             opacity: 0.2,
@@ -59,7 +37,7 @@ export function BackgroundParticles() {
               default: "bounce",
             },
             random: false,
-            speed: 1,
+            speed: 0.5,
             straight: false,
           },
           number: {
@@ -76,11 +54,12 @@ export function BackgroundParticles() {
             type: "circle",
           },
           size: {
-            value: { min: 1, max: 5 },
+            value: { min: 1, max: 4 },
           },
         },
         detectRetina: true,
       }}
+      className="absolute inset-0 z-0"
     />
   );
 }
