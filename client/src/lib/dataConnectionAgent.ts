@@ -168,10 +168,10 @@ export class DataConnectionAgent extends BaseAgent {
   /**
    * Initialize the Data Connection Agent
    */
-  constructor(config: AgentConfig = {}) {
+  constructor(config: AgentConfig = { name: "Data Connection Agent" }) {
     super({
       ...config,
-      name: config.name || "Data Connection Agent",
+      name: config.name,
       systemPrompt: config.systemPrompt || 
         `You are the Data Connection Agent, specialized in helping users connect to external data sources 
         and manage their data files. You can help users connect to services like Google Drive, Dropbox, 

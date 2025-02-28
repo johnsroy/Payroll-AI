@@ -270,118 +270,291 @@ export default function DataConnectionPage() {
               </button>
             </motion.div>
           </div>
+          
+          <div className="mt-12">
+            <StepProgress 
+              currentStep={currentStep}
+              completedSteps={completedSteps}
+              onStepClick={handleStepClick}
+              className="mb-6"
+            />
+          </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <DataSourcesPanel 
-                onSelectDataSource={handleSelectDataSource}
-                onConnectNew={handleConnectNew}
-              />
-            </motion.div>
-          </div>
+        {/* Step 1: Upload/Connect - Show data sources and files */}
+        {currentStep === 'upload' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-1">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <DataSourcesPanel 
+                  onSelectDataSource={handleSelectDataSource}
+                  onConnectNew={handleConnectNew}
+                />
+              </motion.div>
+            </div>
 
-          <div className="lg:col-span-2">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="bg-white rounded-lg shadow p-6"
-            >
-              <h2 className="text-xl font-semibold text-gray-800 mb-6">
-                {selectedDataSource 
-                  ? `Files from ${selectedDataSource.name}`
-                  : 'Select a data source to view files'}
+            <div className="lg:col-span-2">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="bg-white rounded-lg shadow p-6"
+              >
+                <h2 className="text-xl font-semibold text-gray-800 mb-6">
+                  {selectedDataSource 
+                    ? `Files from ${selectedDataSource.name}`
+                    : 'Select a data source to view files'}
+                </h2>
+
+                {selectedDataSource ? (
+                  <>
+                    <div className="border-b border-gray-200 pb-2 mb-4">
+                      <nav className="flex" aria-label="Breadcrumb">
+                        <ol className="flex items-center space-x-1">
+                          <li>
+                            <div className="flex items-center">
+                              <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                                {selectedDataSource.name}
+                              </a>
+                            </div>
+                          </li>
+                          <li>
+                            <div className="flex items-center">
+                              <ChevronRightIcon className="flex-shrink-0 h-4 w-4 text-gray-400" />
+                              <a href="#" className="ml-1 text-sm font-medium text-gray-500 hover:text-gray-700">
+                                Root
+                              </a>
+                            </div>
+                          </li>
+                        </ol>
+                      </nav>
+                    </div>
+
+                    <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name</th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Size</th>
+                            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Modified</th>
+                            <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                              <span className="sr-only">Actions</span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                          {files.map((file, index) => (
+                            <motion.tr 
+                              key={file.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05 }}
+                              whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
+                            >
+                              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
+                                <div className="flex items-center">
+                                  <span className="flex-shrink-0 mr-2">
+                                    {getFileIcon(file.type)}
+                                  </span>
+                                  <div className="font-medium text-gray-900">{file.name}</div>
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                {formatFileSize(file.size)}
+                              </td>
+                              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                                {file.lastModified.toLocaleDateString()}
+                              </td>
+                              <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                                <button 
+                                  className="text-blue-600 hover:text-blue-900 mr-4"
+                                  onClick={() => {
+                                    setCompletedSteps([...completedSteps, 'upload']);
+                                    setCurrentStep('analyze');
+                                  }}
+                                >
+                                  Import
+                                </button>
+                                <a href="#" className="text-blue-600 hover:text-blue-900">View</a>
+                              </td>
+                            </motion.tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-10">
+                    <FileIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <h3 className="mt-2 text-sm font-medium text-gray-900">No files to display</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Select a data source to view and import files.
+                    </p>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Analysis - Show analysis progress */}
+        {currentStep === 'analyze' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="bg-white rounded-lg shadow p-8 max-w-4xl mx-auto"
+          >
+            <div className="text-center">
+              <BrainIcon className="h-16 w-16 text-blue-500 mb-4 mx-auto" />
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                Analyzing Your Data
               </h2>
+              <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+                Our AI is analyzing your payroll data to identify optimization opportunities, compliance risks, and potential automations.
+              </p>
 
-              {selectedDataSource ? (
-                <>
-                  <div className="border-b border-gray-200 pb-2 mb-4">
-                    <nav className="flex" aria-label="Breadcrumb">
-                      <ol className="flex items-center space-x-1">
-                        <li>
-                          <div className="flex items-center">
-                            <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">
-                              {selectedDataSource.name}
-                            </a>
-                          </div>
-                        </li>
-                        <li>
-                          <div className="flex items-center">
-                            <ChevronRightIcon className="flex-shrink-0 h-4 w-4 text-gray-400" />
-                            <a href="#" className="ml-1 text-sm font-medium text-gray-500 hover:text-gray-700">
-                              Root
-                            </a>
-                          </div>
-                        </li>
-                      </ol>
-                    </nav>
-                  </div>
-
-                  <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name</th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Size</th>
-                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Modified</th>
-                          <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                            <span className="sr-only">Actions</span>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        {files.map((file, index) => (
-                          <motion.tr 
-                            key={file.id}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.05 }}
-                            whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
-                          >
-                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
-                              <div className="flex items-center">
-                                <span className="flex-shrink-0 mr-2">
-                                  {getFileIcon(file.type)}
-                                </span>
-                                <div className="font-medium text-gray-900">{file.name}</div>
-                              </div>
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                              {formatFileSize(file.size)}
-                            </td>
-                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                              {file.lastModified.toLocaleDateString()}
-                            </td>
-                            <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                              <a href="#" className="text-blue-600 hover:text-blue-900 mr-4">Import</a>
-                              <a href="#" className="text-blue-600 hover:text-blue-900">View</a>
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-10">
-                  <FileIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No files to display</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Select a data source to view and import files.
-                  </p>
+              {isAnalyzing ? (
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                    className="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full mb-4"
+                  />
+                  <p className="text-gray-500">Analysis in progress...</p>
                 </div>
+              ) : (
+                <button
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  onClick={() => {
+                    setCompletedSteps([...completedSteps, 'analyze']);
+                    setCurrentStep('review');
+                  }}
+                >
+                  Continue to Review
+                </button>
               )}
-            </motion.div>
-          </div>
-        </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 3: Review - Show recommendations */}
+        {currentStep === 'review' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="bg-white rounded-lg shadow p-8 max-w-5xl mx-auto"
+          >
+            <AIRecommendations 
+              recommendations={recommendations} 
+              onStatusChange={handleRecommendationStatusChange}
+            />
+            
+            {recommendations.every(rec => rec.status !== 'pending') && (
+              <div className="mt-8 text-center">
+                <button
+                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  onClick={() => {
+                    setCompletedSteps([...completedSteps, 'review']);
+                    setCurrentStep('implement');
+                  }}
+                >
+                  Continue to Implementation
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Step 4: Implement - Show Zapier integrations */}
+        {currentStep === 'implement' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="bg-white rounded-lg shadow p-8 max-w-5xl mx-auto"
+          >
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                Implement with Zapier Integration
+              </h2>
+              <p className="text-gray-600 max-w-4xl">
+                Connect your payroll data with these popular applications to automate the recommendations.
+                These integrations will help you implement the identified optimizations and keep your systems in sync.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {zapierApps.map((app, index) => (
+                <motion.div
+                  key={app.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="border border-gray-200 rounded-lg p-6 hover:border-blue-400 hover:shadow-md transition-all"
+                >
+                  <div className="flex items-center mb-4">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mr-4">
+                      <img 
+                        src={app.iconUrl} 
+                        alt={app.name} 
+                        className="w-8 h-8 object-contain" 
+                        onError={(e) => {
+                          // If image fails to load, show a fallback icon
+                          e.currentTarget.style.display = 'none';
+                          const nextElement = e.currentTarget.nextElementSibling;
+                          if (nextElement) {
+                            (nextElement as HTMLElement).style.display = 'block';
+                          }
+                        }}
+                      />
+                      <div className="w-8 h-8 text-blue-500 hidden">
+                        <ZapIcon className="w-8 h-8" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{app.name}</h3>
+                      <p className="text-xs text-gray-500">{app.zapCount.toLocaleString()} zaps</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-4">{app.description}</p>
+                  <button
+                    className="w-full py-2 bg-gray-100 text-gray-800 rounded font-medium hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                  >
+                    Configure Integration
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
+              <h3 className="font-semibold text-lg text-gray-900 mb-2">Popular PayrollPro AI Templates</h3>
+              <p className="text-gray-600 mb-4">
+                Get started quickly with these pre-built Zapier integrations for payroll management.
+              </p>
+              <div className="space-y-4">
+                {ZapierIntegration.PAYROLL_ZAP_TEMPLATES.slice(0, 3).map((template, index) => (
+                  <div key={template.id} className="bg-white p-4 rounded border border-gray-200 flex justify-between items-center">
+                    <div>
+                      <h4 className="font-medium text-gray-900">{template.name}</h4>
+                      <p className="text-sm text-gray-600">{template.description}</p>
+                    </div>
+                    <button className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors">
+                      Use Template
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       <WavyBackground className="py-16 mt-16">
