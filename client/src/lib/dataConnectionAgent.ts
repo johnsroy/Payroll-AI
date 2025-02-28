@@ -3,7 +3,7 @@ import { BaseAgent, AgentConfig, AgentResponse } from './baseAgent';
 /**
  * Data source type definitions
  */
-export type DataSourceType = 'google_drive' | 'dropbox' | 'onedrive' | 'local' | 'zapier';
+export type DataSourceType = 'google_drive' | 'dropbox' | 'onedrive' | 'local';
 
 /**
  * Data source connection status
@@ -168,10 +168,10 @@ export class DataConnectionAgent extends BaseAgent {
   /**
    * Initialize the Data Connection Agent
    */
-  constructor(config: AgentConfig = { name: "Data Connection Agent" }) {
+  constructor(config: AgentConfig = {}) {
     super({
       ...config,
-      name: config.name,
+      name: config.name || "Data Connection Agent",
       systemPrompt: config.systemPrompt || 
         `You are the Data Connection Agent, specialized in helping users connect to external data sources 
         and manage their data files. You can help users connect to services like Google Drive, Dropbox, 
@@ -437,7 +437,7 @@ export class DataConnectionAgent extends BaseAgent {
     }
     
     // Validate data source type
-    if (!['google_drive', 'dropbox', 'onedrive', 'local', 'zapier'].includes(type)) {
+    if (!['google_drive', 'dropbox', 'onedrive', 'local'].includes(type)) {
       return { success: false, error: "Invalid data source type" };
     }
     

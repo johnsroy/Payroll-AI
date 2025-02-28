@@ -1,15 +1,25 @@
+import React from "react";
 import { createRoot } from "react-dom/client";
-import SimpleApp from "./SimpleApp";
-// Leaving out CSS import to see if it causes issues
+import AppRoot from "./AppRoot";
+import "./index.css";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
 
-// Create a very simple element to display for debugging
+// Get the root element
 const rootElement = document.getElementById("root");
-if (rootElement) {
-  rootElement.innerHTML = "<h1>Basic HTML Test</h1>";
+
+// Check if the root element exists
+if (!rootElement) {
+  console.error("Root element not found");
+  throw new Error("Root element not found");
 }
 
-// Skip React rendering to isolate issues
-/*
+// Create the root and render the app
 const root = createRoot(rootElement);
-root.render(<SimpleApp />);
-*/
+root.render(
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <AppRoot />
+    </QueryClientProvider>
+  </React.StrictMode>
+);

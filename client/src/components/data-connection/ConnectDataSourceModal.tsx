@@ -6,8 +6,7 @@ import {
   DatabaseIcon, 
   FolderIcon,
   ArrowRightIcon,
-  CheckCircleIcon,
-  ZapIcon
+  CheckCircleIcon
 } from 'lucide-react';
 
 import { DataSourceType } from '../../lib/dataConnectionAgent';
@@ -140,12 +139,6 @@ export default function ConnectDataSourceModal({
                             icon={<FolderIcon className="h-8 w-8 text-gray-600" />}
                             onClick={() => handleSelectType('local')}
                           />
-                          <DataSourceOption 
-                            type="zapier"
-                            name="Zapier Integration"
-                            icon={<ZapIcon className="h-8 w-8 text-yellow-500" />}
-                            onClick={() => handleSelectType('zapier')}
-                          />
                         </div>
                       )}
 
@@ -167,9 +160,7 @@ export default function ConnectDataSourceModal({
                           
                           <div className="bg-blue-50 p-4 rounded-md">
                             <p className="text-sm text-blue-700">
-                              {selectedType === 'zapier' 
-                                ? 'You\'ll create a connection between PayrollPro AI and your other apps through Zapier.' 
-                                : `You'll be redirected to authenticate with ${selectedType === 'google_drive' ? 'Google Drive' : selectedType === 'dropbox' ? 'Dropbox' : selectedType === 'onedrive' ? 'OneDrive' : 'your file system'}.`}
+                              You'll be redirected to authenticate with {selectedType === 'google_drive' ? 'Google Drive' : selectedType === 'dropbox' ? 'Dropbox' : selectedType === 'onedrive' ? 'OneDrive' : 'your file system'}.
                             </p>
                           </div>
 
@@ -207,11 +198,7 @@ export default function ConnectDataSourceModal({
                           </motion.div>
                           <h3 className="mt-4 text-lg font-medium text-gray-900">Successfully Connected!</h3>
                           <p className="mt-2 text-gray-600">
-                            Your {selectedType === 'google_drive' ? 'Google Drive' : 
-                                  selectedType === 'dropbox' ? 'Dropbox' : 
-                                  selectedType === 'onedrive' ? 'OneDrive' : 
-                                  selectedType === 'zapier' ? 'Zapier Integration' : 
-                                  'Local Files'} account is now connected to PayrollPro AI.
+                            Your {selectedType === 'google_drive' ? 'Google Drive' : selectedType === 'dropbox' ? 'Dropbox' : selectedType === 'onedrive' ? 'OneDrive' : 'Local Files'} account is now connected to PayrollPro AI.
                           </p>
                         </div>
                       )}
