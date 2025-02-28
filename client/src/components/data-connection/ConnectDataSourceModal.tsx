@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  XIcon, 
-  CloudIcon, 
-  DatabaseIcon, 
-  FolderIcon,
-  ArrowRightIcon,
-  CheckCircleIcon,
-  ZapIcon
-} from 'lucide-react';
-
+import { XIcon, FileIcon, CloudIcon, FolderIcon } from 'lucide-react';
 import { DataSourceType } from '../../lib/dataConnectionAgent';
 
 interface ConnectDataSourceModalProps {
@@ -20,257 +11,191 @@ interface ConnectDataSourceModalProps {
 
 export default function ConnectDataSourceModal({ 
   isOpen, 
-  onClose, 
-  onConnect 
+  onClose,
+  onConnect
 }: ConnectDataSourceModalProps) {
-  const [step, setStep] = useState<'select' | 'configure' | 'connecting' | 'complete'>('select');
   const [selectedType, setSelectedType] = useState<DataSourceType | null>(null);
-  const [name, setName] = useState('');
-  const [isConnecting, setIsConnecting] = useState(false);
-
+  const [sourceName, setSourceName] = useState('');
+  
   const handleSelectType = (type: DataSourceType) => {
     setSelectedType(type);
-    setName(
-      type === 'google_drive' ? 'Google Drive' : 
-      type === 'dropbox' ? 'Dropbox' : 
-      type === 'onedrive' ? 'OneDrive' : 
-      'Local Files'
-    );
-    setStep('configure');
-  };
-
-  const handleBack = () => {
-    if (step === 'configure') {
-      setStep('select');
+    
+    // Set default name based on selected type
+    switch (type) {
+      case 'google_drive':
+        setSourceName('Google Drive');
+        break;
+      case 'dropbox':
+        setSourceName('Dropbox');
+        break;
+      case 'onedrive':
+        setSourceName('OneDrive');
+        break;
+      case 'local':
+        setSourceName('Local Files');
+        break;
+      case 'zapier':
+        setSourceName('Zapier');
+        break;
+      default:
+        setSourceName('');
     }
   };
-
-  const handleConnect = async () => {
-    if (!selectedType) return;
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setStep('connecting');
-    setIsConnecting(true);
-    
-    // Simulate connection process
-    setTimeout(() => {
-      setIsConnecting(false);
-      setStep('complete');
+    if (selectedType && sourceName.trim()) {
+      onConnect(selectedType, sourceName);
       
-      // Simulate a successful connection after 1.5 seconds
-      setTimeout(() => {
-        onConnect(selectedType, name);
-        onClose();
-        // Reset state for next time
-        setStep('select');
-        setSelectedType(null);
-        setName('');
-      }, 1500);
-    }, 2000);
+      // Reset form
+      setSelectedType(null);
+      setSourceName('');
+    }
   };
-
-  // Prevent interaction with the background while modal is open
+  
   if (!isOpen) return null;
-
+  
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 overflow-y-auto z-50">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <motion.div 
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={onClose}
-            />
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <motion.div 
-              className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              transition={{ type: 'spring', duration: 0.5 }}
-            >
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        {step === 'select' && 'Connect Data Source'}
-                        {step === 'configure' && `Configure ${selectedType === 'google_drive' ? 'Google Drive' : selectedType === 'dropbox' ? 'Dropbox' : selectedType === 'onedrive' ? 'OneDrive' : 'Local Files'}`}
-                        {step === 'connecting' && 'Connecting...'}
-                        {step === 'complete' && 'Connection Successful'}
-                      </h3>
-                      <button
-                        type="button"
-                        className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                        onClick={onClose}
-                      >
-                        <span className="sr-only">Close</span>
-                        <XIcon className="h-6 w-6" aria-hidden="true" />
-                      </button>
-                    </div>
-
-                    <div className="mt-4">
-                      {step === 'select' && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <DataSourceOption 
-                            type="google_drive"
-                            name="Google Drive"
-                            icon={<CloudIcon className="h-8 w-8 text-blue-500" />}
-                            onClick={() => handleSelectType('google_drive')}
-                          />
-                          <DataSourceOption 
-                            type="dropbox"
-                            name="Dropbox"
-                            icon={<DatabaseIcon className="h-8 w-8 text-blue-600" />}
-                            onClick={() => handleSelectType('dropbox')}
-                          />
-                          <DataSourceOption 
-                            type="onedrive"
-                            name="OneDrive"
-                            icon={<CloudIcon className="h-8 w-8 text-blue-700" />}
-                            onClick={() => handleSelectType('onedrive')}
-                          />
-                          <DataSourceOption 
-                            type="local"
-                            name="Local Files"
-                            icon={<FolderIcon className="h-8 w-8 text-gray-600" />}
-                            onClick={() => handleSelectType('local')}
-                          />
-                          <DataSourceOption 
-                            type="zapier"
-                            name="Zapier Integration"
-                            icon={<ZapIcon className="h-8 w-8 text-yellow-500" />}
-                            onClick={() => handleSelectType('zapier')}
-                          />
-                        </div>
-                      )}
-
-                      {step === 'configure' && (
-                        <div className="space-y-4">
-                          <div>
-                            <label htmlFor="connection-name" className="block text-sm font-medium text-gray-700">
-                              Connection Name
-                            </label>
-                            <input
-                              type="text"
-                              name="connection-name"
-                              id="connection-name"
-                              className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
-                              value={name}
-                              onChange={(e) => setName(e.target.value)}
-                            />
-                          </div>
-                          
-                          <div className="bg-blue-50 p-4 rounded-md">
-                            <p className="text-sm text-blue-700">
-                              {selectedType === 'zapier' 
-                                ? 'You\'ll create a connection between PayrollPro AI and your other apps through Zapier.' 
-                                : `You'll be redirected to authenticate with ${selectedType === 'google_drive' ? 'Google Drive' : selectedType === 'dropbox' ? 'Dropbox' : selectedType === 'onedrive' ? 'OneDrive' : 'your file system'}.`}
-                            </p>
-                          </div>
-
-                          <div className="mt-2">
-                            <p className="text-sm text-gray-500">
-                              By connecting, you're allowing PayrollPro AI to access and import your payroll data files.
-                              We'll never modify or delete your files without permission.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {step === 'connecting' && (
-                        <div className="flex flex-col items-center justify-center py-10">
-                          <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                            className="w-16 h-16 border-t-4 border-b-4 border-blue-500 rounded-full"
-                          />
-                          <p className="mt-4 text-gray-600">
-                            {isConnecting ? 'Connecting to your account...' : 'Almost there...'}
-                          </p>
-                        </div>
-                      )}
-
-                      {step === 'complete' && (
-                        <div className="flex flex-col items-center justify-center py-10">
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                            className="bg-green-100 rounded-full p-2"
-                          >
-                            <CheckCircleIcon className="h-14 w-14 text-green-500" />
-                          </motion.div>
-                          <h3 className="mt-4 text-lg font-medium text-gray-900">Successfully Connected!</h3>
-                          <p className="mt-2 text-gray-600">
-                            Your {selectedType === 'google_drive' ? 'Google Drive' : 
-                                  selectedType === 'dropbox' ? 'Dropbox' : 
-                                  selectedType === 'onedrive' ? 'OneDrive' : 
-                                  selectedType === 'zapier' ? 'Zapier Integration' : 
-                                  'Local Files'} account is now connected to PayrollPro AI.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <motion.div 
+        className="bg-white rounded-lg shadow-lg w-full max-w-md overflow-hidden"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900">Connect Data Source</h3>
+          <button 
+            className="text-gray-500 hover:text-gray-700"
+            onClick={onClose}
+          >
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
+        
+        <div className="p-6">
+          <AnimatePresence mode="wait">
+            {!selectedType ? (
+              <motion.div
+                key="select-type"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <h4 className="text-sm font-medium text-gray-700 mb-3">Select a data source type</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <DataSourceOption 
+                    type="google_drive"
+                    name="Google Drive"
+                    icon={<CloudIcon className="w-6 h-6 text-blue-600" />}
+                    onClick={() => handleSelectType('google_drive')}
+                  />
+                  <DataSourceOption 
+                    type="dropbox"
+                    name="Dropbox"
+                    icon={<CloudIcon className="w-6 h-6 text-blue-500" />}
+                    onClick={() => handleSelectType('dropbox')}
+                  />
+                  <DataSourceOption 
+                    type="onedrive"
+                    name="OneDrive"
+                    icon={<CloudIcon className="w-6 h-6 text-blue-700" />}
+                    onClick={() => handleSelectType('onedrive')}
+                  />
+                  <DataSourceOption 
+                    type="local"
+                    name="Local Files"
+                    icon={<FolderIcon className="w-6 h-6 text-amber-600" />}
+                    onClick={() => handleSelectType('local')}
+                  />
                 </div>
-              </div>
-              
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                {step === 'select' && (
+              </motion.div>
+            ) : (
+              <motion.div
+                key="configure-source"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="mb-6">
                   <button
-                    type="button"
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                    onClick={onClose}
+                    className="inline-flex items-center text-sm text-blue-600"
+                    onClick={() => setSelectedType(null)}
                   >
-                    Cancel
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back to all sources
                   </button>
-                )}
-
-                {step === 'configure' && (
-                  <>
-                    <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      type="button"
-                      className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-                      onClick={handleConnect}
-                      disabled={!name}
-                    >
-                      <span>Connect</span>
-                      <ArrowRightIcon className="ml-2 h-4 w-4" />
-                    </motion.button>
+                </div>
+                
+                <form onSubmit={handleSubmit}>
+                  <div className="mb-6">
+                    <div className="flex justify-center mb-4">
+                      <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                        {selectedType === 'google_drive' && <CloudIcon className="w-8 h-8 text-blue-600" />}
+                        {selectedType === 'dropbox' && <CloudIcon className="w-8 h-8 text-blue-500" />}
+                        {selectedType === 'onedrive' && <CloudIcon className="w-8 h-8 text-blue-700" />}
+                        {selectedType === 'local' && <FolderIcon className="w-8 h-8 text-amber-600" />}
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-center text-lg font-medium text-gray-900 mb-1">
+                      Connect to {sourceName}
+                    </h3>
+                    <p className="text-center text-sm text-gray-500 mb-4">
+                      Provide access to your data for analysis
+                    </p>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Connection Name
+                    </label>
+                    <input
+                      type="text"
+                      value={sourceName}
+                      onChange={(e) => setSourceName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter a name for this connection"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="bg-blue-50 px-4 py-3 border border-blue-200 rounded-md mb-6">
+                    <p className="text-sm text-blue-800">
+                      {selectedType === 'local' 
+                        ? 'You will be able to upload files directly from your device.'
+                        : `You'll be redirected to ${sourceName} to authorize access to your files.`}
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-end space-x-3">
                     <button
                       type="button"
-                      className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                      onClick={handleBack}
+                      className="px-4 py-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                      onClick={onClose}
                     >
-                      Back
+                      Cancel
                     </button>
-                  </>
-                )}
-
-                {step === 'complete' && (
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    type="button"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-                    onClick={onClose}
-                  >
-                    Done
-                  </motion.button>
-                )}
-              </div>
-            </motion.div>
-          </div>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      )}
-    </AnimatePresence>
+      </motion.div>
+    </div>
   );
 }
 
@@ -283,19 +208,17 @@ interface DataSourceOptionProps {
 
 function DataSourceOption({ type, name, icon, onClick }: DataSourceOptionProps) {
   return (
-    <motion.button
-      whileHover={{ 
-        y: -5,
-        boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
-      }}
-      whileTap={{ scale: 0.95 }}
-      className="flex flex-col items-center justify-center p-6 border border-gray-200 rounded-lg hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <motion.div
+      whileHover={{ scale: 1.03 }}
+      className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
       onClick={onClick}
     >
-      <div className="bg-blue-50 rounded-full p-3 mb-3">
-        {icon}
+      <div className="flex flex-col items-center text-center">
+        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+          {icon}
+        </div>
+        <h4 className="text-sm font-medium text-gray-900">{name}</h4>
       </div>
-      <span className="font-medium text-gray-900">{name}</span>
-    </motion.button>
+    </motion.div>
   );
 }
