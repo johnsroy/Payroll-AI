@@ -3,7 +3,7 @@ import { BaseAgent, AgentConfig, AgentResponse } from './baseAgent';
 /**
  * Data source type definitions
  */
-export type DataSourceType = 'google_drive' | 'dropbox' | 'onedrive' | 'local';
+export type DataSourceType = 'google_drive' | 'dropbox' | 'onedrive' | 'local' | 'zapier';
 
 /**
  * Data source connection status
@@ -437,7 +437,7 @@ export class DataConnectionAgent extends BaseAgent {
     }
     
     // Validate data source type
-    if (!['google_drive', 'dropbox', 'onedrive', 'local'].includes(type)) {
+    if (!['google_drive', 'dropbox', 'onedrive', 'local', 'zapier'].includes(type)) {
       return { success: false, error: "Invalid data source type" };
     }
     
