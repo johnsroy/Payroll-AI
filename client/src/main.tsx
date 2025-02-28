@@ -1,7 +1,9 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import SuperMinimal from "./SuperMinimal";
-import "./index.css";
+import NewApp from "./NewApp";
+
+// Skip importing CSS to test if that's an issue
+// import "./index.css";
 
 // Get the root element
 const rootElement = document.getElementById("root");
@@ -16,6 +18,6 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <SuperMinimal />
+    <NewApp />
   </React.StrictMode>
 );
