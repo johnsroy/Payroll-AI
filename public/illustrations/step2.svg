@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100px" height="100px" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <title>Step 2 - Configure AI</title>
+  <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <rect fill="#F0F9FF" x="0" y="0" width="100" height="100" rx="8"></rect>
+    <circle stroke="#3B82F6" stroke-width="2" fill="#FFFFFF" cx="50" cy="50" r="30"></circle>
+    <circle fill="#3B82F6" cx="40" cy="40" r="5"></circle>
+    <circle fill="#3B82F6" cx="60" cy="40" r="5"></circle>
+    <path d="M40,60 C40,65 45,70 50,70 C55,70 60,65 60,60" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"></path>
+    <path d="M25,30 L30,25 M70,30 L75,25 M25,70 L30,75 M70,70 L75,75" stroke="#3B82F6" stroke-width="2" stroke-linecap="round"></path>
+  </g>
+</svg>
