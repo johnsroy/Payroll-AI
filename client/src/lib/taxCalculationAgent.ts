@@ -121,10 +121,7 @@ export class TaxCalculationAgent extends BaseAgent {
   ];
   
   constructor(config: any = {}) {
-    super({
-      name: config.name || "Tax Calculation Agent",
-      systemPrompt: config.systemPrompt || 
-        `You are the Tax Calculation Agent, specialized in tax calculations and providing tax information.
+    const defaultSystemPrompt = `You are the Tax Calculation Agent, specialized in tax calculations and providing tax information.
         
 Your capabilities include:
 1. Calculating federal, state, and local income taxes
@@ -135,11 +132,78 @@ Your capabilities include:
 
 Always strive for accuracy in tax calculations. When uncertain about specific tax laws or rates for a jurisdiction, clearly indicate this and suggest where the user might find the exact information they need.
 
-When performing calculations, show your work step-by-step for transparency. Use the most current tax year information available.`,
+When performing calculations, show your work step-by-step for transparency. Use the most current tax year information available.`;
+
+    // Create calculation tools first
+    const calculationTools = [
+      {
+        name: "calculate_payroll_taxes",
+        description: "Calculate payroll taxes based on gross pay and other parameters",
+        parameters: {
+          type: "object",
+          properties: {
+            gross_pay: {
+              type: "number",
+              description: "Gross pay amount for the period"
+            },
+            pay_frequency: {
+              type: "string",
+              enum: ["weekly", "biweekly", "semimonthly", "monthly", "quarterly", "annually"],
+              description: "Pay frequency"
+            },
+            filing_status: {
+              type: "string",
+              enum: ["single", "married_filing_jointly", "married_filing_separately", "head_of_household"],
+              description: "Tax filing status"
+            },
+            state: {
+              type: "string",
+              description: "State code (e.g., CA, NY, TX)"
+            },
+            allowances: {
+              type: "number",
+              description: "Number of allowances/exemptions claimed"
+            },
+            ytd_earnings: {
+              type: "number",
+              description: "Year-to-date earnings before this pay period"
+            }
+          },
+          required: ["gross_pay", "pay_frequency", "filing_status", "state"]
+        }
+      },
+      {
+        name: "get_tax_rates",
+        description: "Get tax rates for a specific tax type and state",
+        parameters: {
+          type: "object",
+          properties: {
+            tax_type: {
+              type: "string",
+              enum: ["federal_income", "state_income", "fica", "all"],
+              description: "Type of tax rates to retrieve"
+            },
+            state: {
+              type: "string",
+              description: "State code for state income tax rates (e.g., CA, NY, TX)"
+            },
+            year: {
+              type: "number",
+              description: "Tax year"
+            }
+          },
+          required: ["tax_type"]
+        }
+      }
+    ];
+
+    super({
+      name: config.name || "Tax Calculation Agent",
+      systemPrompt: config.systemPrompt || defaultSystemPrompt,
       model: config.model || 'claude-3-7-sonnet-20250219',
       temperature: config.temperature !== undefined ? config.temperature : 0.2,
       maxTokens: config.maxTokens || 1500,
-      tools: config.tools || this.calculationTools,
+      tools: config.tools || calculationTools,
       memory: config.memory !== undefined ? config.memory : true,
       conversationId: config.conversationId,
       userId: config.userId,
@@ -228,7 +292,9 @@ When performing calculations, show your work step-by-step for transparency. Use 
       });
       
       // Extract the response text
-      const responseText = response.content[0].text;
+      const responseText = typeof response.content[0] === 'object' && 'text' in response.content[0] 
+        ? response.content[0].text 
+        : String(response.content[0]);
       
       // Add the response to conversation history
       this.addMessage('assistant', responseText);
@@ -256,7 +322,7 @@ When performing calculations, show your work step-by-step for transparency. Use 
         },
         toolCalls: toolCallResults
       };
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error processing query in Tax Calculation Agent:', error);
       
       // Return a graceful error response
@@ -264,7 +330,7 @@ When performing calculations, show your work step-by-step for transparency. Use 
         response: "I'm sorry, I encountered an error while processing your tax question. Please try rephrasing your question or try again later.",
         confidence: 0.1,
         metadata: {
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         }
       };
     }
@@ -407,7 +473,7 @@ When performing calculations, show your work step-by-step for transparency. Use 
         throw error;
       }
       
-      if (data && data.length > 0) {
+      if (data && Array.isArray(data) && data.length > 0) {
         const taxData = data[0];
         
         // Parse the stored tax data
@@ -834,9 +900,9 @@ Net Pay: $${netPay.toFixed(2)}
         collection_name: 'tax_information'
       });
       
-      if (taxInfoEntries && taxInfoEntries.length > 0) {
-        return taxInfoEntries
-          .map(entry => `${entry.title || 'Tax Information'}: ${entry.content}`)
+      if (taxInfoEntries && 'data' in taxInfoEntries && Array.isArray(taxInfoEntries.data) && taxInfoEntries.data.length > 0) {
+        return taxInfoEntries.data
+          .map((entry: {title?: string, content: string}) => `${entry.title || 'Tax Information'}: ${entry.content}`)
           .join('\n\n');
       }
       
