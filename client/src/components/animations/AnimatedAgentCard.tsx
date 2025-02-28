@@ -17,39 +17,47 @@ interface AnimatedAgentCardProps {
 }
 
 export function AnimatedAgentCard({ 
-  agent,
-  index,
+  agent, 
+  index, 
   isSelected = false,
-  onClick
+  onClick 
 }: AnimatedAgentCardProps) {
+  const { name, role, description, icon, color } = agent;
+  
   return (
     <motion.div
+      className={`bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md cursor-pointer transition-all
+                ${isSelected ? 'ring-2 ring-blue-500 dark:ring-blue-400 shadow-lg' : ''}
+                hover:shadow-lg`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.1 }}
-      className={`bg-white dark:bg-gray-800 rounded-lg p-5 shadow-md cursor-pointer 
-                 transition-all duration-300 transform hover:scale-105 hover:shadow-lg
-                 ${isSelected ? 'ring-2 ring-blue-500 scale-[1.02]' : ''}`}
+      transition={{ delay: index * 0.1, duration: 0.3 }}
+      whileHover={{ y: -5 }}
       onClick={onClick}
     >
-      <div className="flex items-start space-x-4">
-        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${agent.color}`}>
-          <span className="text-xl">{agent.icon}</span>
+      <div className="flex items-center mb-3">
+        <div 
+          className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${color}`}
+        >
+          {icon}
         </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-lg text-gray-900 dark:text-white">{agent.name}</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{agent.role}</p>
+        
+        <div>
+          <h3 className="font-semibold text-gray-900 dark:text-white">{name}</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{role}</p>
         </div>
       </div>
       
-      <p className="mt-3 text-gray-600 dark:text-gray-300 text-sm">{agent.description}</p>
+      <p className="text-sm text-gray-600 dark:text-gray-300">{description}</p>
       
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: isSelected ? '100%' : '0%' }}
-        transition={{ duration: 0.3 }}
-        className="h-1 bg-blue-500 mt-4 rounded-full"
-      />
+      {isSelected && (
+        <motion.div
+          className="mt-3 h-1 bg-blue-500 dark:bg-blue-400 rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: '100%' }}
+          transition={{ duration: 0.3 }}
+        />
+      )}
     </motion.div>
   );
 }

@@ -27,10 +27,6 @@ export const featuresDropdown = [
     href: "/features/analysis"
   },
   {
-    name: "Data Connection",
-    href: "/data-connection"
-  },
-  {
     name: "AI Assistant",
     href: "/ai-assistant"
   }

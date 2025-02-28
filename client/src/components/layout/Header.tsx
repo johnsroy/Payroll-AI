@@ -30,16 +30,6 @@ export default function Header() {
                 Pricing
               </div>
             </Link>
-            <Link href="/data-connection">
-              <div className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium cursor-pointer">
-                Data Connection
-              </div>
-            </Link>
-            <Link href="/ai-assistant">
-              <div className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium cursor-pointer">
-                AI Assistant
-              </div>
-            </Link>
             <div className="relative">
               <button
                 className="flex items-center text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium focus:outline-none"
@@ -108,16 +98,6 @@ export default function Header() {
             <Link href="/pricing">
               <div className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 cursor-pointer">
                 Pricing
-              </div>
-            </Link>
-            <Link href="/data-connection">
-              <div className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 cursor-pointer">
-                Data Connection
-              </div>
-            </Link>
-            <Link href="/ai-assistant">
-              <div className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 cursor-pointer">
-                AI Assistant
               </div>
             </Link>
             <Link href="/blog">

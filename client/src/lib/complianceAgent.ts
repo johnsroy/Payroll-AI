@@ -1070,7 +1070,7 @@ Include relevant deadlines, citations to specific regulations, and potential pen
       }
       
       return null;
-    }).filter((req: ComplianceRequirement | null) => req !== null);
+    }).filter(req => req !== null);
     
     // Generate statuses for each requirement
     for (const req of requirementsToCheck) {
@@ -1197,7 +1197,7 @@ Include relevant deadlines, citations to specific regulations, and potential pen
   /**
    * Calculate the next deadline for a requirement
    */
-  private calculateNextDeadline(requirement: ComplianceRequirement & { deadline_details?: any }): string | null {
+  private calculateNextDeadline(requirement: ComplianceRequirement): string | null {
     if (!requirement.deadline_type || !requirement.deadline_details) {
       return null;
     }
@@ -1282,9 +1282,9 @@ Include relevant deadlines, citations to specific regulations, and potential pen
         collection_name: 'compliance_information'
       });
       
-      if (complianceInfoEntries && complianceInfoEntries.data && Array.isArray(complianceInfoEntries.data) && complianceInfoEntries.data.length > 0) {
-        return complianceInfoEntries.data
-          .map((entry: any) => `${entry.title || 'Compliance Information'}: ${entry.content}`)
+      if (complianceInfoEntries && complianceInfoEntries.length > 0) {
+        return complianceInfoEntries
+          .map(entry => `${entry.title || 'Compliance Information'}: ${entry.content}`)
           .join('\n\n');
       }
       
