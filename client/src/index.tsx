@@ -1,22 +1,14 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import BasicTest from "./pages/basic-test";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import SimpleApp from './SimpleApp';
 
-import "./index.css";
+const root = ReactDOM.createRoot(
+  document.getElementById('root') as HTMLElement
+);
 
-// Get the root element
-const rootElement = document.getElementById("root");
-
-// Check if the root element exists
-if (!rootElement) {
-  console.error("Root element not found");
-  throw new Error("Root element not found");
-}
-
-// Create the root and render the app
-const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <BasicTest />
+    <SimpleApp />
   </React.StrictMode>
 );
