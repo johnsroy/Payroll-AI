@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { 
-  FileUpload, 
+  Upload, 
   Database, 
   Share2, 
   CheckCircle2, 
@@ -345,7 +345,7 @@ export default function DataSourceConnection() {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="flex items-center">
-                        {source.type === 'csv' && <FileUpload className="mr-2 h-5 w-5" />}
+                        {source.type === 'csv' && <Upload className="mr-2 h-5 w-5" />}
                         {source.type === 'database' && <Database className="mr-2 h-5 w-5" />}
                         {source.type === 'api' && <Share2 className="mr-2 h-5 w-5" />}
                         {source.type === 'hr_system' && (
