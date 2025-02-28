@@ -1,6 +1,6 @@
 import React from 'react';
 import { Route, Switch, Link } from 'wouter';
-import FullLandingPage from './pages/FullLandingPage';
+import SimpleLandingPage from './pages/SimpleLandingPage';
 import SimpleAgentPlayground from './pages/SimpleAgentPlayground';
 import DataConnectionPage from './pages/data-connection';
 import WorkflowHomePage from './pages/workflow-home';
@@ -59,7 +59,7 @@ const AppRoot: React.FC = () => {
           <Route path="/auth/callback" component={OAuthCallbackPage} />
           
           {/* Landing Page */}
-          <Route path="/" component={FullLandingPage} />
+          <Route path="/" component={SimpleLandingPage} />
           <Route component={() => (
             <div className="flex flex-col items-center justify-center h-full py-20">
               <h1 className="text-4xl font-bold mb-4">404 - Page Not Found</h1>

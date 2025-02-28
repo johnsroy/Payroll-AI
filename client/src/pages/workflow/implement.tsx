@@ -468,7 +468,6 @@ export default function WorkflowImplementPage() {
                 <div className="mt-6">
                   <ZapierIntegrationPanel 
                     zapierApps={zapierApps}
-                    templates={ZapierIntegration.PAYROLL_ZAP_TEMPLATES}
                     onConnectZapier={handleConnectZapier}
                   />
                 </div>

@@ -31,6 +31,12 @@ interface FileItem {
 }
 
 export default function WorkflowDataConnectionPage() {
+  // Helper function to determine the initial step
+  const getInitialStep = (): Step => {
+    // In a real application, you would check the user's progress
+    return 'upload';
+  };
+
   const [completedSteps, setCompletedSteps] = useState<Step[]>([]);
   const [currentStep, setCurrentStep] = useState<Step>(getInitialStep());
   const [activeTab, setActiveTab] = useState<'cloud' | 'file-upload' | 'zapier'>('cloud');
@@ -48,11 +54,6 @@ export default function WorkflowDataConnectionPage() {
       loadFilesForSource(selectedSource.id);
     }
   }, [selectedSource]);
-
-  const getInitialStep = (): Step => {
-    // In a real application, you would check the user's progress
-    return 'upload';
-  };
 
   const loadFilesForSource = (sourceId: string) => {
     setIsLoading(true);

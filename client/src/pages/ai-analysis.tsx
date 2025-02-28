@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
-  ChartIcon, 
-  BarChart2Icon, 
-  PieChartIcon, 
-  LineChartIcon, 
-  TrendingUpIcon,
-  DatabaseIcon,
-  ArrowRightIcon
+  BarChart, 
+  BarChart2 as BarChart2Icon, 
+  PieChart as PieChartIcon, 
+  LineChart as LineChartIcon, 
+  TrendingUp as TrendingUpIcon,
+  Database as DatabaseIcon,
+  ArrowRight as ArrowRightIcon
 } from 'lucide-react';
 
 import { BackgroundParticles } from '../components/animations/BackgroundParticles';
@@ -55,7 +55,7 @@ export default function AIAnalysisPage() {
               className="bg-white rounded-lg shadow-md p-6"
             >
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                <ChartIcon className="mr-2 h-5 w-5 text-purple-500" />
+                <BarChart className="mr-2 h-5 w-5 text-purple-500" />
                 Analysis Options
               </h2>
               
