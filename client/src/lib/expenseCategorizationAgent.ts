@@ -146,6 +146,76 @@ export class ExpenseCategorizationAgent extends BaseAgent {
   ];
   
   constructor(config: any = {}) {
+    // Define expense tools before the super call
+    const expenseTools = [
+      {
+        name: "categorize_expense",
+        description: "Categorize an expense based on its description and amount",
+        parameters: {
+          type: "object",
+          properties: {
+            description: {
+              type: "string",
+              description: "Description of the expense"
+            },
+            amount: {
+              type: "number",
+              description: "Amount of the expense"
+            },
+            vendor: {
+              type: "string",
+              description: "Vendor or merchant name"
+            },
+            date: {
+              type: "string",
+              description: "Date of the expense (YYYY-MM-DD format)"
+            }
+          },
+          required: ["description"]
+        }
+      },
+      {
+        name: "get_expense_categories",
+        description: "Get available expense categories",
+        parameters: {
+          type: "object",
+          properties: {
+            tax_deductible_only: {
+              type: "boolean",
+              description: "If true, return only tax deductible categories"
+            },
+            business_type: {
+              type: "string",
+              description: "Business type for filtering categories"
+            }
+          },
+          required: []
+        }
+      },
+      {
+        name: "create_custom_category",
+        description: "Create a new custom expense category",
+        parameters: {
+          type: "object",
+          properties: {
+            name: {
+              type: "string",
+              description: "Name of the new category"
+            },
+            description: {
+              type: "string",
+              description: "Description of the category"
+            },
+            tax_deductible: {
+              type: "boolean",
+              description: "Whether expenses in this category are tax deductible"
+            }
+          },
+          required: ["name", "tax_deductible"]
+        }
+      }
+    ];
+    
     super({
       name: config.name || "Expense Categorization Agent",
       systemPrompt: config.systemPrompt || 
@@ -164,12 +234,15 @@ For tax deductibility information, be clear about the general principles while a
       model: config.model || 'claude-3-7-sonnet-20250219',
       temperature: config.temperature !== undefined ? config.temperature : 0.2,
       maxTokens: config.maxTokens || 1500,
-      tools: config.tools || this.expenseTools,
+      tools: config.tools || expenseTools,
       memory: config.memory !== undefined ? config.memory : true,
       conversationId: config.conversationId,
       userId: config.userId,
       companyId: config.companyId
     });
+    
+    // Assign the tools to the class property after super call
+    this.expenseTools = expenseTools;
     
     // Initialize expense categories and rules
     this.initializeDefaultCategories();

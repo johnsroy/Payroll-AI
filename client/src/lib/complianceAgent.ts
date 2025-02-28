@@ -123,6 +123,82 @@ export class ComplianceAgent extends BaseAgent {
   ];
   
   constructor(config: any = {}) {
+    // Define compliance tools before the super call
+    const complianceTools = [
+      {
+        name: "get_compliance_requirements",
+        description: "Get applicable compliance requirements for a company",
+        parameters: {
+          type: "object",
+          properties: {
+            region: {
+              type: "string",
+              description: "Region code (e.g., 'US', 'CA', 'NY')"
+            },
+            company_size: {
+              type: "number",
+              description: "Number of employees in the company"
+            },
+            industry: {
+              type: "string",
+              description: "Industry or business type"
+            },
+            requirement_type: {
+              type: "string",
+              enum: ["payroll", "tax", "benefits", "reporting", "all"],
+              description: "Type of compliance requirements to retrieve"
+            }
+          },
+          required: ["region"]
+        }
+      },
+      {
+        name: "check_compliance_status",
+        description: "Check compliance status for specific requirements",
+        parameters: {
+          type: "object",
+          properties: {
+            requirement_ids: {
+              type: "array",
+              items: {
+                type: "string"
+              },
+              description: "IDs of requirements to check"
+            },
+            company_id: {
+              type: "string",
+              description: "Company ID to check compliance for"
+            }
+          },
+          required: ["requirement_ids"]
+        }
+      },
+      {
+        name: "get_upcoming_deadlines",
+        description: "Get upcoming compliance deadlines",
+        parameters: {
+          type: "object",
+          properties: {
+            region: {
+              type: "string",
+              description: "Region code (e.g., 'US', 'CA', 'NY')"
+            },
+            period: {
+              type: "string",
+              enum: ["week", "month", "quarter", "year"],
+              description: "Time period to look ahead"
+            },
+            requirement_type: {
+              type: "string",
+              enum: ["payroll", "tax", "benefits", "reporting", "all"],
+              description: "Type of deadlines to retrieve"
+            }
+          },
+          required: ["period"]
+        }
+      }
+    ];
+    
     super({
       name: config.name || "Compliance Advisor",
       systemPrompt: config.systemPrompt || 
@@ -141,12 +217,15 @@ Include relevant deadlines, citations to specific regulations, and potential pen
       model: config.model || 'claude-3-7-sonnet-20250219',
       temperature: config.temperature !== undefined ? config.temperature : 0.2,
       maxTokens: config.maxTokens || 1500,
-      tools: config.tools || this.complianceTools,
+      tools: config.tools || complianceTools,
       memory: config.memory !== undefined ? config.memory : true,
       conversationId: config.conversationId,
       userId: config.userId,
       companyId: config.companyId
     });
+    
+    // Assign the tools to the class property after super call
+    this.complianceTools = complianceTools;
     
     // Initialize compliance data
     this.initializeDefaultFederalRequirements();
@@ -250,7 +329,15 @@ Include relevant deadlines, citations to specific regulations, and potential pen
       });
       
       // Extract the response text
-      const responseText = response.content[0].text;
+      let responseText = '';
+      if (response.content && response.content.length > 0) {
+        const firstContent = response.content[0];
+        if (typeof firstContent === 'object' && 'text' in firstContent) {
+          responseText = firstContent.text;
+        } else {
+          responseText = String(firstContent);
+        }
+      }
       
       // Add the response to conversation history
       this.addMessage('assistant', responseText);
@@ -278,15 +365,16 @@ Include relevant deadlines, citations to specific regulations, and potential pen
         },
         toolCalls: toolCallResults
       };
-    } catch (error) {
-      console.error('Error processing query in Compliance Agent:', error);
+    } catch (error: unknown) {
+      console.error('Error processing query in Compliance Agent:', 
+        error instanceof Error ? error.message : String(error));
       
       // Return a graceful error response
       return {
         response: "I'm sorry, I encountered an error while processing your compliance question. Please try rephrasing your question or try again later.",
         confidence: 0.1,
         metadata: {
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         }
       };
     }
@@ -518,8 +606,9 @@ Include relevant deadlines, citations to specific regulations, and potential pen
           }
         }
       }
-    } catch (error) {
-      console.error('Error loading compliance data:', error);
+    } catch (error: unknown) {
+      console.error('Error loading compliance data:', 
+        error instanceof Error ? error.message : String(error));
       // Fallback to default data already initialized
     }
   }
@@ -542,8 +631,9 @@ Include relevant deadlines, citations to specific regulations, and potential pen
       if (data) {
         this.companyProfile = data;
       }
-    } catch (error) {
-      console.error('Error loading company profile:', error);
+    } catch (error: unknown) {
+      console.error('Error loading company profile:', 
+        error instanceof Error ? error.message : String(error));
     }
   }
   
