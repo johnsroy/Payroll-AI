@@ -1,64 +1,48 @@
-import { OpenAI } from 'openai';
 import { supabase } from './supabase';
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-});
+import { openai } from './openai'; // We'll create this file next
 
 /**
  * Splits text into chunks that can be embedded
  */
 export function chunkText(text: string, maxChunkSize: number = 4000): string[] {
-  // If text is short enough, return it as a single chunk
-  if (text.length <= maxChunkSize) {
-    return [text];
-  }
-
+  if (!text) return [];
+  
+  // Simple paragraph-based chunking
+  const paragraphs = text.split('\n\n');
   const chunks: string[] = [];
   let currentChunk = '';
   
-  // Split text by paragraphs
-  const paragraphs = text.split(/\n\s*\n/);
-  
   for (const paragraph of paragraphs) {
-    // If adding this paragraph would exceed maxChunkSize
-    if (currentChunk.length + paragraph.length + 2 > maxChunkSize) {
-      // If current chunk is not empty, add it to chunks
-      if (currentChunk.length > 0) {
-        chunks.push(currentChunk.trim());
-        currentChunk = '';
+    if (currentChunk.length + paragraph.length + 2 <= maxChunkSize) {
+      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
+    } else {
+      if (currentChunk) {
+        chunks.push(currentChunk);
       }
       
-      // If the paragraph itself is too large, split it by sentences
+      // If a single paragraph is too large, we need to split it further
       if (paragraph.length > maxChunkSize) {
-        const sentences = paragraph.split(/(?<=[.!?])\s+/);
-        let sentenceChunk = '';
+        const sentences = paragraph.split('. ');
+        currentChunk = '';
         
         for (const sentence of sentences) {
-          if (sentenceChunk.length + sentence.length + 1 > maxChunkSize) {
-            chunks.push(sentenceChunk.trim());
-            sentenceChunk = sentence;
+          if (currentChunk.length + sentence.length + 2 <= maxChunkSize) {
+            currentChunk += (currentChunk ? '. ' : '') + sentence;
           } else {
-            sentenceChunk += (sentenceChunk ? ' ' : '') + sentence;
+            if (currentChunk) {
+              chunks.push(currentChunk + '.');
+            }
+            currentChunk = sentence;
           }
-        }
-        
-        if (sentenceChunk) {
-          currentChunk = sentenceChunk;
         }
       } else {
         currentChunk = paragraph;
       }
-    } else {
-      // Add paragraph to current chunk
-      currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
     }
   }
   
-  // Add the final chunk if it's not empty
   if (currentChunk) {
-    chunks.push(currentChunk.trim());
+    chunks.push(currentChunk);
   }
   
   return chunks;
@@ -68,21 +52,25 @@ export function chunkText(text: string, maxChunkSize: number = 4000): string[] {
  * Creates embeddings for a text or array of texts
  */
 export async function createEmbeddings(texts: string | string[]): Promise<number[][]> {
-  try {
-    // Make sure we have an array of texts
-    const textArray = typeof texts === 'string' ? [texts] : texts;
-    
-    const embeddingResponse = await openai.embeddings.create({
+  const textArray = Array.isArray(texts) ? texts : [texts];
+  const embeddings: number[][] = [];
+  
+  // Process in batches to avoid rate limits
+  const batchSize = 10;
+  for (let i = 0; i < textArray.length; i += batchSize) {
+    const batch = textArray.slice(i, i + batchSize);
+    const response = await openai.embeddings.create({
       model: 'text-embedding-3-small',
-      input: textArray,
+      input: batch,
     });
     
-    // Extract the embeddings from the response
-    return embeddingResponse.data.map(item => item.embedding);
-  } catch (error) {
-    console.error('Error creating embeddings:', error);
-    throw error;
+    // Extract embeddings from response
+    for (const embedding of response.data) {
+      embeddings.push(embedding.embedding);
+    }
   }
+  
+  return embeddings;
 }
 
 /**
@@ -90,40 +78,36 @@ export async function createEmbeddings(texts: string | string[]): Promise<number
  */
 export async function addToKnowledgeBase(
   content: string,
-  category: string,
-  metadata: Record<string, any> = {},
-  source: string = 'user-upload'
-): Promise<boolean> {
-  try {
-    // Split content into chunks
-    const chunks = chunkText(content);
-    
-    // Create embeddings for all chunks
-    const embeddings = await createEmbeddings(chunks);
-    
-    // Prepare records for inserting into Supabase
-    const records = chunks.map((chunk, index) => ({
-      content: chunk,
-      embedding: embeddings[index],
-      metadata,
-      category,
-      source
-    }));
-    
-    // Insert records into the knowledge_base table
-    const { error } = await supabase
-      .from('knowledge_base')
-      .insert(records);
+  metadata: any = {},
+  collectionName: string = 'default',
+  userId?: string,
+  companyId?: string
+): Promise<void> {
+  // Split content into chunks
+  const chunks = chunkText(content);
+  
+  // Generate embeddings for chunks
+  const embeddings = await createEmbeddings(chunks);
+  
+  // Insert chunks and embeddings
+  for (let i = 0; i < chunks.length; i++) {
+    const { error } = await supabase.from('knowledge_base').insert({
+      content: chunks[i],
+      embedding: embeddings[i],
+      metadata: {
+        ...metadata,
+        chunk_index: i,
+        total_chunks: chunks.length,
+      },
+      collection_name: collectionName,
+      user_id: userId,
+      company_id: companyId,
+      created_at: new Date().toISOString(),
+    });
     
     if (error) {
-      console.error('Error adding to knowledge base:', error);
-      return false;
+      throw new Error(`Error adding to knowledge base: ${error.message}`);
     }
-    
-    return true;
-  } catch (error) {
-    console.error('Error adding to knowledge base:', error);
-    return false;
   }
 }
 
@@ -132,61 +116,51 @@ export async function addToKnowledgeBase(
  */
 export async function searchKnowledgeBase(
   query: string,
-  category?: string,
+  collectionName: string = 'default',
   limit: number = 5,
-  threshold: number = 0.7
+  userId?: string,
+  companyId?: string
 ): Promise<any[]> {
-  try {
-    // Create embedding for the query
-    const [queryEmbedding] = await createEmbeddings(query);
-    
-    // Prepare the RPC call to the match_documents function
-    const matchCall = supabase.rpc('match_documents', {
-      query_embedding: queryEmbedding,
-      match_threshold: threshold,
-      match_count: limit
-    });
-    
-    // Add category filter if provided
-    const { data, error } = category
-      ? await matchCall.eq('category', category)
-      : await matchCall;
-    
-    if (error) {
-      console.error('Error searching knowledge base:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error searching knowledge base:', error);
-    return [];
+  // Generate embedding for query
+  const embeddings = await createEmbeddings(query);
+  
+  // Call match_documents RPC function
+  const { data, error } = await supabase.rpc('match_documents', {
+    query_embedding: embeddings[0],
+    match_threshold: 0.7,
+    match_count: limit,
+    collection_name: collectionName,
+    user_id: userId,
+    company_id: companyId
+  });
+  
+  if (error) {
+    throw new Error(`Error searching knowledge base: ${error.message}`);
   }
+  
+  return data || [];
 }
 
 /**
  * Deletes documents from the knowledge base
  */
 export async function deleteFromKnowledgeBase(
-  ids: string | string[]
-): Promise<boolean> {
-  try {
-    const idArray = typeof ids === 'string' ? [ids] : ids;
-    
-    const { error } = await supabase
-      .from('knowledge_base')
-      .delete()
-      .in('id', idArray);
-    
-    if (error) {
-      console.error('Error deleting from knowledge base:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error deleting from knowledge base:', error);
-    return false;
+  documentIds: string[] | string,
+  userId?: string
+): Promise<void> {
+  const ids = Array.isArray(documentIds) ? documentIds : [documentIds];
+  
+  // Only allow deletion if user is authorized
+  const query = supabase.from('knowledge_base').delete().in('id', ids);
+  
+  if (userId) {
+    query.eq('user_id', userId);
+  }
+  
+  const { error } = await query;
+  
+  if (error) {
+    throw new Error(`Error deleting from knowledge base: ${error.message}`);
   }
 }
 
@@ -195,50 +169,45 @@ export async function deleteFromKnowledgeBase(
  * This is a one-time setup function
  */
 export async function setupMatchDocumentsFunction(): Promise<void> {
-  const createFunctionSQL = `
-  CREATE OR REPLACE FUNCTION match_documents(
-    query_embedding vector(1536),
-    match_threshold float,
-    match_count int
-  )
-  RETURNS TABLE (
-    id UUID,
-    content TEXT,
-    metadata JSONB,
-    category TEXT,
-    source TEXT,
-    similarity float
-  )
-  LANGUAGE plpgsql
-  AS $$
-  BEGIN
-    RETURN QUERY
-    SELECT
-      knowledge_base.id,
-      knowledge_base.content,
-      knowledge_base.metadata,
-      knowledge_base.category,
-      knowledge_base.source,
-      1 - (knowledge_base.embedding <=> query_embedding) AS similarity
-    FROM knowledge_base
-    WHERE 1 - (knowledge_base.embedding <=> query_embedding) > match_threshold
-    ORDER BY similarity DESC
-    LIMIT match_count;
-  END;
-  $$;
+  // This SQL would need to be executed by an admin
+  const sql = `
+    CREATE OR REPLACE FUNCTION match_documents(
+      query_embedding vector(1536),
+      match_threshold float,
+      match_count int,
+      collection_name text DEFAULT 'default',
+      user_id uuid DEFAULT NULL,
+      company_id uuid DEFAULT NULL
+    )
+    RETURNS TABLE (
+      id uuid,
+      content text,
+      metadata jsonb,
+      collection_name text,
+      similarity float
+    )
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+      RETURN QUERY
+      SELECT
+        kb.id,
+        kb.content,
+        kb.metadata,
+        kb.collection_name,
+        1 - (kb.embedding <=> query_embedding) as similarity
+      FROM knowledge_base kb
+      WHERE 
+        kb.collection_name = match_documents.collection_name
+        AND (kb.user_id = match_documents.user_id OR match_documents.user_id IS NULL)
+        AND (kb.company_id = match_documents.company_id OR match_documents.company_id IS NULL)
+        AND 1 - (kb.embedding <=> query_embedding) > match_threshold
+      ORDER BY similarity DESC
+      LIMIT match_count;
+    END;
+    $$;
   `;
   
-  try {
-    // Execute SQL to create the function
-    const { error } = await supabase.rpc('exec_sql', { sql: createFunctionSQL });
-    
-    if (error) {
-      // If error is "function already exists", we can ignore it
-      if (!error.message.includes('already exists')) {
-        console.error('Error creating match_documents function:', error);
-      }
-    }
-  } catch (error) {
-    console.error('Error setting up match_documents function:', error);
-  }
+  // This would need to be run through a Supabase function or admin API
+  console.log('SQL for match_documents function:', sql);
 }

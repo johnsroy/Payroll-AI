@@ -1,256 +1,213 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js';
 
-// Use environment variables for Supabase configuration
-const supabaseUrl = import.meta.env.VITE_NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+// Supabase configuration
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
 
-// Create Supabase client
+// Create a single supabase client for interacting with your database
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
  * Check if a user is currently authenticated
  */
 export async function isAuthenticated() {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    return !!session;
-  } catch (error) {
-    console.error('Error checking authentication status:', error);
-    return false;
-  }
+  const { data } = await supabase.auth.getSession();
+  return data.session !== null;
 }
 
 /**
  * Get the current authenticated user
  */
 export async function getCurrentUser() {
-  try {
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error) throw error;
-    return user;
-  } catch (error) {
-    console.error('Error getting current user:', error);
-    return null;
-  }
+  const { data } = await supabase.auth.getUser();
+  return data.user;
 }
 
 /**
  * Sign in with email and password
  */
 export async function signInWithEmail(email: string, password: string) {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) throw error;
-    
-    return { user: data.user, session: data.session };
-  } catch (error) {
-    console.error('Error signing in:', error);
-    throw error;
-  }
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  
+  if (error) throw error;
+  return data;
 }
 
 /**
  * Sign up with email and password
  */
 export async function signUpWithEmail(email: string, password: string) {
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    
-    if (error) throw error;
-    
-    // If sign up successful, create a profile record
-    if (data.user) {
-      await createUserProfile(data.user.id, email);
-    }
-    
-    return { user: data.user, session: data.session };
-  } catch (error) {
-    console.error('Error signing up:', error);
-    throw error;
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+  
+  if (error) throw error;
+  
+  // Create user profile after successful signup
+  if (data.user) {
+    await createUserProfile(data.user.id, email);
   }
+  
+  return data;
 }
 
 /**
  * Sign out the current user
  */
 export async function signOut() {
-  try {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    return true;
-  } catch (error) {
-    console.error('Error signing out:', error);
-    throw error;
-  }
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }
 
 /**
  * Create a user profile in the profiles table
  */
 async function createUserProfile(userId: string, email: string) {
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .insert({
-        id: userId,
-        email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-    
-    if (error) throw error;
-  } catch (error) {
-    console.error('Error creating user profile:', error);
-    // Don't throw here, as the auth signup was already successful
-  }
+  const { error } = await supabase
+    .from('profiles')
+    .insert({
+      id: userId,
+      email,
+      created_at: new Date().toISOString(),
+    });
+  
+  if (error) throw error;
 }
 
 /**
  * Create a company for a user
  */
 export async function createCompany(userId: string, companyData: any) {
-  try {
-    // Insert company record
-    const { data: company, error: companyError } = await supabase
-      .from('companies')
-      .insert({
-        owner_id: userId,
-        name: companyData.name,
-        industry: companyData.industry,
-        size: companyData.size,
-        state: companyData.state,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-    
-    if (companyError) throw companyError;
-    
-    // Link user to company with admin role
-    if (company) {
-      const { error: linkError } = await supabase
-        .from('company_users')
-        .insert({
-          company_id: company.id,
-          user_id: userId,
-          role: 'admin',
-          created_at: new Date().toISOString(),
-        });
-      
-      if (linkError) throw linkError;
-    }
-    
-    return company;
-  } catch (error) {
-    console.error('Error creating company:', error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from('companies')
+    .insert({
+      ...companyData,
+      owner_id: userId,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
 }
 
 /**
  * Get all companies for a user
  */
 export async function getUserCompanies(userId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('company_users')
-      .select(`
-        company_id,
-        role,
-        companies:company_id (
-          id,
-          name,
-          industry,
-          size,
-          state
-        )
-      `)
-      .eq('user_id', userId);
-    
-    if (error) throw error;
-    
-    return data.map((item) => ({
-      id: item.company_id,
-      role: item.role,
-      ...item.companies,
-    }));
-  } catch (error) {
-    console.error('Error getting user companies:', error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from('companies')
+    .select('*')
+    .eq('owner_id', userId);
+  
+  if (error) throw error;
+  return data;
 }
 
 /**
  * Get AI conversation history
  */
 export async function getAIConversations(userId: string, limit = 10, offset = 0) {
-  try {
-    const { data, error } = await supabase
-      .from('ai_conversations')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-    
-    if (error) throw error;
-    
-    return data;
-  } catch (error) {
-    console.error('Error getting AI conversations:', error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+  
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Save a new conversation message
+ */
+export async function saveConversationMessage(conversationId: string, message: any) {
+  const { data, error } = await supabase
+    .from('conversation_messages')
+    .insert({
+      conversation_id: conversationId,
+      content: message.content,
+      role: message.role,
+      created_at: new Date().toISOString(),
+      metadata: message.metadata || {},
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * Create a new conversation
+ */
+export async function createConversation(userId: string, companyId?: string) {
+  const { data, error } = await supabase
+    .from('conversations')
+    .insert({
+      user_id: userId,
+      company_id: companyId,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
 }
 
 /**
  * Get a specific AI conversation
  */
 export async function getAIConversation(conversationId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('ai_conversations')
-      .select('*')
-      .eq('id', conversationId)
-      .single();
-    
-    if (error) throw error;
-    
-    return data;
-  } catch (error) {
-    console.error('Error getting AI conversation:', error);
-    throw error;
-  }
+  const { data: conversation, error: conversationError } = await supabase
+    .from('conversations')
+    .select('*')
+    .eq('id', conversationId)
+    .single();
+  
+  if (conversationError) throw conversationError;
+  
+  const { data: messages, error: messagesError } = await supabase
+    .from('conversation_messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+  
+  if (messagesError) throw messagesError;
+  
+  return {
+    ...conversation,
+    messages: messages || [],
+  };
 }
 
 /**
  * Perform a similarity search in the vector database
  */
 export async function performVectorSearch(query: string, collectionName: string, limit = 5) {
-  try {
-    // In a real implementation, you would use pgvector's cosine_distance function
-    // For now, we'll return mock data
-    return [
-      {
-        id: '1',
-        content: 'Sample content that matches your query',
-        metadata: { source: 'document1.pdf', page: 5 }
-      },
-      {
-        id: '2',
-        content: 'Another piece of content related to your search',
-        metadata: { source: 'document2.pdf', page: 12 }
-      }
-    ];
-  } catch (error) {
-    console.error('Error performing vector search:', error);
-    return [];
-  }
+  // Convert query to embedding using OpenAI (this is just a placeholder,
+  // real implementation would use actual embedding API)
+  const { data: embeddings, error: embeddingError } = await supabase.functions.invoke('generate-embedding', {
+    body: { text: query }
+  });
+  
+  if (embeddingError) throw embeddingError;
+  
+  // Perform vector search using RPC call
+  const { data, error } = await supabase.rpc('match_documents', {
+    query_embedding: embeddings.embedding,
+    match_threshold: 0.7,
+    match_count: limit,
+    collection_name: collectionName
+  });
+  
+  if (error) throw error;
+  return data;
 }

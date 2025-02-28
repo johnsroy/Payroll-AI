@@ -1,608 +1,1207 @@
-import { BaseAgent, AgentConfig } from './baseAgent';
+import { BaseAgent, AgentResponse, Message } from './baseAgent';
+import { anthropic } from './anthropic';
+import { searchWithPerplexity } from './perplexity';
+import { supabase } from './supabase';
 import { v4 as uuidv4 } from 'uuid';
-import Anthropic from '@anthropic-ai/sdk';
 
-interface Regulation {
+/**
+ * Compliance requirement definition
+ */
+interface ComplianceRequirement {
   id: string;
   name: string;
   description: string;
   scope: string;
   requirements: string[];
   citations: string[];
-  lastUpdated: string;
+  applies_to: string[];
+  employee_threshold?: number;
+  regions: string[];
+  deadline_type: 'fixed' | 'relative' | 'recurring';
+  deadline_details?: any;
+  reference_url?: string;
+  penalties?: string;
+  last_updated: string;
 }
 
+/**
+ * Compliance check result
+ */
 interface ComplianceResult {
   id: string;
   query: string;
   result: any;
   timestamp: Date;
   confidence: number;
+  user_id?: string;
+  company_id?: string;
 }
 
+/**
+ * Compliance Agent specializes in payroll compliance and regulations
+ */
 export class ComplianceAgent extends BaseAgent {
-  private anthropic: Anthropic;
-  private systemPrompt: string;
-  private model: string = 'claude-3-sonnet-20240229';
-  private temperature: number = 0.2;
-  private regulations: Map<string, Regulation> = new Map();
-  private complianceResults: ComplianceResult[] = [];
+  private federalRequirements: ComplianceRequirement[] = [];
+  private stateRequirements: Record<string, ComplianceRequirement[]> = {};
+  private industryRequirements: Record<string, ComplianceRequirement[]> = {};
+  private companyProfile: any = null;
   
-  constructor(config: AgentConfig) {
-    super(config);
-    
-    // Initialize Anthropic client with API key
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY is required for ComplianceAgent');
+  // Tool definitions
+  private complianceTools = [
+    {
+      name: "get_compliance_requirements",
+      description: "Get applicable compliance requirements for a company",
+      parameters: {
+        type: "object",
+        properties: {
+          region: {
+            type: "string",
+            description: "Region code (e.g., 'US', 'CA', 'NY')"
+          },
+          company_size: {
+            type: "number",
+            description: "Number of employees in the company"
+          },
+          industry: {
+            type: "string",
+            description: "Industry or business type"
+          },
+          requirement_type: {
+            type: "string",
+            enum: ["payroll", "tax", "benefits", "reporting", "all"],
+            description: "Type of compliance requirements to retrieve"
+          }
+        },
+        required: ["region"]
+      }
+    },
+    {
+      name: "check_compliance_status",
+      description: "Check compliance status for specific requirements",
+      parameters: {
+        type: "object",
+        properties: {
+          requirement_ids: {
+            type: "array",
+            items: {
+              type: "string"
+            },
+            description: "IDs of requirements to check"
+          },
+          company_id: {
+            type: "string",
+            description: "Company ID to check compliance for"
+          }
+        },
+        required: ["requirement_ids"]
+      }
+    },
+    {
+      name: "get_upcoming_deadlines",
+      description: "Get upcoming compliance deadlines",
+      parameters: {
+        type: "object",
+        properties: {
+          region: {
+            type: "string",
+            description: "Region code (e.g., 'US', 'CA', 'NY')"
+          },
+          period: {
+            type: "string",
+            enum: ["week", "month", "quarter", "year"],
+            description: "Time period to look ahead"
+          },
+          requirement_type: {
+            type: "string",
+            enum: ["payroll", "tax", "benefits", "reporting", "all"],
+            description: "Type of deadlines to retrieve"
+          }
+        },
+        required: ["period"]
+      }
     }
-    
-    this.anthropic = new Anthropic({
-      apiKey
+  ];
+  
+  constructor(config: any = {}) {
+    super({
+      name: config.name || "Compliance Advisor",
+      systemPrompt: config.systemPrompt || 
+        `You are the Compliance Advisor, specialized in payroll compliance and regulations.
+        
+Your capabilities include:
+1. Providing information on federal, state, and local payroll regulations
+2. Tracking compliance deadlines and filing requirements
+3. Advising on employment laws and regulations
+4. Answering questions about compliance requirements for different company sizes
+5. Providing guidance on regulatory changes and updates
+
+Always provide accurate and up-to-date compliance information. When uncertain about specific regulations, clearly indicate this and suggest where the user might find the exact information they need.
+
+Include relevant deadlines, citations to specific regulations, and potential penalties for non-compliance when appropriate.`,
+      model: config.model || 'claude-3-7-sonnet-20250219',
+      temperature: config.temperature !== undefined ? config.temperature : 0.2,
+      maxTokens: config.maxTokens || 1500,
+      tools: config.tools || this.complianceTools,
+      memory: config.memory !== undefined ? config.memory : true,
+      conversationId: config.conversationId,
+      userId: config.userId,
+      companyId: config.companyId
     });
     
-    // Set up system prompt for compliance agent
-    this.systemPrompt = `You are an advanced compliance agent in a multi-agent system for payroll management.
-Your primary responsibilities are:
-
-1. Monitor and interpret regulatory requirements for payroll and HR operations
-2. Provide guidance on compliance with federal, state, and local laws
-3. Advise on documentation requirements and record-keeping practices
-4. Alert about upcoming regulatory changes and deadlines
-5. Assess compliance risks and recommend mitigation strategies
-
-You specialize in:
-- Fair Labor Standards Act (FLSA) requirements
-- Employment verification and I-9 compliance
-- Equal Employment Opportunity (EEO) regulations
-- State-specific employment laws and reporting requirements
-- Employee classification (W-2 vs. 1099) compliance
-- Leave policies (FMLA, PTO, sick leave) requirements
-
-When responding, always:
-- Cite specific laws, regulations, or guidance documents
-- Indicate jurisdictional considerations (federal, state, local)
-- Note the effective dates of regulations or requirements
-- Highlight potential compliance risks or gray areas
-- Suggest practical compliance steps or best practices`;
-
-    // Initialize regulations database
-    this.initializeRegulations();
+    // Initialize compliance data
+    this.initializeDefaultFederalRequirements();
+    this.initializeDefaultStateRequirements();
+    this.initializeDefaultIndustryRequirements();
+    
+    // Load company profile if available
+    if (this.companyId) {
+      this.loadCompanyProfile(this.companyId);
+    }
+    
+    // Load the latest compliance data from storage
+    this.loadComplianceData();
   }
-
-  /**
-   * Reset the agent state
-   */
-  public reset(): void {
-    this.complianceResults = [];
-    this.initializeRegulations();
-  }
-
+  
   /**
    * Process a query using the compliance agent
    */
-  public async processQuery(query: string): Promise<{ response: string; confidence: number; metadata?: any }> {
-    // Identify relevant regulations for the query
-    const relevantRegulations = this.identifyRelevantRegulations(query);
-    
-    // Create a compliance prompt based on the query and relevant regulations
-    const compliancePrompt = this.createCompliancePrompt(query, relevantRegulations);
-    
-    // Get completion from Anthropic
-    const response = await this.anthropic.messages.create({
-      model: this.model,
-      max_tokens: 1500,
-      temperature: this.temperature,
-      system: this.systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: compliancePrompt
+  public async processQuery(query: string): Promise<AgentResponse> {
+    try {
+      // Add the user message to conversation history
+      this.addMessage('user', query);
+      
+      // Check if we need real-time compliance information
+      let searchResults = '';
+      if (
+        query.includes('latest') || 
+        query.includes('current') || 
+        query.includes('recent') || 
+        query.includes('update') ||
+        query.includes('new law') ||
+        query.includes('deadline') ||
+        query.includes('2024') ||
+        query.includes('2025')
+      ) {
+        try {
+          searchResults = await searchWithPerplexity(query);
+        } catch (e) {
+          console.error('Error searching for compliance information:', e);
+          // Continue without search results
         }
-      ]
-    });
-    
-    // Extract response
-    const content = response.content[0];
-    const assistantMessage = typeof content === 'object' && 'text' in content 
-      ? content.text 
-      : JSON.stringify(content);
-    
-    // Store compliance result
-    const complianceResult = this.createComplianceResult(query, assistantMessage);
-    this.storeComplianceResult(complianceResult);
-    
-    return {
-      response: assistantMessage,
-      confidence: complianceResult.confidence,
-      metadata: {
-        regulationIds: relevantRegulations.map(reg => reg.id),
-        resultId: complianceResult.id
       }
-    };
-  }
-
-  /**
-   * Initialize regulations database with current information
-   */
-  private initializeRegulations(): void {
-    // FLSA regulations
-    const flsaRegulation: Regulation = {
-      id: 'flsa',
-      name: 'Fair Labor Standards Act',
-      description: 'Federal law that establishes minimum wage, overtime pay, recordkeeping, and youth employment standards',
-      scope: 'Federal, applies to employees of enterprises with annual sales of $500,000+ or engaged in interstate commerce',
-      requirements: [
-        'Minimum wage of $7.25 per hour (federal)',
-        'Overtime pay at 1.5x regular rate for hours worked over 40 in a workweek',
-        'Recordkeeping of employee wages, hours, and other conditions of employment',
-        'Restrictions on employment of minors under 18 in certain occupations'
-      ],
-      citations: [
-        '29 U.S.C. §§ 201-219',
-        '29 C.F.R. §§ 510-794'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // FMLA regulations
-    const fmlaRegulation: Regulation = {
-      id: 'fmla',
-      name: 'Family and Medical Leave Act',
-      description: 'Federal law that provides eligible employees with unpaid, job-protected leave for family and medical reasons',
-      scope: 'Federal, applies to employers with 50+ employees within 75 miles',
-      requirements: [
-        'Up to 12 workweeks of unpaid leave in a 12-month period for qualifying conditions',
-        'Continuation of group health insurance coverage during leave',
-        'Restoration to same or equivalent position upon return from leave',
-        'Employers must provide notice of FMLA rights and maintain relevant records'
-      ],
-      citations: [
-        '29 U.S.C. §§ 2601-2654',
-        '29 C.F.R. §§ 825.100-825.803'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // ADA regulations
-    const adaRegulation: Regulation = {
-      id: 'ada',
-      name: 'Americans with Disabilities Act',
-      description: 'Federal law that prohibits discrimination against individuals with disabilities in employment and other contexts',
-      scope: 'Federal, applies to employers with 15+ employees',
-      requirements: [
-        'Prohibition of discrimination on the basis of disability in all employment practices',
-        'Requirement to provide reasonable accommodations to qualified individuals with disabilities',
-        'Medical information must be kept confidential and in separate files',
-        'Job descriptions should identify essential functions of positions'
-      ],
-      citations: [
-        '42 U.S.C. §§ 12101-12213',
-        '29 C.F.R. §§ 1630.1-1630.16'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // Title VII regulations
-    const titleViiRegulation: Regulation = {
-      id: 'title_vii',
-      name: 'Title VII of the Civil Rights Act of 1964',
-      description: 'Federal law that prohibits employment discrimination based on race, color, religion, sex, and national origin',
-      scope: 'Federal, applies to employers with 15+ employees',
-      requirements: [
-        'Prohibition of discrimination in hiring, firing, compensation, classification, promotion, training, and other terms of employment',
-        'Prohibition of harassing conduct based on protected characteristics',
-        'Employers must post notices of rights under Title VII',
-        'Employers must maintain relevant employment records'
-      ],
-      citations: [
-        '42 U.S.C. §§ 2000e-2000e-17',
-        '29 C.F.R. §§ 1600-1616'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // EEOC regulations
-    const eeocRegulation: Regulation = {
-      id: 'eeoc',
-      name: 'Equal Employment Opportunity Commission Guidelines',
-      description: 'Federal agency guidelines for enforcing anti-discrimination laws in employment',
-      scope: 'Federal, applies to employers covered by federal EEO laws',
-      requirements: [
-        'Employers must maintain records relevant to determining whether unlawful employment practices have occurred',
-        'Employers with 100+ employees must file annual EEO-1 reports',
-        'Prohibition of retaliation against individuals who file charges or participate in investigations',
-        'Guidelines for preventing and addressing workplace harassment'
-      ],
-      citations: [
-        '29 C.F.R. §§ 1600-1691',
-        'EEOC Enforcement Guidance on Retaliation and Related Issues (2016)',
-        'EEOC Enforcement Guidance on Pregnancy Discrimination (2015)'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // IRCA regulations
-    const ircaRegulation: Regulation = {
-      id: 'irca',
-      name: 'Immigration Reform and Control Act',
-      description: 'Federal law requiring employers to verify identity and employment eligibility of employees',
-      scope: 'Federal, applies to all employers regardless of size',
-      requirements: [
-        'Completion of Form I-9 for all employees within 3 business days of start of employment',
-        'Verification of identity and employment authorization documents',
-        'Retention of I-9 forms for 3 years after hire or 1 year after termination, whichever is later',
-        'Prohibition of knowingly hiring or continuing to employ unauthorized workers'
-      ],
-      citations: [
-        '8 U.S.C. §§ 1324a-1324c',
-        '8 C.F.R. §§ 274a.1-274a.14'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // FCRA regulations
-    const fcraRegulation: Regulation = {
-      id: 'fcra',
-      name: 'Fair Credit Reporting Act',
-      description: 'Federal law governing the collection and use of consumer credit information, including for employment purposes',
-      scope: 'Federal, applies to employers using consumer reports for employment decisions',
-      requirements: [
-        'Written disclosure and authorization before obtaining consumer reports',
-        'Pre-adverse action notice with copy of report and summary of rights before taking adverse action',
-        'Post-adverse action notice after taking adverse action based on consumer report',
-        'Special procedures for investigative consumer reports'
-      ],
-      citations: [
-        '15 U.S.C. §§ 1681-1681x',
-        '16 C.F.R. § 600-603'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // COBRA regulations
-    const cobraRegulation: Regulation = {
-      id: 'cobra',
-      name: 'Consolidated Omnibus Budget Reconciliation Act',
-      description: 'Federal law requiring continuation of group health coverage after qualifying events',
-      scope: 'Federal, applies to employers with 20+ employees in prior year',
-      requirements: [
-        'Continuation of group health coverage for qualified beneficiaries after qualifying events',
-        'Initial COBRA notice to employees and dependents when coverage begins',
-        'COBRA election notice within 14 days of notification of qualifying event',
-        'Maximum continuation period of 18, 29, or 36 months depending on qualifying event'
-      ],
-      citations: [
-        '29 U.S.C. §§ 1161-1169',
-        '26 C.F.R. §§ 54.4980B-1-54.4980B-10'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // California specific
-    const californiaRegulation: Regulation = {
-      id: 'california_employment',
-      name: 'California Employment Laws',
-      description: 'California state-specific employment laws that often exceed federal requirements',
-      scope: 'California employers',
-      requirements: [
-        'Minimum wage of $15.50 per hour (as of 2023)',
-        'Overtime pay for hours worked beyond 8 in a day or 40 in a week',
-        'Mandatory paid sick leave of at least 24 hours or 3 days per year',
-        'California Family Rights Act (CFRA) leave for employers with 5+ employees',
-        'Detailed requirements for final paychecks and payroll records',
-        'Meal and rest break requirements'
-      ],
-      citations: [
-        'California Labor Code',
-        'California Fair Employment and Housing Act (FEHA)',
-        'California Family Rights Act (CFRA)',
-        'Cal/OSHA regulations'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // New York specific
-    const newYorkRegulation: Regulation = {
-      id: 'new_york_employment',
-      name: 'New York Employment Laws',
-      description: 'New York state-specific employment laws that often exceed federal requirements',
-      scope: 'New York employers',
-      requirements: [
-        'Minimum wage varies by location (NYC: $15.00, Long Island & Westchester: $15.00, remainder of state: $14.20 as of 2023)',
-        'New York Paid Family Leave providing up to 12 weeks of paid leave',
-        'Paid sick leave requirements based on employer size',
-        'Specific requirements for wage notices, pay statements, and recordkeeping',
-        'Expanded workplace discrimination and harassment protections'
-      ],
-      citations: [
-        'New York Labor Law',
-        'New York State Human Rights Law',
-        'New York Paid Family Leave Law',
-        'New York Paid Sick Leave Law'
-      ],
-      lastUpdated: '2023-01-01'
-    };
-    
-    // Store all regulations
-    this.regulations.set('flsa', flsaRegulation);
-    this.regulations.set('fmla', fmlaRegulation);
-    this.regulations.set('ada', adaRegulation);
-    this.regulations.set('title_vii', titleViiRegulation);
-    this.regulations.set('eeoc', eeocRegulation);
-    this.regulations.set('irca', ircaRegulation);
-    this.regulations.set('fcra', fcraRegulation);
-    this.regulations.set('cobra', cobraRegulation);
-    this.regulations.set('california_employment', californiaRegulation);
-    this.regulations.set('new_york_employment', newYorkRegulation);
-  }
-
-  /**
-   * Identify relevant regulations for a given query
-   */
-  private identifyRelevantRegulations(query: string): Regulation[] {
-    const queryLower = query.toLowerCase();
-    const relevantRegulations: Regulation[] = [];
-    
-    // FLSA relevance
-    if (
-      queryLower.includes('wage') ||
-      queryLower.includes('overtime') ||
-      queryLower.includes('hour') ||
-      queryLower.includes('minimum wage') ||
-      queryLower.includes('flsa') ||
-      queryLower.includes('fair labor')
-    ) {
-      const flsaRegulation = this.regulations.get('flsa');
-      if (flsaRegulation) relevantRegulations.push(flsaRegulation);
-    }
-    
-    // FMLA relevance
-    if (
-      queryLower.includes('leave') ||
-      queryLower.includes('medical leave') ||
-      queryLower.includes('family leave') ||
-      queryLower.includes('fmla') ||
-      queryLower.includes('maternity') ||
-      queryLower.includes('paternity')
-    ) {
-      const fmlaRegulation = this.regulations.get('fmla');
-      if (fmlaRegulation) relevantRegulations.push(fmlaRegulation);
-    }
-    
-    // ADA relevance
-    if (
-      queryLower.includes('disability') ||
-      queryLower.includes('accommodation') ||
-      queryLower.includes('ada') ||
-      queryLower.includes('americans with disabilities')
-    ) {
-      const adaRegulation = this.regulations.get('ada');
-      if (adaRegulation) relevantRegulations.push(adaRegulation);
-    }
-    
-    // Title VII relevance
-    if (
-      queryLower.includes('discrimination') ||
-      queryLower.includes('harassment') ||
-      queryLower.includes('title vii') ||
-      queryLower.includes('civil rights') ||
-      queryLower.includes('equal opportunity')
-    ) {
-      const titleViiRegulation = this.regulations.get('title_vii');
-      if (titleViiRegulation) relevantRegulations.push(titleViiRegulation);
-    }
-    
-    // EEOC relevance
-    if (
-      queryLower.includes('eeoc') ||
-      queryLower.includes('equal employment') ||
-      queryLower.includes('discrimination report')
-    ) {
-      const eeocRegulation = this.regulations.get('eeoc');
-      if (eeocRegulation) relevantRegulations.push(eeocRegulation);
-    }
-    
-    // IRCA/I-9 relevance
-    if (
-      queryLower.includes('i-9') ||
-      queryLower.includes('immigration') ||
-      queryLower.includes('work authorization') ||
-      queryLower.includes('employment eligibility') ||
-      queryLower.includes('irca')
-    ) {
-      const ircaRegulation = this.regulations.get('irca');
-      if (ircaRegulation) relevantRegulations.push(ircaRegulation);
-    }
-    
-    // FCRA relevance
-    if (
-      queryLower.includes('background check') ||
-      queryLower.includes('credit report') ||
-      queryLower.includes('consumer report') ||
-      queryLower.includes('fcra')
-    ) {
-      const fcraRegulation = this.regulations.get('fcra');
-      if (fcraRegulation) relevantRegulations.push(fcraRegulation);
-    }
-    
-    // COBRA relevance
-    if (
-      queryLower.includes('cobra') ||
-      queryLower.includes('continuation') ||
-      queryLower.includes('health insurance termination') ||
-      queryLower.includes('benefits after')
-    ) {
-      const cobraRegulation = this.regulations.get('cobra');
-      if (cobraRegulation) relevantRegulations.push(cobraRegulation);
-    }
-    
-    // State-specific relevance
-    if (
-      queryLower.includes('california') ||
-      queryLower.includes('ca law') ||
-      queryLower.includes('ca requirement')
-    ) {
-      const californiaRegulation = this.regulations.get('california_employment');
-      if (californiaRegulation) relevantRegulations.push(californiaRegulation);
-    }
-    
-    if (
-      queryLower.includes('new york') ||
-      queryLower.includes('ny law') ||
-      queryLower.includes('ny requirement')
-    ) {
-      const newYorkRegulation = this.regulations.get('new_york_employment');
-      if (newYorkRegulation) relevantRegulations.push(newYorkRegulation);
-    }
-    
-    // If no specific relevance is found, include general federal regulations
-    if (relevantRegulations.length === 0) {
-      const flsaRegulation = this.regulations.get('flsa');
-      if (flsaRegulation) relevantRegulations.push(flsaRegulation);
       
-      const fmlaRegulation = this.regulations.get('fmla');
-      if (fmlaRegulation) relevantRegulations.push(fmlaRegulation);
+      // Prepare the context
+      let context = '';
+      if (searchResults) {
+        context += `\nRecent compliance information from reliable sources:\n${searchResults}\n`;
+      }
       
-      const titleViiRegulation = this.regulations.get('title_vii');
-      if (titleViiRegulation) relevantRegulations.push(titleViiRegulation);
-    }
-    
-    return relevantRegulations;
-  }
-
-  /**
-   * Create a compliance prompt based on the query and relevant regulations
-   */
-  private createCompliancePrompt(query: string, relevantRegulations: Regulation[]): string {
-    let prompt = `I need compliance information and guidance regarding the following query:\n\n"${query}"\n\n`;
-    
-    prompt += "Here are the relevant regulations and requirements to consider:\n\n";
-    
-    relevantRegulations.forEach(regulation => {
-      prompt += `== ${regulation.name.toUpperCase()} ==\n`;
-      prompt += `Description: ${regulation.description}\n`;
-      prompt += `Scope: ${regulation.scope}\n`;
-      prompt += `Requirements:\n`;
+      // Get relevant context from knowledge base if available
+      const knowledgeContext = await this.getRelevantContext(query);
+      if (knowledgeContext) {
+        context += `\nRelevant compliance information from our knowledge base:\n${knowledgeContext}\n`;
+      }
       
-      regulation.requirements.forEach(requirement => {
-        prompt += `- ${requirement}\n`;
+      // Add company context if available
+      if (this.companyProfile) {
+        context += `\nCompany profile information:\n`;
+        context += `Company: ${this.companyProfile.name}\n`;
+        context += `Industry: ${this.companyProfile.industry}\n`;
+        context += `Size: ${this.companyProfile.employee_count} employees\n`;
+        context += `Locations: ${this.companyProfile.locations.join(', ')}\n`;
+      }
+      
+      // Prepare messages for the AI
+      const messages: Message[] = [
+        { role: 'system', content: this.systemPrompt }
+      ];
+      
+      // Add conversation history if using memory
+      if (this.memory && this.messages.length > 1) {
+        // Add relevant previous messages, skipping the system message
+        messages.push(...this.messages.slice(1));
+      } else {
+        // Just add the current query if not using history
+        messages.push({ role: 'user', content: query });
+      }
+      
+      // If we have context, append it to the last user message
+      if (context) {
+        const lastUserMessageIndex = [...messages].reverse().findIndex(m => m.role === 'user');
+        if (lastUserMessageIndex >= 0) {
+          const actualIndex = messages.length - 1 - lastUserMessageIndex;
+          messages[actualIndex] = {
+            ...messages[actualIndex],
+            content: messages[actualIndex].content + '\n\n' + context
+          };
+        }
+      }
+      
+      // Call the AI
+      const response = await anthropic.messages.create({
+        model: this.model,
+        max_tokens: this.maxTokens,
+        temperature: this.temperature,
+        system: this.systemPrompt,
+        messages: messages.map(m => {
+          // Only include role and content for simplicity
+          return { role: m.role as any, content: m.content };
+        }),
       });
       
-      prompt += `Citations: ${regulation.citations.join(', ')}\n`;
-      prompt += `Last Updated: ${regulation.lastUpdated}\n\n`;
-    });
-    
-    prompt += `Please provide comprehensive compliance guidance for this query. Your response should:
-
-1. Identify the specific regulatory requirements that apply to the situation
-2. Explain compliance obligations in clear, actionable terms
-3. Note any jurisdictional considerations (federal vs. state requirements)
-4. Highlight common compliance pitfalls or areas of risk
-5. Recommend practical compliance steps or best practices
-
-If the query touches on multiple regulatory areas, provide an integrated response that addresses all relevant aspects. If there are areas where requirements might conflict or overlap, explain how to navigate those complexities.`;
-    
-    return prompt;
+      // Extract the response text
+      const responseText = response.content[0].text;
+      
+      // Add the response to conversation history
+      this.addMessage('assistant', responseText);
+      
+      // Check if the response includes tool calls (not directly supported in anthropic)
+      // but we parse for compliance requests
+      const toolCallResults = await this.parseAndExecuteToolCalls(responseText, query);
+      
+      // Save the conversation if needed
+      if (this.conversationId) {
+        await this.saveConversation();
+      }
+      
+      // Calculate confidence score
+      const confidence = this.calculateConfidence(responseText, query);
+      
+      // Return the response
+      return {
+        response: this.formatResponse(responseText),
+        confidence,
+        metadata: {
+          model: this.model,
+          searchResults: searchResults ? true : false,
+          toolCalls: toolCallResults.length > 0,
+        },
+        toolCalls: toolCallResults
+      };
+    } catch (error) {
+      console.error('Error processing query in Compliance Agent:', error);
+      
+      // Return a graceful error response
+      return {
+        response: "I'm sorry, I encountered an error while processing your compliance question. Please try rephrasing your question or try again later.",
+        confidence: 0.1,
+        metadata: {
+          error: error.message
+        }
+      };
+    }
   }
-
+  
   /**
-   * Create a compliance result object
+   * Parse the response for compliance requests and execute them
    */
-  private createComplianceResult(query: string, response: string): ComplianceResult {
-    // Calculate confidence based on the response
-    const confidence = this.calculateConfidence(response);
+  private async parseAndExecuteToolCalls(responseText: string, query: string): Promise<any[]> {
+    const toolCallResults = [];
     
-    // Create and return compliance result
-    return {
-      id: uuidv4(),
-      query,
-      result: response,
-      timestamp: new Date(),
-      confidence
+    // Check for compliance requirement patterns in the response or query
+    const hasComplianceRequirementRequest = 
+      (responseText.includes('compliance requirements') || query.includes('compliance requirements')) ||
+      (responseText.includes('regulations') || query.includes('regulations'));
+    
+    const hasComplianceStatusRequest =
+      (responseText.includes('compliance status') || query.includes('compliance status')) ||
+      (responseText.includes('are we compliant') || query.includes('are we compliant'));
+    
+    const hasDeadlineRequest =
+      (responseText.includes('deadlines') || query.includes('deadlines')) ||
+      (responseText.includes('due dates') || query.includes('due dates'));
+    
+    // Execute appropriate tool calls
+    if (hasComplianceRequirementRequest) {
+      // Extract parameters from the text
+      const region = this.extractRegion(responseText, query);
+      const companySize = this.extractNumber(responseText, query, /(\d+)\s+employees/i) || 
+                         this.extractNumber(responseText, query, /company\s+size\s+of\s+(\d+)/i);
+      
+      const industry = this.extractIndustry(responseText, query);
+      
+      const requirementType = 
+        (responseText.includes('payroll requirements') || query.includes('payroll requirements')) ? 'payroll' :
+        (responseText.includes('tax requirements') || query.includes('tax requirements')) ? 'tax' :
+        (responseText.includes('benefit requirements') || query.includes('benefit requirements')) ? 'benefits' :
+        (responseText.includes('reporting requirements') || query.includes('reporting requirements')) ? 'reporting' :
+        'all'; // Default to all
+      
+      const params = {
+        region: region || 'US',
+        company_size: companySize || (this.companyProfile ? this.companyProfile.employee_count : 50),
+        industry: industry || (this.companyProfile ? this.companyProfile.industry : 'general'),
+        requirement_type: requirementType
+      };
+      
+      const result = await this.getComplianceRequirements(params);
+      toolCallResults.push({
+        name: 'get_compliance_requirements',
+        arguments: params,
+        result
+      });
+    }
+    
+    if (hasComplianceStatusRequest) {
+      // For this case, we would need requirement IDs, but for simplicity,
+      // we'll just return the status for all federal requirements
+      const requirementIds = this.federalRequirements.map(req => req.id);
+      
+      const params = {
+        requirement_ids: requirementIds,
+        company_id: this.companyId
+      };
+      
+      const result = await this.checkComplianceStatus(params);
+      toolCallResults.push({
+        name: 'check_compliance_status',
+        arguments: params,
+        result
+      });
+    }
+    
+    if (hasDeadlineRequest) {
+      // Extract parameters from the text
+      const region = this.extractRegion(responseText, query);
+      
+      const period = 
+        (responseText.includes('this week') || query.includes('this week')) ? 'week' :
+        (responseText.includes('this month') || query.includes('this month')) ? 'month' :
+        (responseText.includes('this quarter') || query.includes('this quarter')) ? 'quarter' :
+        (responseText.includes('this year') || query.includes('this year')) ? 'year' :
+        'month'; // Default to month
+      
+      const requirementType = 
+        (responseText.includes('payroll deadlines') || query.includes('payroll deadlines')) ? 'payroll' :
+        (responseText.includes('tax deadlines') || query.includes('tax deadlines')) ? 'tax' :
+        (responseText.includes('benefit deadlines') || query.includes('benefit deadlines')) ? 'benefits' :
+        (responseText.includes('reporting deadlines') || query.includes('reporting deadlines')) ? 'reporting' :
+        'all'; // Default to all
+      
+      const params = {
+        region: region || 'US',
+        period,
+        requirement_type: requirementType
+      };
+      
+      const result = await this.getUpcomingDeadlines(params);
+      toolCallResults.push({
+        name: 'get_upcoming_deadlines',
+        arguments: params,
+        result
+      });
+    }
+    
+    return toolCallResults;
+  }
+  
+  /**
+   * Helper method to extract a number from text
+   */
+  private extractNumber(text1: string, text2: string, pattern: RegExp): number | null {
+    const match1 = text1.match(pattern);
+    if (match1 && match1[1]) {
+      return parseInt(match1[1], 10);
+    }
+    
+    const match2 = text2.match(pattern);
+    if (match2 && match2[1]) {
+      return parseInt(match2[1], 10);
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Extract region from text
+   */
+  private extractRegion(text1: string, text2: string): string | null {
+    // Check for US states
+    const statePattern = /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b/;
+    const stateMatch1 = text1.match(statePattern);
+    if (stateMatch1 && stateMatch1[1]) {
+      return stateMatch1[1];
+    }
+    
+    const stateMatch2 = text2.match(statePattern);
+    if (stateMatch2 && stateMatch2[1]) {
+      return stateMatch2[1];
+    }
+    
+    // Check for country mentions
+    if (text1.includes('United States') || text2.includes('United States') || 
+        text1.includes('US') || text2.includes('US')) {
+      return 'US';
+    }
+    
+    // Default to US if no region found
+    return null;
+  }
+  
+  /**
+   * Extract industry from text
+   */
+  private extractIndustry(text1: string, text2: string): string | null {
+    const industries = [
+      'healthcare', 'construction', 'manufacturing', 'retail', 'finance',
+      'technology', 'hospitality', 'education', 'transportation', 'agriculture'
+    ];
+    
+    for (const industry of industries) {
+      if (text1.toLowerCase().includes(industry) || text2.toLowerCase().includes(industry)) {
+        return industry;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Load compliance data from database or other sources
+   */
+  private async loadComplianceData(): Promise<void> {
+    try {
+      // Check if we have compliance data in Supabase
+      const { data: federalData, error: federalError } = await supabase
+        .from('compliance_requirements')
+        .select('*')
+        .eq('scope', 'federal');
+      
+      if (federalError) {
+        throw federalError;
+      }
+      
+      if (federalData && federalData.length > 0) {
+        this.federalRequirements = federalData as ComplianceRequirement[];
+      }
+      
+      // Load state requirements
+      const { data: stateData, error: stateError } = await supabase
+        .from('compliance_requirements')
+        .select('*')
+        .eq('scope', 'state');
+      
+      if (stateError) {
+        throw stateError;
+      }
+      
+      if (stateData && stateData.length > 0) {
+        // Group by state
+        for (const req of stateData as ComplianceRequirement[]) {
+          for (const region of req.regions) {
+            if (!this.stateRequirements[region]) {
+              this.stateRequirements[region] = [];
+            }
+            this.stateRequirements[region].push(req);
+          }
+        }
+      }
+      
+      // Load industry requirements
+      const { data: industryData, error: industryError } = await supabase
+        .from('compliance_requirements')
+        .select('*')
+        .eq('scope', 'industry');
+      
+      if (industryError) {
+        throw industryError;
+      }
+      
+      if (industryData && industryData.length > 0) {
+        // Group by industry
+        for (const req of industryData as ComplianceRequirement[]) {
+          for (const industry of req.applies_to) {
+            if (!this.industryRequirements[industry]) {
+              this.industryRequirements[industry] = [];
+            }
+            this.industryRequirements[industry].push(req);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading compliance data:', error);
+      // Fallback to default data already initialized
+    }
+  }
+  
+  /**
+   * Load company profile data
+   */
+  private async loadCompanyProfile(companyId: string): Promise<void> {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .eq('id', companyId)
+        .single();
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        this.companyProfile = data;
+      }
+    } catch (error) {
+      console.error('Error loading company profile:', error);
+    }
+  }
+  
+  /**
+   * Initialize default federal compliance requirements
+   */
+  private initializeDefaultFederalRequirements(): void {
+    this.federalRequirements = [
+      {
+        id: 'flsa',
+        name: 'Fair Labor Standards Act',
+        description: 'Establishes minimum wage, overtime pay, recordkeeping, and youth employment standards',
+        scope: 'federal',
+        requirements: [
+          'Pay at least federal minimum wage ($7.25/hour)',
+          'Pay overtime (1.5x regular rate) for hours worked over 40 in a workweek',
+          'Maintain accurate records of employee hours and wages',
+          'Follow restrictions on employment of minors'
+        ],
+        citations: ['29 U.S.C. § 201 et seq.'],
+        applies_to: ['all businesses'],
+        regions: ['US'],
+        deadline_type: 'recurring',
+        deadline_details: {
+          frequency: 'continuous',
+          description: 'Ongoing compliance required'
+        },
+        reference_url: 'https://www.dol.gov/agencies/whd/flsa',
+        penalties: 'Up to $1,000 per violation; willful violations may result in criminal prosecution',
+        last_updated: '2023-01-01'
+      },
+      {
+        id: 'fmla',
+        name: 'Family and Medical Leave Act',
+        description: 'Provides eligible employees with unpaid, job-protected leave for family and medical reasons',
+        scope: 'federal',
+        requirements: [
+          'Provide up to 12 weeks of unpaid leave for qualifying reasons',
+          'Maintain employee health benefits during leave',
+          'Restore employee to same or equivalent position after leave',
+          'Post FMLA notice in workplace'
+        ],
+        citations: ['29 U.S.C. § 2601 et seq.'],
+        applies_to: ['employers with 50+ employees'],
+        employee_threshold: 50,
+        regions: ['US'],
+        deadline_type: 'relative',
+        deadline_details: {
+          event: 'employee request',
+          timeframe: '30 days',
+          description: 'Respond to employee FMLA requests within 5 business days'
+        },
+        reference_url: 'https://www.dol.gov/agencies/whd/fmla',
+        penalties: 'Lost wages, benefits, other compensation, plus employment, reinstatement, promotion, and attorney's fees',
+        last_updated: '2023-01-01'
+      },
+      {
+        id: 'ada',
+        name: 'Americans with Disabilities Act',
+        description: 'Prohibits discrimination against individuals with disabilities in employment',
+        scope: 'federal',
+        requirements: [
+          'Make reasonable accommodations for qualified individuals with disabilities',
+          'Do not discriminate in hiring, promoting, or providing benefits',
+          'Maintain accessibility in workplace facilities',
+          'Keep medical information confidential'
+        ],
+        citations: ['42 U.S.C. § 12101 et seq.'],
+        applies_to: ['employers with 15+ employees'],
+        employee_threshold: 15,
+        regions: ['US'],
+        deadline_type: 'relative',
+        deadline_details: {
+          event: 'accommodation request',
+          description: 'Respond to accommodation requests promptly'
+        },
+        reference_url: 'https://www.eeoc.gov/laws/guidance/ada-your-responsibilities-employer',
+        penalties: 'Compensatory and punitive damages up to $300,000 (based on employer size)',
+        last_updated: '2023-01-01'
+      },
+      {
+        id: 'form941',
+        name: 'Form 941 - Employer\'s Quarterly Federal Tax Return',
+        description: 'Quarterly tax form to report wages, tips, federal income tax withheld, and Social Security and Medicare taxes',
+        scope: 'federal',
+        requirements: [
+          'File Form 941 quarterly',
+          'Report all wages, tips, and other compensation paid',
+          'Calculate and report federal income tax withheld',
+          'Calculate and report Social Security and Medicare taxes'
+        ],
+        citations: ['26 U.S.C. § 6011'],
+        applies_to: ['all employers'],
+        regions: ['US'],
+        deadline_type: 'recurring',
+        deadline_details: {
+          frequency: 'quarterly',
+          dates: ['April 30', 'July 31', 'October 31', 'January 31'],
+          description: 'Due the last day of the month following the end of the quarter'
+        },
+        reference_url: 'https://www.irs.gov/forms-pubs/about-form-941',
+        penalties: 'Up to 15% of unpaid tax depending on filing delay',
+        last_updated: '2024-01-01'
+      },
+      {
+        id: 'form940',
+        name: 'Form 940 - Employer\'s Annual Federal Unemployment Tax Return',
+        description: 'Annual tax form to report and pay federal unemployment (FUTA) tax',
+        scope: 'federal',
+        requirements: [
+          'File Form 940 annually',
+          'Report all wages subject to FUTA tax',
+          'Calculate and pay FUTA tax'
+        ],
+        citations: ['26 U.S.C. § 3301 et seq.'],
+        applies_to: ['employers who paid wages of $1,500+ in any quarter or had one or more employees for some part of a day in any 20 or more different weeks'],
+        regions: ['US'],
+        deadline_type: 'fixed',
+        deadline_details: {
+          date: 'January 31',
+          description: 'Due January 31 following the end of the calendar year'
+        },
+        reference_url: 'https://www.irs.gov/forms-pubs/about-form-940',
+        penalties: 'Up to 15% of unpaid tax depending on filing delay',
+        last_updated: '2024-01-01'
+      }
+    ];
+  }
+  
+  /**
+   * Initialize default state compliance requirements
+   */
+  private initializeDefaultStateRequirements(): void {
+    // Create sample requirements for California
+    const californiaRequirements = [
+      {
+        id: 'ca_minwage',
+        name: 'California Minimum Wage',
+        description: 'California state minimum wage requirements',
+        scope: 'state',
+        requirements: [
+          'Pay at least $16.00/hour for all employers effective January 1, 2024'
+        ],
+        citations: ['CA Labor Code § 1182.12'],
+        applies_to: ['all employers'],
+        regions: ['CA'],
+        deadline_type: 'recurring',
+        deadline_details: {
+          frequency: 'continuous',
+          description: 'Ongoing compliance required'
+        },
+        reference_url: 'https://www.dir.ca.gov/dlse/faq_minimumwage.htm',
+        penalties: 'Unpaid wages, penalties of $100-$250 per violation, plus potential liquidated damages',
+        last_updated: '2024-01-01'
+      },
+      {
+        id: 'ca_paystubs',
+        name: 'California Pay Stub Requirements',
+        description: 'Detailed requirements for information that must be included on employee pay stubs',
+        scope: 'state',
+        requirements: [
+          'Include gross wages earned',
+          'Include total hours worked (for non-exempt employees)',
+          'Include all deductions',
+          'Include net wages earned',
+          'Include inclusive dates of the pay period',
+          'Include employee name and last 4 digits of SSN/Employee ID',
+          'Include employer name and address'
+        ],
+        citations: ['CA Labor Code § 226'],
+        applies_to: ['all employers'],
+        regions: ['CA'],
+        deadline_type: 'recurring',
+        deadline_details: {
+          frequency: 'each pay period',
+          description: 'Must provide with each wage payment'
+        },
+        reference_url: 'https://www.dir.ca.gov/dlse/FAQs-Deductions.html',
+        penalties: '$50 for first violation, $100 per subsequent violation, up to $4,000 total',
+        last_updated: '2023-01-01'
+      }
+    ];
+    
+    // Create sample requirements for New York
+    const newYorkRequirements = [
+      {
+        id: 'ny_minwage',
+        name: 'New York Minimum Wage',
+        description: 'New York state minimum wage requirements',
+        scope: 'state',
+        requirements: [
+          'Pay at least $16.00/hour in New York City, Long Island, and Westchester County',
+          'Pay at least $15.00/hour in the remainder of the state'
+        ],
+        citations: ['NY Labor Law § 652'],
+        applies_to: ['all employers'],
+        regions: ['NY'],
+        deadline_type: 'recurring',
+        deadline_details: {
+          frequency: 'continuous',
+          description: 'Ongoing compliance required'
+        },
+        reference_url: 'https://dol.ny.gov/minimum-wage-0',
+        penalties: 'Unpaid wages, 100% liquidated damages, interest, and attorney's fees',
+        last_updated: '2024-01-01'
+      },
+      {
+        id: 'ny_paidleave',
+        name: 'New York Paid Family Leave',
+        description: 'Provides paid time off for bonding with a new child, caring for a family member, or assisting when a family member is deployed abroad on active military service',
+        scope: 'state',
+        requirements: [
+          'Provide up to 12 weeks of paid family leave',
+          'Collect employee contributions through payroll deductions',
+          'Display or post a notice about paid family leave',
+          'Include information about paid family leave in employee handbooks'
+        ],
+        citations: ['NY Workers' Compensation Law § 200 et seq.'],
+        applies_to: ['all private employers'],
+        regions: ['NY'],
+        deadline_type: 'relative',
+        deadline_details: {
+          event: 'employee request',
+          timeframe: '30 days',
+          description: 'Process employee leave requests within applicable timeframes'
+        },
+        reference_url: 'https://paidfamilyleave.ny.gov/employers',
+        penalties: 'Up to 0.5% of weekly payroll for the period of non-compliance plus additional penalties',
+        last_updated: '2023-01-01'
+      }
+    ];
+    
+    // Initialize the state requirements map
+    this.stateRequirements = {
+      'CA': californiaRequirements,
+      'NY': newYorkRequirements
     };
   }
-
+  
   /**
-   * Store a compliance result
+   * Initialize default industry-specific compliance requirements
    */
-  private storeComplianceResult(result: ComplianceResult): void {
-    this.complianceResults.push(result);
+  private initializeDefaultIndustryRequirements(): void {
+    // Healthcare industry requirements
+    const healthcareRequirements = [
+      {
+        id: 'hipaa',
+        name: 'Health Insurance Portability and Accountability Act (HIPAA)',
+        description: 'Provides data privacy and security provisions for safeguarding medical information',
+        scope: 'industry',
+        requirements: [
+          'Implement safeguards to protect patient health information',
+          'Restrict disclosure of protected health information',
+          'Provide individuals with access to their health information',
+          'Train employees on HIPAA requirements'
+        ],
+        citations: ['42 U.S.C. § 1320d et seq.'],
+        applies_to: ['healthcare', 'health insurance'],
+        regions: ['US'],
+        deadline_type: 'recurring',
+        deadline_details: {
+          frequency: 'continuous',
+          description: 'Ongoing compliance required; employee training typically annual'
+        },
+        reference_url: 'https://www.hhs.gov/hipaa/index.html',
+        penalties: 'Varies from $100 to $50,000 per violation with annual maximum of $1.5 million',
+        last_updated: '2023-01-01'
+      }
+    ];
     
-    // Limit the number of stored results
-    if (this.complianceResults.length > 100) {
-      this.complianceResults.shift();  // Remove oldest result
-    }
+    // Construction industry requirements
+    const constructionRequirements = [
+      {
+        id: 'osha_construction',
+        name: 'OSHA Construction Safety Standards',
+        description: 'Safety standards specific to the construction industry',
+        scope: 'industry',
+        requirements: [
+          'Provide fall protection for employees working at heights of 6 feet or more',
+          'Ensure proper scaffolding safety',
+          'Implement proper trenching and excavation safety measures',
+          'Provide appropriate personal protective equipment (PPE)',
+          'Maintain OSHA 300 logs of work-related injuries and illnesses'
+        ],
+        citations: ['29 CFR Part 1926'],
+        applies_to: ['construction'],
+        regions: ['US'],
+        deadline_type: 'recurring',
+        deadline_details: {
+          frequency: 'continuous',
+          description: 'Ongoing compliance required; OSHA Form 300A must be posted from February 1 to April 30 each year'
+        },
+        reference_url: 'https://www.osha.gov/construction',
+        penalties: 'Up to $14,502 per violation for serious violations; up to $145,027 for willful or repeated violations',
+        last_updated: '2024-01-01'
+      }
+    ];
+    
+    // Initialize the industry requirements map
+    this.industryRequirements = {
+      'healthcare': healthcareRequirements,
+      'construction': constructionRequirements
+    };
   }
-
+  
   /**
-   * Calculate confidence based on the response
+   * Get compliance requirements based on parameters
    */
-  private calculateConfidence(response: string): number {
-    // Start with a baseline confidence
-    let confidence = 0.7;
+  private async getComplianceRequirements(params: any): Promise<any> {
+    const { region, company_size, industry, requirement_type } = params;
     
-    // Citations increase confidence
-    if (
-      response.includes('U.S.C.') || 
-      response.includes('C.F.R.') || 
-      response.includes('section') || 
-      response.includes('§')
-    ) {
-      confidence += 0.1;
+    const result: any = {
+      timestamp: new Date().toISOString(),
+      params: params,
+      requirements: []
+    };
+    
+    // Get federal requirements
+    const federalReqs = this.federalRequirements.filter(req => {
+      // Filter by employee threshold if applicable
+      if (req.employee_threshold && company_size < req.employee_threshold) {
+        return false;
+      }
+      
+      // Filter by requirement type if specified
+      if (requirement_type !== 'all') {
+        const reqType = req.name.toLowerCase();
+        if (requirement_type === 'payroll' && !reqType.includes('pay') && !reqType.includes('wage') && !reqType.includes('tax')) {
+          return false;
+        }
+        if (requirement_type === 'tax' && !reqType.includes('tax') && !reqType.includes('form')) {
+          return false;
+        }
+        if (requirement_type === 'benefits' && !reqType.includes('leave') && !reqType.includes('benefit')) {
+          return false;
+        }
+        if (requirement_type === 'reporting' && !reqType.includes('report') && !reqType.includes('form')) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+    
+    // Get state requirements if applicable
+    let stateReqs: ComplianceRequirement[] = [];
+    if (region && region.length === 2 && this.stateRequirements[region]) {
+      stateReqs = this.stateRequirements[region].filter(req => {
+        // Filter by requirement type if specified
+        if (requirement_type !== 'all') {
+          const reqType = req.name.toLowerCase();
+          if (requirement_type === 'payroll' && !reqType.includes('pay') && !reqType.includes('wage')) {
+            return false;
+          }
+          if (requirement_type === 'tax' && !reqType.includes('tax')) {
+            return false;
+          }
+          if (requirement_type === 'benefits' && !reqType.includes('leave') && !reqType.includes('benefit')) {
+            return false;
+          }
+          if (requirement_type === 'reporting' && !reqType.includes('report') && !reqType.includes('form')) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
     }
     
-    // Specific regulation names increase confidence
-    if (
-      response.includes('FLSA') || 
-      response.includes('FMLA') || 
-      response.includes('ADA') || 
-      response.includes('Title VII')
-    ) {
-      confidence += 0.1;
+    // Get industry requirements if applicable
+    let industryReqs: ComplianceRequirement[] = [];
+    if (industry && this.industryRequirements[industry]) {
+      industryReqs = this.industryRequirements[industry];
     }
     
-    // Detailed guidance increases confidence
-    if (
-      response.includes('requirement') || 
-      response.includes('compliance') || 
-      response.includes('employer must') || 
-      response.includes('legally')
-    ) {
-      confidence += 0.1;
+    // Combine all requirements
+    result.requirements = [...federalReqs, ...stateReqs, ...industryReqs];
+    
+    // Create a compliance check result for storage if we have a user ID
+    if (this.userId) {
+      const complianceResult: ComplianceResult = {
+        id: uuidv4(),
+        query: `Get compliance requirements for region ${region}, company size ${company_size}, industry ${industry}`,
+        result: result,
+        timestamp: new Date(),
+        confidence: 0.9,
+        user_id: this.userId,
+        company_id: this.companyId
+      };
+      
+      try {
+        await supabase
+          .from('compliance_results')
+          .insert(complianceResult);
+      } catch (error) {
+        console.error('Error saving compliance result:', error);
+      }
     }
     
-    // Uncertainty language decreases confidence
-    const uncertaintyPatterns = ["may", "might", "could", "possibly", "unclear", "limited guidance", "varies by jurisdiction"];
-    const uncertaintyCount = uncertaintyPatterns.reduce((count, pattern) => {
-      const regex = new RegExp(`\\b${pattern}\\b`, 'gi');
-      return count + (response.match(regex) || []).length;
-    }, 0);
+    return result;
+  }
+  
+  /**
+   * Check compliance status for specific requirements
+   */
+  private async checkComplianceStatus(params: any): Promise<any> {
+    const { requirement_ids, company_id } = params;
     
-    confidence -= Math.min(0.3, uncertaintyCount * 0.05);
+    // In a real implementation, this would check actual company compliance records
+    // For this demo, we'll just return some sample statuses
     
-    // Ensure confidence stays within [0, 1] range
-    return Math.max(0, Math.min(1, confidence));
+    const result: any = {
+      timestamp: new Date().toISOString(),
+      params: params,
+      statuses: []
+    };
+    
+    // Get the requirements to check
+    const requirementsToCheck = requirement_ids.map((id: string) => {
+      // Check in federal requirements first
+      const fedReq = this.federalRequirements.find(req => req.id === id);
+      if (fedReq) return fedReq;
+      
+      // Check in state requirements
+      for (const state in this.stateRequirements) {
+        const stateReq = this.stateRequirements[state].find(req => req.id === id);
+        if (stateReq) return stateReq;
+      }
+      
+      // Check in industry requirements
+      for (const industry in this.industryRequirements) {
+        const industryReq = this.industryRequirements[industry].find(req => req.id === id);
+        if (industryReq) return industryReq;
+      }
+      
+      return null;
+    }).filter(req => req !== null);
+    
+    // Generate statuses for each requirement
+    for (const req of requirementsToCheck) {
+      if (!req) continue;
+      
+      // In a real implementation, you would check actual compliance status
+      // For demo purposes, we'll randomize the status
+      const random = Math.random();
+      const status = random > 0.8 ? 'non_compliant' : 
+                   random > 0.6 ? 'partially_compliant' : 'compliant';
+      
+      const nextDueDate = this.calculateNextDeadline(req);
+      
+      result.statuses.push({
+        requirement_id: req.id,
+        requirement_name: req.name,
+        status: status,
+        last_checked: new Date().toISOString(),
+        next_due_date: nextDueDate,
+        issues: status !== 'compliant' ? [
+          'Sample compliance issue for demonstration purposes'
+        ] : [],
+        recommendations: status !== 'compliant' ? [
+          'Sample recommendation for demonstration purposes'
+        ] : []
+      });
+    }
+    
+    return result;
   }
-
+  
   /**
-   * Get a regulation by ID
+   * Get upcoming compliance deadlines
    */
-  public getRegulation(id: string): Regulation | undefined {
-    return this.regulations.get(id);
+  private async getUpcomingDeadlines(params: any): Promise<any> {
+    const { region, period, requirement_type } = params;
+    
+    // Calculate date range based on period
+    const now = new Date();
+    const endDate = new Date();
+    switch (period) {
+      case 'week':
+        endDate.setDate(now.getDate() + 7);
+        break;
+      case 'month':
+        endDate.setMonth(now.getMonth() + 1);
+        break;
+      case 'quarter':
+        endDate.setMonth(now.getMonth() + 3);
+        break;
+      case 'year':
+        endDate.setFullYear(now.getFullYear() + 1);
+        break;
+      default:
+        endDate.setMonth(now.getMonth() + 1); // Default to month
+    }
+    
+    const result: any = {
+      timestamp: new Date().toISOString(),
+      params: params,
+      period_start: now.toISOString(),
+      period_end: endDate.toISOString(),
+      deadlines: []
+    };
+    
+    // Get all applicable requirements
+    const allRequirements: ComplianceRequirement[] = [
+      ...this.federalRequirements
+    ];
+    
+    // Add state requirements if specified
+    if (region && region.length === 2 && this.stateRequirements[region]) {
+      allRequirements.push(...this.stateRequirements[region]);
+    }
+    
+    // Filter requirements by type if specified
+    const filteredRequirements = requirement_type === 'all' ? 
+      allRequirements : 
+      allRequirements.filter(req => {
+        const reqName = req.name.toLowerCase();
+        if (requirement_type === 'payroll' && (reqName.includes('pay') || reqName.includes('wage'))) {
+          return true;
+        }
+        if (requirement_type === 'tax' && (reqName.includes('tax') || reqName.includes('form'))) {
+          return true;
+        }
+        if (requirement_type === 'benefits' && (reqName.includes('leave') || reqName.includes('benefit'))) {
+          return true;
+        }
+        if (requirement_type === 'reporting' && (reqName.includes('report') || reqName.includes('form'))) {
+          return true;
+        }
+        return false;
+      });
+    
+    // For each requirement, calculate next deadline
+    for (const req of filteredRequirements) {
+      const nextDeadline = this.calculateNextDeadline(req);
+      if (!nextDeadline) continue;
+      
+      // Parse the deadline date
+      const deadlineDate = new Date(nextDeadline);
+      
+      // Check if deadline is within the specified period
+      if (deadlineDate >= now && deadlineDate <= endDate) {
+        result.deadlines.push({
+          requirement_id: req.id,
+          requirement_name: req.name,
+          deadline: nextDeadline,
+          description: req.deadline_details?.description || 'Compliance deadline',
+          scope: req.scope
+        });
+      }
+    }
+    
+    // Sort deadlines by date
+    result.deadlines.sort((a: any, b: any) => {
+      return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+    });
+    
+    return result;
   }
-
+  
   /**
-   * Get all regulations
+   * Calculate the next deadline for a requirement
    */
-  public getAllRegulations(): Regulation[] {
-    return Array.from(this.regulations.values());
+  private calculateNextDeadline(requirement: ComplianceRequirement): string | null {
+    if (!requirement.deadline_type || !requirement.deadline_details) {
+      return null;
+    }
+    
+    const now = new Date();
+    
+    switch (requirement.deadline_type) {
+      case 'fixed':
+        // Fixed annual date like "January 31"
+        if (requirement.deadline_details.date) {
+          const dateStr = requirement.deadline_details.date;
+          const [month, day] = dateStr.split(' ');
+          const monthIndex = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+          ].indexOf(month);
+          
+          if (monthIndex >= 0) {
+            const year = now.getFullYear();
+            const deadlineDate = new Date(year, monthIndex, parseInt(day, 10));
+            
+            // If the deadline already passed this year, use next year
+            if (deadlineDate < now) {
+              deadlineDate.setFullYear(year + 1);
+            }
+            
+            return deadlineDate.toISOString();
+          }
+        }
+        break;
+        
+      case 'recurring':
+        // Recurring deadlines like quarterly filings
+        if (requirement.deadline_details.frequency === 'quarterly' && 
+            requirement.deadline_details.dates) {
+          const dates = requirement.deadline_details.dates as string[];
+          let nextDeadline: Date | null = null;
+          
+          for (const dateStr of dates) {
+            const [month, day] = dateStr.split(' ');
+            const monthIndex = [
+              'January', 'February', 'March', 'April', 'May', 'June',
+              'July', 'August', 'September', 'October', 'November', 'December'
+            ].indexOf(month);
+            
+            if (monthIndex >= 0) {
+              const year = now.getFullYear();
+              let deadlineDate = new Date(year, monthIndex, parseInt(day, 10));
+              
+              // If the deadline already passed this year, use next year
+              if (deadlineDate < now) {
+                deadlineDate.setFullYear(year + 1);
+              }
+              
+              // Track the earliest upcoming deadline
+              if (!nextDeadline || deadlineDate < nextDeadline) {
+                nextDeadline = deadlineDate;
+              }
+            }
+          }
+          
+          if (nextDeadline) {
+            return nextDeadline.toISOString();
+          }
+        }
+        break;
+    }
+    
+    return null;
   }
-
+  
   /**
-   * Get all compliance results
+   * Get relevant context for a compliance query from the knowledge base
    */
-  public getComplianceResults(): ComplianceResult[] {
-    return this.complianceResults;
+  protected async getRelevantContext(query: string): Promise<string | null> {
+    try {
+      // Get relevant knowledge base entries
+      const complianceInfoEntries = await supabase.rpc('match_documents', {
+        query_embedding: [0.1], // Placeholder, will be replaced by embedding model
+        match_threshold: 0.7,
+        match_count: 3,
+        collection_name: 'compliance_information'
+      });
+      
+      if (complianceInfoEntries && complianceInfoEntries.length > 0) {
+        return complianceInfoEntries
+          .map(entry => `${entry.title || 'Compliance Information'}: ${entry.content}`)
+          .join('\n\n');
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting relevant context:', error);
+      return null;
+    }
   }
 }
