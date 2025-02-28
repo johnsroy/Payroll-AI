@@ -1,8 +1,14 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import BasicTest from "./pages/basic-test";
 
-import "./index.css";
+function BasicApp() {
+  return (
+    <div>
+      <h1>Hello World</h1>
+      <p>This is a simple test app</p>
+    </div>
+  );
+}
 
 // Get the root element
 const rootElement = document.getElementById("root");
@@ -17,6 +23,6 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <BasicTest />
+    <BasicApp />
   </React.StrictMode>
 );

@@ -96,7 +96,7 @@ export default function DataSourceConnection() {
   const loadDataSources = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest('GET', '/api/data-sources');
+      const response = await apiRequest('/api/data-sources');
       setDataSources(response || []);
       setError(null);
     } catch (err) {
