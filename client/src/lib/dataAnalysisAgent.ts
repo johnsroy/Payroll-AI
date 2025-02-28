@@ -1703,9 +1703,9 @@ For financial forecasts, be clear about the assumptions made and the confidence 
         collection_name: 'finance_information'
       });
       
-      if (financeInfoEntries && financeInfoEntries.length > 0) {
-        return financeInfoEntries
-          .map(entry => `${entry.title || 'Financial Information'}: ${entry.content}`)
+      if (financeInfoEntries && financeInfoEntries.data && Array.isArray(financeInfoEntries.data) && financeInfoEntries.data.length > 0) {
+        return financeInfoEntries.data
+          .map((entry: any) => `${entry.title || 'Financial Information'}: ${entry.content}`)
           .join('\n\n');
       }
       

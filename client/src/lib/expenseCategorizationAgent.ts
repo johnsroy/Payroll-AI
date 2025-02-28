@@ -1116,9 +1116,9 @@ For tax deductibility information, be clear about the general principles while a
         collection_name: 'expense_information'
       });
       
-      if (expenseInfoEntries && expenseInfoEntries.length > 0) {
-        return expenseInfoEntries
-          .map(entry => `${entry.title || 'Expense Information'}: ${entry.content}`)
+      if (expenseInfoEntries && expenseInfoEntries.data && Array.isArray(expenseInfoEntries.data) && expenseInfoEntries.data.length > 0) {
+        return expenseInfoEntries.data
+          .map((entry: any) => `${entry.title || 'Expense Information'}: ${entry.content}`)
           .join('\n\n');
       }
       
