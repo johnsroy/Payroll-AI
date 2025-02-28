@@ -1,0 +1,299 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { FileTextIcon, FileSpreadsheetIcon, FileIcon, ChevronRightIcon } from 'lucide-react';
+
+import { BackgroundParticles } from '../components/animations/BackgroundParticles';
+import { WavyBackground } from '../components/animations/WavyBackground';
+import DataSourcesPanel from '../components/data-connection/DataSourcesPanel';
+import ConnectDataSourceModal from '../components/data-connection/ConnectDataSourceModal';
+import { DataSource, DataSourceType } from '../lib/dataConnectionAgent';
+
+interface FileItem {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  lastModified: Date;
+  path: string;
+}
+
+export default function DataConnectionPage() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDataSource, setSelectedDataSource] = useState<DataSource | null>(null);
+  const [files, setFiles] = useState<FileItem[]>([
+    {
+      id: "file-001",
+      name: "Payroll_2023_Q4.xlsx",
+      type: "xlsx",
+      size: 2456789,
+      lastModified: new Date(Date.now() - 7 * 86400000), // 7 days ago
+      path: "/"
+    },
+    {
+      id: "file-002",
+      name: "Employee_Data.csv",
+      type: "csv",
+      size: 987654,
+      lastModified: new Date(Date.now() - 14 * 86400000), // 14 days ago
+      path: "/"
+    },
+    {
+      id: "file-003",
+      name: "Tax_Reports_2023.pdf",
+      type: "pdf",
+      size: 3456789,
+      lastModified: new Date(Date.now() - 30 * 86400000), // 30 days ago
+      path: "/"
+    },
+    {
+      id: "file-004",
+      name: "Expense_Report_Jan2024.xlsx",
+      type: "xlsx",
+      size: 1234567,
+      lastModified: new Date(Date.now() - 5 * 86400000), // 5 days ago
+      path: "/"
+    },
+    {
+      id: "file-005",
+      name: "Benefits_Summary.pdf",
+      type: "pdf",
+      size: 2345678,
+      lastModified: new Date(Date.now() - 20 * 86400000), // 20 days ago
+      path: "/"
+    }
+  ]);
+
+  const handleSelectDataSource = (source: DataSource) => {
+    setSelectedDataSource(source);
+  };
+
+  const handleConnectNew = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleConnect = (type: DataSourceType, name: string) => {
+    console.log(`Connected to ${name} (${type})`);
+    // This would normally call the API to connect to the data source
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) {
+      return bytes + ' B';
+    } else if (bytes < 1024 * 1024) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    } else if (bytes < 1024 * 1024 * 1024) {
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    } else {
+      return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+    }
+  };
+
+  const getFileIcon = (type: string) => {
+    switch (type) {
+      case 'xlsx':
+      case 'xls':
+        return <FileSpreadsheetIcon className="w-5 h-5 text-green-600" />;
+      case 'pdf':
+        return <FileTextIcon className="w-5 h-5 text-red-600" />;
+      case 'csv':
+        return <FileSpreadsheetIcon className="w-5 h-5 text-blue-600" />;
+      default:
+        return <FileIcon className="w-5 h-5 text-gray-600" />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="relative py-12 bg-blue-600 text-white overflow-hidden">
+        <BackgroundParticles />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <motion.h1 
+                className="text-3xl font-bold"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                Data Connections
+              </motion.h1>
+              <motion.p 
+                className="mt-2 text-blue-100"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+              >
+                Connect to your data sources to import payroll and financial information
+              </motion.p>
+            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <button 
+                className="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+                onClick={handleConnectNew}
+              >
+                Connect New Source
+              </button>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+            >
+              <DataSourcesPanel 
+                onSelectDataSource={handleSelectDataSource}
+                onConnectNew={handleConnectNew}
+              />
+            </motion.div>
+          </div>
+
+          <div className="lg:col-span-2">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="bg-white rounded-lg shadow p-6"
+            >
+              <h2 className="text-xl font-semibold text-gray-800 mb-6">
+                {selectedDataSource 
+                  ? `Files from ${selectedDataSource.name}`
+                  : 'Select a data source to view files'}
+              </h2>
+
+              {selectedDataSource ? (
+                <>
+                  <div className="border-b border-gray-200 pb-2 mb-4">
+                    <nav className="flex" aria-label="Breadcrumb">
+                      <ol className="flex items-center space-x-1">
+                        <li>
+                          <div className="flex items-center">
+                            <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700">
+                              {selectedDataSource.name}
+                            </a>
+                          </div>
+                        </li>
+                        <li>
+                          <div className="flex items-center">
+                            <ChevronRightIcon className="flex-shrink-0 h-4 w-4 text-gray-400" />
+                            <a href="#" className="ml-1 text-sm font-medium text-gray-500 hover:text-gray-700">
+                              Root
+                            </a>
+                          </div>
+                        </li>
+                      </ol>
+                    </nav>
+                  </div>
+
+                  <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Name</th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Size</th>
+                          <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Modified</th>
+                          <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
+                            <span className="sr-only">Actions</span>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {files.map((file, index) => (
+                          <motion.tr 
+                            key={file.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            whileHover={{ backgroundColor: 'rgba(249, 250, 251, 1)' }}
+                          >
+                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm sm:pl-6">
+                              <div className="flex items-center">
+                                <span className="flex-shrink-0 mr-2">
+                                  {getFileIcon(file.type)}
+                                </span>
+                                <div className="font-medium text-gray-900">{file.name}</div>
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                              {formatFileSize(file.size)}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+                              {file.lastModified.toLocaleDateString()}
+                            </td>
+                            <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                              <a href="#" className="text-blue-600 hover:text-blue-900 mr-4">Import</a>
+                              <a href="#" className="text-blue-600 hover:text-blue-900">View</a>
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-10">
+                  <FileIcon className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No files to display</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Select a data source to view and import files.
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      <WavyBackground className="py-16 mt-16">
+        <div className="container mx-auto px-4 text-center">
+          <motion.h2 
+            className="text-2xl font-bold text-white mb-4"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            Simplify Your Payroll Data Management
+          </motion.h2>
+          <motion.p 
+            className="text-white text-lg max-w-2xl mx-auto mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            Connect your cloud storage accounts to automatically import payroll data,
+            employee information, and financial documents.
+          </motion.p>
+          <motion.button
+            className="px-6 py-3 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleConnectNew}
+          >
+            Start Connecting Your Data
+          </motion.button>
+        </div>
+      </WavyBackground>
+
+      <ConnectDataSourceModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onConnect={handleConnect}
+      />
+    </div>
+  );
+}
