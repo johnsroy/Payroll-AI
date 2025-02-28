@@ -2,8 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import AppRoot from "./AppRoot";
 import "./index.css";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "./lib/queryClient";
+import { Toaster } from "@/components/ui/toaster";
 
 // Get the root element
 const rootElement = document.getElementById("root");
@@ -18,8 +17,7 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AppRoot />
-    </QueryClientProvider>
+    <AppRoot />
+    <Toaster />
   </React.StrictMode>
 );
