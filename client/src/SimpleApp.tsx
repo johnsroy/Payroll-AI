@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { Route, Switch, useLocation } from 'wouter';
 import { FloatingIllustration } from './components/animations/FloatingIllustration';
 import { AnimatedRobot } from './components/animations/AnimatedRobot';
 import { ChatBubble } from './components/animations/ChatBubble';
 import { AnimatedAgentCard, Agent } from './components/animations/AnimatedAgentCard';
 import { WavyBackground } from './components/animations/WavyBackground';
+import AgentPlaygroundPage from './pages/agent-playground';
 
 function SimpleApp() {
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
@@ -39,7 +41,10 @@ function SimpleApp() {
       color: "bg-yellow-100 text-yellow-600"
     }
   ];
-  return (
+  const [location, setLocation] = useLocation();
+
+  // Landing page content
+  const LandingPage = () => (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header */}
       <header className="bg-white shadow-sm dark:bg-gray-800 sticky top-0 z-50">
@@ -53,7 +58,13 @@ function SimpleApp() {
             <a href="#testimonials" className="text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">Testimonials</a>
             <a href="#faq" className="text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400">FAQ</a>
           </nav>
-          <div>
+          <div className="flex space-x-2">
+            <button 
+              onClick={() => setLocation('/agents')}
+              className="bg-blue-100 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors"
+            >
+              AI Playground
+            </button>
             <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
               Get Started
             </button>
