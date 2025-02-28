@@ -1,3 +1,5 @@
+import { BaseAgent, AgentConfig, AgentResponse } from './baseAgent';
+
 /**
  * Data source type definitions
  */
@@ -35,155 +37,787 @@ export interface RemoteFile {
   sourceId: string;
   url?: string;
   thumbnailUrl?: string;
-  content?: string;
 }
 
 /**
- * Mock functions for data connection in demonstration mode
+ * Data Connection Agent specializes in connecting and managing
+ * external data sources for payroll and financial data
  */
+export class DataConnectionAgent extends BaseAgent {
+  private dataSources: Map<string, DataSource> = new Map();
+  private tokens: Map<string, string> = new Map();
 
-/**
- * Get a list of available data sources
- */
-export function getDataSources(): DataSource[] {
-  return [
+  /**
+   * Tool definitions for the Data Connection Agent
+   */
+  private connectionTools = [
     {
-      id: "google-drive-001",
-      name: "Google Drive",
-      type: "google_drive",
-      status: "connected",
-      lastSynced: new Date(Date.now() - 2 * 86400000), // 2 days ago
-      metadata: {
-        email: "user@example.com",
-        totalFiles: 47
+      name: "get_data_sources",
+      description: "Get a list of connected data sources for the current user or company",
+      parameters: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            description: "Optional filter by data source type (google_drive, dropbox, onedrive, local)",
+          },
+          status: {
+            type: "string",
+            description: "Optional filter by connection status (connected, disconnected, pending, error)",
+          }
+        },
+        required: []
       }
     },
     {
-      id: "dropbox-001",
-      name: "Dropbox",
-      type: "dropbox",
-      status: "pending",
-      metadata: {
-        authUrl: "https://dropbox.com/authorize"
+      name: "connect_data_source",
+      description: "Initiate a connection to a new data source",
+      parameters: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            description: "The type of data source to connect to (google_drive, dropbox, onedrive, local)",
+          },
+          name: {
+            type: "string",
+            description: "A user-friendly name for this data source connection",
+          }
+        },
+        required: ["type", "name"]
       }
     },
     {
-      id: "local-files-001",
-      name: "Local Files",
-      type: "local",
-      status: "connected",
-      lastSynced: new Date(Date.now() - 1 * 3600000), // 1 hour ago
-      metadata: {
-        totalFiles: 5
+      name: "disconnect_data_source",
+      description: "Disconnect from a data source",
+      parameters: {
+        type: "object",
+        properties: {
+          source_id: {
+            type: "string",
+            description: "The ID of the data source to disconnect from",
+          }
+        },
+        required: ["source_id"]
       }
     },
     {
-      id: "onedrive-001",
-      name: "OneDrive",
-      type: "onedrive",
-      status: "error",
-      metadata: {
-        errorMessage: "Authentication failed"
+      name: "list_files",
+      description: "List files from a connected data source",
+      parameters: {
+        type: "object",
+        properties: {
+          source_id: {
+            type: "string",
+            description: "The ID of the data source to list files from",
+          },
+          path: {
+            type: "string",
+            description: "Optional path within the data source to list files from",
+          },
+          file_type: {
+            type: "string",
+            description: "Optional filter by file type (csv, xlsx, pdf, etc.)",
+          }
+        },
+        required: ["source_id"]
+      }
+    },
+    {
+      name: "get_file_details",
+      description: "Get detailed information about a specific file",
+      parameters: {
+        type: "object",
+        properties: {
+          source_id: {
+            type: "string",
+            description: "The ID of the data source the file belongs to",
+          },
+          file_id: {
+            type: "string",
+            description: "The ID of the file to get details for",
+          }
+        },
+        required: ["source_id", "file_id"]
+      }
+    },
+    {
+      name: "import_file",
+      description: "Import a file from a data source into the system",
+      parameters: {
+        type: "object",
+        properties: {
+          source_id: {
+            type: "string",
+            description: "The ID of the data source the file belongs to",
+          },
+          file_id: {
+            type: "string",
+            description: "The ID of the file to import",
+          },
+          import_type: {
+            type: "string",
+            description: "The type of import to perform (payroll, employee, invoice, etc.)",
+          }
+        },
+        required: ["source_id", "file_id", "import_type"]
       }
     }
   ];
-}
 
-/**
- * Get files from a data source
- */
-export function getFilesFromSource(sourceId: string): RemoteFile[] {
-  // Mock file data
-  const mockFiles: Record<string, RemoteFile[]> = {
-    "google-drive-001": [
+  /**
+   * Initialize the Data Connection Agent
+   */
+  constructor(config: AgentConfig = { name: "Data Connection Agent" }) {
+    super({
+      ...config,
+      name: config.name,
+      systemPrompt: config.systemPrompt || 
+        `You are the Data Connection Agent, specialized in helping users connect to external data sources 
+        and manage their data files. You can help users connect to services like Google Drive, Dropbox, 
+        and OneDrive, as well as manage local file uploads. Your goal is to make it easy for users to 
+        import payroll and financial data from their preferred storage services.
+        
+        You have access to tools that can list connected data sources, initiate new connections, 
+        disconnect from sources, list files, get file details, and import files into the system.
+        
+        Always provide clear instructions and explain the benefits of connecting data sources.
+        When a user wants to connect a data source, explain the process and what they can do once connected.`,
+      tools: config.tools || []
+    });
+
+    // Add connection tools
+    this.tools.push(...this.connectionTools);
+
+    // Initialize mock data sources for demonstration
+    this.initializeMockDataSources();
+  }
+
+  /**
+   * Process a query using the data connection agent
+   */
+  public async processQuery(query: string): Promise<AgentResponse> {
+    try {
+      // Add the user's query to the conversation
+      this.addMessage('user', query);
+
+      // Get relevant context for the query
+      const context = await this.getRelevantContext(query);
+      
+      let userMessage = query;
+      if (context) {
+        userMessage = `${query}\n\nRelevant context:\n${context}`;
+      }
+
+      // Get AI response with potential tool calls
+      const response = await this.getAIResponse(userMessage, this.tools);
+      
+      // Parse and execute any tool calls
+      const toolCallResults = await this.parseAndExecuteToolCalls(response, query);
+      
+      // Format the final response
+      let finalResponse = response;
+      if (toolCallResults.length > 0) {
+        // Create a more friendly response using the tool call results
+        finalResponse = this.formatResponseWithToolResults(response, toolCallResults);
+      }
+      
+      // Add the assistant's response to the conversation
+      this.addMessage('assistant', finalResponse);
+      
+      // Calculate confidence score
+      const confidence = this.calculateConfidence(finalResponse, query);
+      
+      return {
+        response: finalResponse,
+        confidence,
+        metadata: { 
+          toolCalls: toolCallResults
+        }
+      };
+    } catch (error) {
+      console.error('Error processing query in DataConnectionAgent:', error);
+      return {
+        response: "I'm sorry, I encountered an error while processing your request. Please try again or contact support if the issue persists.",
+        confidence: 0.1,
+        metadata: { error: String(error) }
+      };
+    }
+  }
+
+  /**
+   * Parse the AI response for tool calls and execute them
+   */
+  private async parseAndExecuteToolCalls(responseText: string, query: string): Promise<any[]> {
+    const toolCallResults = [];
+    
+    // Regular expressions to identify tool calls
+    const getDataSourcesRegex = /get_data_sources\s*\(([^)]*)\)/g;
+    const connectDataSourceRegex = /connect_data_source\s*\(\s*type\s*:\s*['"]([^'"]+)['"],\s*name\s*:\s*['"]([^'"]+)['"]\s*\)/g;
+    const disconnectDataSourceRegex = /disconnect_data_source\s*\(\s*source_id\s*:\s*['"]([^'"]+)['"]\s*\)/g;
+    const listFilesRegex = /list_files\s*\(\s*source_id\s*:\s*['"]([^'"]+)['"](?:,\s*path\s*:\s*['"]([^'"]+)['"])?(?:,\s*file_type\s*:\s*['"]([^'"]+)['"])?\s*\)/g;
+    const getFileDetailsRegex = /get_file_details\s*\(\s*source_id\s*:\s*['"]([^'"]+)['"],\s*file_id\s*:\s*['"]([^'"]+)['"]\s*\)/g;
+    const importFileRegex = /import_file\s*\(\s*source_id\s*:\s*['"]([^'"]+)['"],\s*file_id\s*:\s*['"]([^'"]+)['"],\s*import_type\s*:\s*['"]([^'"]+)['"]\s*\)/g;
+    
+    // Extract and execute get_data_sources calls
+    let match;
+    while ((match = getDataSourcesRegex.exec(responseText)) !== null) {
+      const params = match[1].trim();
+      const result = await this.getDataSources(this.parseParameters(params));
+      toolCallResults.push({
+        name: "get_data_sources",
+        arguments: params,
+        result
+      });
+    }
+    
+    // Extract and execute connect_data_source calls
+    while ((match = connectDataSourceRegex.exec(responseText)) !== null) {
+      const type = match[1];
+      const name = match[2];
+      const result = await this.connectDataSource({ type, name });
+      toolCallResults.push({
+        name: "connect_data_source",
+        arguments: { type, name },
+        result
+      });
+    }
+    
+    // Extract and execute disconnect_data_source calls
+    while ((match = disconnectDataSourceRegex.exec(responseText)) !== null) {
+      const sourceId = match[1];
+      const result = await this.disconnectDataSource({ source_id: sourceId });
+      toolCallResults.push({
+        name: "disconnect_data_source",
+        arguments: { source_id: sourceId },
+        result
+      });
+    }
+    
+    // Extract and execute list_files calls
+    while ((match = listFilesRegex.exec(responseText)) !== null) {
+      const sourceId = match[1];
+      const path = match[2] || "";
+      const fileType = match[3] || "";
+      const result = await this.listFiles({ source_id: sourceId, path, file_type: fileType });
+      toolCallResults.push({
+        name: "list_files",
+        arguments: { source_id: sourceId, path, file_type: fileType },
+        result
+      });
+    }
+    
+    // Extract and execute get_file_details calls
+    while ((match = getFileDetailsRegex.exec(responseText)) !== null) {
+      const sourceId = match[1];
+      const fileId = match[2];
+      const result = await this.getFileDetails({ source_id: sourceId, file_id: fileId });
+      toolCallResults.push({
+        name: "get_file_details",
+        arguments: { source_id: sourceId, file_id: fileId },
+        result
+      });
+    }
+    
+    // Extract and execute import_file calls
+    while ((match = importFileRegex.exec(responseText)) !== null) {
+      const sourceId = match[1];
+      const fileId = match[2];
+      const importType = match[3];
+      const result = await this.importFile({ source_id: sourceId, file_id: fileId, import_type: importType });
+      toolCallResults.push({
+        name: "import_file",
+        arguments: { source_id: sourceId, file_id: fileId, import_type: importType },
+        result
+      });
+    }
+    
+    return toolCallResults;
+  }
+
+  /**
+   * Helper method to parse parameters from string
+   */
+  private parseParameters(paramsString: string): Record<string, any> {
+    if (!paramsString) return {};
+    
+    const params: Record<string, any> = {};
+    const keyValuePairs = paramsString.split(',');
+    
+    for (const pair of keyValuePairs) {
+      if (pair.includes(':')) {
+        let [key, value] = pair.split(':').map(s => s.trim());
+        
+        // Remove quotes if present
+        if (value.startsWith('"') || value.startsWith("'")) {
+          value = value.substring(1, value.length - 1);
+        }
+        
+        params[key] = value;
+      }
+    }
+    
+    return params;
+  }
+
+  /**
+   * Initialize mock data sources for demonstration
+   */
+  private initializeMockDataSources(): void {
+    // Add some mock data sources
+    const googleDrive: DataSource = {
+      id: "gd-001",
+      name: "My Google Drive",
+      type: "google_drive",
+      status: "connected",
+      lastSynced: new Date(Date.now() - 3600000), // 1 hour ago
+      metadata: {
+        email: "user@example.com",
+        quotaUsed: "5.2 GB",
+        quotaTotal: "15 GB"
+      }
+    };
+    
+    const dropbox: DataSource = {
+      id: "db-001",
+      name: "Dropbox - Work",
+      type: "dropbox",
+      status: "connected",
+      lastSynced: new Date(Date.now() - 86400000), // 1 day ago
+      metadata: {
+        email: "work@example.com",
+        quotaUsed: "2.7 GB",
+        quotaTotal: "5 GB"
+      }
+    };
+    
+    const onedrive: DataSource = {
+      id: "od-001",
+      name: "OneDrive - Personal",
+      type: "onedrive",
+      status: "disconnected",
+      metadata: {
+        email: "personal@example.com"
+      }
+    };
+    
+    this.dataSources.set(googleDrive.id, googleDrive);
+    this.dataSources.set(dropbox.id, dropbox);
+    this.dataSources.set(onedrive.id, onedrive);
+  }
+
+  /**
+   * Get list of data sources
+   */
+  private async getDataSources(params: any): Promise<DataSource[]> {
+    const { type, status } = params;
+    
+    let sources = Array.from(this.dataSources.values());
+    
+    // Apply filters if specified
+    if (type) {
+      sources = sources.filter(source => source.type === type);
+    }
+    
+    if (status) {
+      sources = sources.filter(source => source.status === status);
+    }
+    
+    return sources;
+  }
+
+  /**
+   * Connect to a new data source
+   */
+  private async connectDataSource(params: any): Promise<any> {
+    const { type, name } = params;
+    
+    if (!type || !name) {
+      return { success: false, error: "Type and name are required" };
+    }
+    
+    // Validate data source type
+    if (!['google_drive', 'dropbox', 'onedrive', 'local', 'zapier'].includes(type)) {
+      return { success: false, error: "Invalid data source type" };
+    }
+    
+    // Generate a unique ID
+    const id = `${type.substring(0, 2)}-${Date.now().toString().substring(7)}`;
+    
+    // Create a new data source
+    const newSource: DataSource = {
+      id,
+      name,
+      type: type as DataSourceType,
+      status: "connected",
+      lastSynced: new Date(),
+      metadata: {
+        email: "user@example.com",
+        quotaUsed: "0 GB",
+        quotaTotal: type === 'google_drive' ? '15 GB' : '5 GB'
+      }
+    };
+    
+    this.dataSources.set(id, newSource);
+    
+    return { 
+      success: true, 
+      message: `Connected to ${name} successfully`, 
+      data_source: newSource 
+    };
+  }
+
+  /**
+   * Disconnect from a data source
+   */
+  private async disconnectDataSource(params: any): Promise<any> {
+    const { source_id } = params;
+    
+    if (!source_id) {
+      return { success: false, error: "Source ID is required" };
+    }
+    
+    const source = this.dataSources.get(source_id);
+    
+    if (!source) {
+      return { success: false, error: "Data source not found" };
+    }
+    
+    // Update the source status
+    source.status = "disconnected";
+    this.dataSources.set(source_id, source);
+    
+    // Remove any stored tokens
+    this.tokens.delete(source_id);
+    
+    return { 
+      success: true, 
+      message: `Disconnected from ${source.name} successfully` 
+    };
+  }
+
+  /**
+   * List files from a data source
+   */
+  private async listFiles(params: any): Promise<any> {
+    const { source_id, path = "", file_type = "" } = params;
+    
+    if (!source_id) {
+      return { success: false, error: "Source ID is required" };
+    }
+    
+    const source = this.dataSources.get(source_id);
+    
+    if (!source) {
+      return { success: false, error: "Data source not found" };
+    }
+    
+    if (source.status !== "connected") {
+      return { success: false, error: "Data source is not connected" };
+    }
+    
+    // Mock file listing
+    const files: RemoteFile[] = [
       {
-        id: "gdrive-file-001",
+        id: "file-001",
         name: "Payroll_2023_Q4.xlsx",
         type: "xlsx",
         size: 2456789,
         lastModified: new Date(Date.now() - 7 * 86400000), // 7 days ago
-        path: "/",
-        sourceId: "google-drive-001",
-        content: "Employee ID,Name,Department,Salary,Tax Withholding,Benefits\n1001,John Smith,Engineering,95000,28500,12350\n1002,Sarah Johnson,Marketing,85000,25500,11050\n1003,Michael Davis,Finance,105000,31500,13650\n1004,Emily Wilson,HR,78000,23400,10140\n1005,James Brown,Engineering,98000,29400,12740"
+        path: path || "/",
+        sourceId: source_id
       },
       {
-        id: "gdrive-file-002",
+        id: "file-002",
         name: "Employee_Data.csv",
         type: "csv",
         size: 987654,
         lastModified: new Date(Date.now() - 14 * 86400000), // 14 days ago
-        path: "/",
-        sourceId: "google-drive-001",
-        content: "ID,Name,Position,Department,Location,Hire Date,Status\n1001,John Smith,Senior Developer,Engineering,New York,2019-05-15,Full-time\n1002,Sarah Johnson,Marketing Manager,Marketing,Chicago,2020-02-10,Full-time\n1003,Michael Davis,Financial Analyst,Finance,Boston,2018-11-01,Full-time\n1004,Emily Wilson,HR Specialist,HR,Denver,2021-03-22,Full-time\n1005,James Brown,Lead Engineer,Engineering,Seattle,2017-07-14,Full-time"
-      }
-    ],
-    "local-files-001": [
+        path: path || "/",
+        sourceId: source_id
+      },
       {
-        id: "local-file-001",
+        id: "file-003",
         name: "Tax_Reports_2023.pdf",
         type: "pdf",
         size: 3456789,
         lastModified: new Date(Date.now() - 30 * 86400000), // 30 days ago
-        path: "/",
-        sourceId: "local-files-001",
-        content: "[PDF Content - Tax Reports for 2023]"
-      },
-      {
-        id: "local-file-002",
-        name: "Expense_Report_Jan2024.xlsx",
-        type: "xlsx",
-        size: 1234567,
-        lastModified: new Date(Date.now() - 5 * 86400000), // 5 days ago
-        path: "/",
-        sourceId: "local-files-001",
-        content: "Date,Employee,Category,Amount,Description,Approved\n2024-01-05,John Smith,Travel,450.25,Flight to Chicago conference,Yes\n2024-01-12,Sarah Johnson,Meals,65.80,Client dinner,Yes\n2024-01-15,Michael Davis,Office Supplies,125.34,New monitor,Yes\n2024-01-22,Emily Wilson,Training,350.00,HR certification course,Yes\n2024-01-28,James Brown,Software,89.99,Monthly subscription,Yes"
-      },
-      {
-        id: "local-file-003",
-        name: "Benefits_Summary.pdf",
-        type: "pdf",
-        size: 2345678,
-        lastModified: new Date(Date.now() - 20 * 86400000), // 20 days ago
-        path: "/",
-        sourceId: "local-files-001",
-        content: "[PDF Content - Benefits Summary]"
+        path: path || "/",
+        sourceId: source_id
       }
-    ]
-  };
-  
-  return mockFiles[sourceId] || [];
-}
-
-/**
- * Connect to a new data source
- */
-export function connectDataSource(type: DataSourceType, name: string): DataSource {
-  const newSource: DataSource = {
-    id: `connected-${Date.now()}`,
-    name: name,
-    type: type,
-    status: 'connected',
-    lastSynced: new Date(),
-    metadata: {
-      email: 'user@example.com',
-      totalFiles: Math.floor(Math.random() * 20) + 5 // Random number of files
+    ];
+    
+    // Apply file type filter if specified
+    let filteredFiles = files;
+    if (file_type) {
+      filteredFiles = files.filter(file => file.type === file_type);
     }
-  };
-  
-  return newSource;
-}
+    
+    return { 
+      success: true, 
+      files: filteredFiles,
+      path,
+      source_name: source.name
+    };
+  }
 
-/**
- * Format a file size in a human-readable format
- */
-export function formatFileSize(bytes: number): string {
-  if (bytes < 1024) {
-    return bytes + ' B';
-  } else if (bytes < 1024 * 1024) {
-    return (bytes / 1024).toFixed(1) + ' KB';
-  } else if (bytes < 1024 * 1024 * 1024) {
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  } else {
-    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+  /**
+   * Get details of a specific file
+   */
+  private async getFileDetails(params: any): Promise<any> {
+    const { source_id, file_id } = params;
+    
+    if (!source_id || !file_id) {
+      return { success: false, error: "Source ID and file ID are required" };
+    }
+    
+    const source = this.dataSources.get(source_id);
+    
+    if (!source) {
+      return { success: false, error: "Data source not found" };
+    }
+    
+    if (source.status !== "connected") {
+      return { success: false, error: "Data source is not connected" };
+    }
+    
+    // Mock file details
+    const fileDetails = {
+      id: file_id,
+      name: file_id === "file-001" ? "Payroll_2023_Q4.xlsx" : 
+            file_id === "file-002" ? "Employee_Data.csv" : "Tax_Reports_2023.pdf",
+      type: file_id === "file-001" ? "xlsx" : 
+            file_id === "file-002" ? "csv" : "pdf",
+      size: file_id === "file-001" ? 2456789 : 
+            file_id === "file-002" ? 987654 : 3456789,
+      lastModified: new Date(Date.now() - (file_id === "file-001" ? 7 : 
+                                          file_id === "file-002" ? 14 : 30) * 86400000),
+      path: "/",
+      sourceId: source_id,
+      createdBy: "John Doe",
+      viewLink: `https://example.com/view/${file_id}`,
+      downloadLink: `https://example.com/download/${file_id}`,
+      preview: file_id === "file-001" ? 
+        "Contains payroll data for 75 employees, including salary, taxes, and benefits for Q4 2023" : 
+        file_id === "file-002" ? 
+        "Contains basic employee information including IDs, names, departments, and hire dates" :
+        "Annual tax reports including W-2 forms and tax payment summaries"
+    };
+    
+    return { 
+      success: true, 
+      file: fileDetails,
+      source_name: source.name
+    };
+  }
+
+  /**
+   * Import a file from a data source
+   */
+  private async importFile(params: any): Promise<any> {
+    const { source_id, file_id, import_type } = params;
+    
+    if (!source_id || !file_id || !import_type) {
+      return { success: false, error: "Source ID, file ID, and import type are required" };
+    }
+    
+    const source = this.dataSources.get(source_id);
+    
+    if (!source) {
+      return { success: false, error: "Data source not found" };
+    }
+    
+    if (source.status !== "connected") {
+      return { success: false, error: "Data source is not connected" };
+    }
+    
+    // Check if import type is valid
+    const validImportTypes = ['payroll', 'employee', 'invoice', 'expense', 'tax'];
+    if (!validImportTypes.includes(import_type)) {
+      return { success: false, error: "Invalid import type" };
+    }
+    
+    // Mock file details
+    const fileDetails = {
+      id: file_id,
+      name: file_id === "file-001" ? "Payroll_2023_Q4.xlsx" : 
+            file_id === "file-002" ? "Employee_Data.csv" : "Tax_Reports_2023.pdf",
+      type: file_id === "file-001" ? "xlsx" : 
+            file_id === "file-002" ? "csv" : "pdf",
+    };
+    
+    // Mock import result
+    const importResult = {
+      id: `import-${Date.now()}`,
+      file: fileDetails,
+      import_type,
+      status: "completed",
+      timestamp: new Date(),
+      summary: import_type === 'payroll' ? 
+        "Successfully imported payroll data for 75 employees" : 
+        import_type === 'employee' ? 
+        "Successfully imported 125 employee records" :
+        "Successfully imported tax document"
+    };
+    
+    return { 
+      success: true, 
+      import: importResult,
+      source_name: source.name
+    };
+  }
+
+  /**
+   * Format the response with tool call results
+   */
+  private formatResponseWithToolResults(originalResponse: string, toolResults: any[]): string {
+    // If there are no tool results, return the original response
+    if (toolResults.length === 0) {
+      return originalResponse;
+    }
+    
+    // Start building a more natural response
+    let formattedResponse = "";
+    
+    // Check for get_data_sources results
+    const dataSourcesResults = toolResults.filter(result => result.name === "get_data_sources");
+    if (dataSourcesResults.length > 0) {
+      const sources = dataSourcesResults[0].result;
+      formattedResponse += `You have ${sources.length} connected data source${sources.length !== 1 ? 's' : ''}:\n\n`;
+      
+      sources.forEach((source: DataSource) => {
+        formattedResponse += `- **${source.name}** (${source.type.replace('_', ' ')}): ${source.status}\n`;
+        if (source.lastSynced) {
+          formattedResponse += `  Last synced: ${source.lastSynced.toLocaleString()}\n`;
+        }
+        formattedResponse += '\n';
+      });
+    }
+    
+    // Check for connect_data_source results
+    const connectResults = toolResults.filter(result => result.name === "connect_data_source");
+    if (connectResults.length > 0) {
+      const result = connectResults[0].result;
+      if (result.success) {
+        formattedResponse += `✅ ${result.message}\n\n`;
+      } else {
+        formattedResponse += `❌ Failed to connect: ${result.error}\n\n`;
+      }
+    }
+    
+    // Check for disconnect_data_source results
+    const disconnectResults = toolResults.filter(result => result.name === "disconnect_data_source");
+    if (disconnectResults.length > 0) {
+      const result = disconnectResults[0].result;
+      if (result.success) {
+        formattedResponse += `✅ ${result.message}\n\n`;
+      } else {
+        formattedResponse += `❌ Failed to disconnect: ${result.error}\n\n`;
+      }
+    }
+    
+    // Check for list_files results
+    const listFilesResults = toolResults.filter(result => result.name === "list_files");
+    if (listFilesResults.length > 0) {
+      const result = listFilesResults[0].result;
+      if (result.success) {
+        formattedResponse += `Here are the files from ${result.source_name}${result.path !== '/' ? ` in ${result.path}` : ''}:\n\n`;
+        
+        result.files.forEach((file: RemoteFile) => {
+          formattedResponse += `- **${file.name}** (${file.type.toUpperCase()})\n`;
+          formattedResponse += `  Size: ${this.formatFileSize(file.size)}, Last modified: ${file.lastModified.toLocaleDateString()}\n\n`;
+        });
+      } else {
+        formattedResponse += `❌ Failed to list files: ${result.error}\n\n`;
+      }
+    }
+    
+    // Check for get_file_details results
+    const fileDetailsResults = toolResults.filter(result => result.name === "get_file_details");
+    if (fileDetailsResults.length > 0) {
+      const result = fileDetailsResults[0].result;
+      if (result.success) {
+        formattedResponse += `Here are the details for the file from ${result.source_name}:\n\n`;
+        formattedResponse += `- **Name**: ${result.file.name}\n`;
+        formattedResponse += `- **Type**: ${result.file.type.toUpperCase()}\n`;
+        formattedResponse += `- **Size**: ${this.formatFileSize(result.file.size)}\n`;
+        formattedResponse += `- **Last Modified**: ${result.file.lastModified.toLocaleDateString()}\n`;
+        formattedResponse += `- **Created By**: ${result.file.createdBy}\n`;
+        
+        if (result.file.preview) {
+          formattedResponse += `- **Preview**: ${result.file.preview}\n\n`;
+        }
+      } else {
+        formattedResponse += `❌ Failed to get file details: ${result.error}\n\n`;
+      }
+    }
+    
+    // Check for import_file results
+    const importFileResults = toolResults.filter(result => result.name === "import_file");
+    if (importFileResults.length > 0) {
+      const result = importFileResults[0].result;
+      if (result.success) {
+        formattedResponse += `✅ Successfully imported **${result.import.file.name}** from ${result.source_name}.\n\n`;
+        formattedResponse += `**Import Summary**: ${result.import.summary}\n\n`;
+      } else {
+        formattedResponse += `❌ Failed to import file: ${result.error}\n\n`;
+      }
+    }
+    
+    // If we have a formatted response, use it, otherwise fall back to the original
+    if (formattedResponse) {
+      return formattedResponse;
+    } else {
+      return originalResponse;
+    }
+  }
+
+  /**
+   * Format file size in human-readable format
+   */
+  private formatFileSize(bytes: number): string {
+    if (bytes < 1024) {
+      return bytes + ' B';
+    } else if (bytes < 1024 * 1024) {
+      return (bytes / 1024).toFixed(1) + ' KB';
+    } else if (bytes < 1024 * 1024 * 1024) {
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    } else {
+      return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+    }
+  }
+
+  /**
+   * Get AI response for the query
+   */
+  private async getAIResponse(query: string, tools: any[]): Promise<string> {
+    // This is a mock implementation. In a real system, this would call
+    // the OpenAI or Anthropic API with the query and tools.
+    
+    // For demo purposes, we'll just return hardcoded responses
+    if (query.toLowerCase().includes('list data sources') || query.toLowerCase().includes('connected sources')) {
+      return "Let me check your connected data sources using get_data_sources()";
+    } else if (query.toLowerCase().includes('connect') && query.toLowerCase().includes('google drive')) {
+      return "I'll connect you to Google Drive using connect_data_source(type: \"google_drive\", name: \"My Google Drive\")";
+    } else if (query.toLowerCase().includes('disconnect') && query.toLowerCase().includes('dropbox')) {
+      return "I'll disconnect your Dropbox connection using disconnect_data_source(source_id: \"db-001\")";
+    } else if (query.toLowerCase().includes('list files') && query.toLowerCase().includes('google drive')) {
+      return "Let me list the files in your Google Drive using list_files(source_id: \"gd-001\")";
+    } else if (query.toLowerCase().includes('details') && query.toLowerCase().includes('payroll')) {
+      return "Let me get the details of your payroll file using get_file_details(source_id: \"gd-001\", file_id: \"file-001\")";
+    } else if (query.toLowerCase().includes('import') && query.toLowerCase().includes('employee')) {
+      return "I'll import the employee data file using import_file(source_id: \"gd-001\", file_id: \"file-002\", import_type: \"employee\")";
+    } else {
+      // Default response
+      return "I'm the Data Connection Agent. I can help you connect to external data sources like Google Drive, Dropbox, and OneDrive, and help you manage files within those sources. You can ask me to list your connected sources, connect to new sources, list files, get file details, and import files into the system. How can I assist you with your data connections today?";
+    }
+  }
+
+  /**
+   * Get relevant context for a data connection query from the knowledge base
+   */
+  protected async getRelevantContext(query: string): Promise<string | null> {
+    // This is a mock implementation
+    return null;
   }
 }

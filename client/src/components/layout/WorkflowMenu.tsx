@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { 
-  HomeIcon, 
-  FileIcon, 
+  FileTextIcon, 
+  DatabaseIcon, 
   BarChart2Icon, 
   CheckSquareIcon, 
-  ZapIcon 
+  PlayCircleIcon 
 } from 'lucide-react';
 
 interface WorkflowMenuItem {
@@ -20,87 +20,57 @@ export function WorkflowMenu() {
   
   const menuItems: WorkflowMenuItem[] = [
     {
-      name: 'Workflow Home',
-      href: '/workflow-home',
-      icon: <HomeIcon className="w-5 h-5" />,
-      description: 'Overview and introduction'
+      name: "Data Connection",
+      href: "/data-connection",
+      icon: <DatabaseIcon className="w-5 h-5" />,
+      description: "Connect to your data sources"
     },
     {
-      name: 'Data Connection',
-      href: '/workflow/data-connection',
-      icon: <FileIcon className="w-5 h-5" />,
-      description: 'Upload and connect data'
+      name: "AI Analysis",
+      href: "/ai-analysis",
+      icon: <BarChart2Icon className="w-5 h-5" />,
+      description: "Get insights from your data"
     },
     {
-      name: 'Review',
-      href: '/workflow/review',
+      name: "Review",
+      href: "/review",
       icon: <CheckSquareIcon className="w-5 h-5" />,
-      description: 'Review AI recommendations'
+      description: "Review AI recommendations"
     },
     {
-      name: 'Implementation',
-      href: '/workflow/implement',
-      icon: <ZapIcon className="w-5 h-5" />,
-      description: 'Implement and automate'
+      name: "Implementation",
+      href: "/implementation",
+      icon: <PlayCircleIcon className="w-5 h-5" />,
+      description: "Implement approved changes"
     }
   ];
-  
+
   return (
-    <div className="bg-white border-b border-gray-200">
+    <div className="bg-white shadow-sm border-b border-gray-200">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between py-3">
-          <Link href="/workflow-home">
-            <span className="flex items-center space-x-2 text-blue-600 font-medium cursor-pointer">
-              <BarChart2Icon className="w-5 h-5" />
-              <span>PayrollPro AI Workflow</span>
-            </span>
-          </Link>
-          
-          <nav className="hidden md:flex items-center space-x-8">
-            {menuItems.map((item) => {
-              const isActive = location === item.href;
-              
-              return (
-                <Link key={item.href} href={item.href}>
-                  <span 
-                    className={`flex items-center space-x-1 text-sm cursor-pointer ${
-                      isActive 
-                        ? 'text-blue-600 font-medium' 
-                        : 'text-gray-600 hover:text-blue-600'
-                    }`}
-                    title={item.description}
-                  >
-                    <div className={`${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
-                      {item.icon}
-                    </div>
-                    <span>{item.name}</span>
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
-          
-          <div className="hidden md:block">
-            <Link href="/">
-              <span className="text-sm text-gray-600 hover:text-blue-600 cursor-pointer">
-                Return to Home
-              </span>
-            </Link>
-          </div>
-          
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button className="text-gray-600 hover:text-blue-600 focus:outline-none">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
+        <div className="flex items-center -mb-px overflow-x-auto">
+          {menuItems.map((item) => {
+            const isActive = location === item.href;
+            
+            return (
+              <Link 
+                key={item.href}
+                href={item.href}
+                className={`group flex items-center px-4 py-4 text-sm font-medium border-b-2 whitespace-nowrap ${
+                  isActive 
+                    ? 'border-blue-500 text-blue-600' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <span className={`mr-2 ${isActive ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'}`}>
+                  {item.icon}
+                </span>
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
         </div>
       </div>
-      
-      {/* Mobile menu */}
-      {/* This would be shown/hidden with state management in a full implementation */}
     </div>
   );
 }

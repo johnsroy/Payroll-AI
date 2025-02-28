@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'wouter';
 import { 
-  BarChart2Icon,
-  PieChartIcon,
-  LineChartIcon,
+  ChartIcon, 
+  BarChart2Icon, 
+  PieChartIcon, 
+  LineChartIcon, 
   TrendingUpIcon,
   DatabaseIcon,
-  ArrowRightIcon,
-  Activity as ChartIcon
+  ArrowRightIcon
 } from 'lucide-react';
 
 import { BackgroundParticles } from '../components/animations/BackgroundParticles';
@@ -99,10 +99,10 @@ export default function AIAnalysisPage() {
                   Connect to your data sources first to perform advanced analysis
                 </p>
                 <Link href="/data-connection">
-                  <span className="inline-flex items-center text-purple-600 hover:text-purple-800 font-medium text-sm cursor-pointer">
+                  <a className="inline-flex items-center text-purple-600 hover:text-purple-800 font-medium text-sm">
                     Connect Data Sources
                     <ArrowRightIcon className="ml-1 h-4 w-4" />
-                  </span>
+                  </a>
                 </Link>
               </div>
             </motion.div>
@@ -140,9 +140,9 @@ export default function AIAnalysisPage() {
                   from the Data Connection page.
                 </p>
                 <Link href="/data-connection">
-                  <span className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700 transition-colors cursor-pointer inline-block">
+                  <a className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-md font-medium hover:bg-purple-700 transition-colors">
                     Connect Data
-                  </span>
+                  </a>
                 </Link>
               </div>
               

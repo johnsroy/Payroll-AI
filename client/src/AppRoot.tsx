@@ -3,10 +3,6 @@ import { Route, Switch, Link } from 'wouter';
 import FullLandingPage from './pages/FullLandingPage';
 import SimpleAgentPlayground from './pages/SimpleAgentPlayground';
 import DataConnectionPage from './pages/data-connection';
-import WorkflowHomePage from './pages/workflow-home';
-import WorkflowDataConnectionPage from './pages/workflow/data-connection';
-import WorkflowReviewPage from './pages/workflow/review';
-import WorkflowImplementPage from './pages/workflow/implement';
 
 const AppRoot: React.FC = () => {
   return (
@@ -23,9 +19,6 @@ const AppRoot: React.FC = () => {
             <Link href="/agents">
               <span className="text-gray-600 hover:text-blue-600 cursor-pointer">AI Playground</span>
             </Link>
-            <Link href="/workflow-home">
-              <span className="text-gray-600 hover:text-blue-600 cursor-pointer">Payroll Workflow</span>
-            </Link>
             <Link href="/data-connection">
               <span className="text-gray-600 hover:text-blue-600 cursor-pointer">Data Connection</span>
             </Link>
@@ -33,7 +26,7 @@ const AppRoot: React.FC = () => {
             <a href="#pricing" className="text-gray-600 hover:text-blue-600">Pricing</a>
           </nav>
           <div className="hidden md:block">
-            <Link href="/workflow-home">
+            <Link href="/agents">
               <span className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 cursor-pointer">
                 Get Started
               </span>
@@ -44,17 +37,8 @@ const AppRoot: React.FC = () => {
       
       <main className="flex-grow">
         <Switch>
-          {/* Main Application Routes */}
           <Route path="/agents" component={SimpleAgentPlayground} />
           <Route path="/data-connection" component={DataConnectionPage} />
-          
-          {/* Workflow Routes */}
-          <Route path="/workflow-home" component={WorkflowHomePage} />
-          <Route path="/workflow/data-connection" component={WorkflowDataConnectionPage} />
-          <Route path="/workflow/review" component={WorkflowReviewPage} />
-          <Route path="/workflow/implement" component={WorkflowImplementPage} />
-          
-          {/* Landing Page */}
           <Route path="/" component={FullLandingPage} />
           <Route component={() => (
             <div className="flex flex-col items-center justify-center h-full py-20">
@@ -85,7 +69,6 @@ const AppRoot: React.FC = () => {
                 <li><a href="#features" className="hover:text-white">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
                 <li><Link href="/agents"><span className="hover:text-white cursor-pointer">AI Playground</span></Link></li>
-                <li><Link href="/workflow-home"><span className="hover:text-white cursor-pointer">Payroll Workflow</span></Link></li>
                 <li><Link href="/data-connection"><span className="hover:text-white cursor-pointer">Data Connection</span></Link></li>
               </ul>
             </div>

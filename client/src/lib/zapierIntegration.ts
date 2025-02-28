@@ -77,123 +77,118 @@ export interface ZapExecution {
  */
 export const PAYROLL_ZAP_TEMPLATES = [
   {
-    id: 'zap-template-001',
-    name: 'Payroll Processing Automation',
-    description: 'Automatically process payroll when timesheets are approved',
+    id: 'payroll-google-sheets',
+    name: 'Payroll to Google Sheets',
+    description: 'Automatically send payroll data to Google Sheets when processed',
     trigger: {
-      appName: 'Monday.com',
-      triggerEvent: 'Status Change to Approved'
+      appName: 'PayrollPro AI',
+      triggerEvent: 'payroll_processed'
     },
     action: {
-      appName: 'QuickBooks',
-      actionEvent: 'Create Payroll Run'
+      appName: 'Google Sheets',
+      actionEvent: 'create_spreadsheet_row'
     },
     popularityScore: 95
   },
   {
-    id: 'zap-template-002',
-    name: 'Tax Filing Reminder',
-    description: 'Send notification before tax filing deadlines',
+    id: 'payroll-slack-notification',
+    name: 'Payroll Slack Notifications',
+    description: 'Send notifications to Slack when payroll is approved or needs attention',
     trigger: {
-      appName: 'Google Calendar',
-      triggerEvent: 'Upcoming Event'
+      appName: 'PayrollPro AI',
+      triggerEvent: 'payroll_status_changed'
     },
     action: {
       appName: 'Slack',
-      actionEvent: 'Send Channel Message'
+      actionEvent: 'send_channel_message'
     },
     popularityScore: 87
   },
   {
-    id: 'zap-template-003',
-    name: 'Employee Onboarding',
-    description: 'Set up payroll accounts for new employees',
+    id: 'new-employee-onboarding',
+    name: 'New Employee Onboarding',
+    description: 'Trigger an onboarding workflow when a new employee is added to payroll',
     trigger: {
-      appName: 'Greenhouse',
-      triggerEvent: 'New Employee Hired'
+      appName: 'PayrollPro AI',
+      triggerEvent: 'employee_added'
     },
     action: {
-      appName: 'ADP Workforce',
-      actionEvent: 'Create Employee'
+      appName: 'Multiple Apps',
+      actionEvent: 'multi_step_workflow'
     },
-    popularityScore: 92
+    popularityScore: 82
   },
   {
-    id: 'zap-template-004',
-    name: 'Expense Report Approval',
-    description: 'Process approved expense reports for reimbursement',
+    id: 'quickbooks-sync',
+    name: 'QuickBooks Integration',
+    description: 'Sync payroll data with QuickBooks for accounting',
     trigger: {
-      appName: 'Expensify',
-      triggerEvent: 'Report Approved'
+      appName: 'PayrollPro AI',
+      triggerEvent: 'payroll_finalized'
     },
     action: {
-      appName: 'Bill.com',
-      actionEvent: 'Create Payment'
+      appName: 'QuickBooks',
+      actionEvent: 'create_journal_entry'
     },
-    popularityScore: 88
+    popularityScore: 91
   },
   {
-    id: 'zap-template-005',
-    name: 'Timesheet Notifications',
-    description: 'Remind employees to submit timesheets before payroll deadlines',
+    id: 'tax-filing-reminder',
+    name: 'Tax Filing Reminders',
+    description: 'Send email reminders for upcoming tax filing deadlines',
     trigger: {
-      appName: 'Schedule',
-      triggerEvent: 'Date & Time'
+      appName: 'PayrollPro AI',
+      triggerEvent: 'tax_deadline_approaching'
     },
     action: {
-      appName: 'Email by Zapier',
-      actionEvent: 'Send Email'
+      appName: 'Gmail',
+      actionEvent: 'send_email'
     },
-    popularityScore: 85
-  }
+    popularityScore: 75
+  },
 ];
 
 /**
  * Get most popular Zapier application integrations for payroll
  */
 export function getPopularPayrollApps(): ZapierApp[] {
+  // This would typically come from an API call to Zapier
+  // Mocked implementation for demo purposes
   return [
     {
-      id: 'app-001',
+      id: 'quickbooks',
       name: 'QuickBooks',
-      description: 'Accounting and payroll software',
-      iconUrl: '',
-      zapCount: 5467
+      description: 'Connect your accounting software with your payroll data',
+      iconUrl: 'https://cdn.zapier.com/storage/services/54f0bd6f9c31b757b9b0d7f1fbc20420.png',
+      zapCount: 1245
     },
     {
-      id: 'app-002',
-      name: 'ADP Workforce',
-      description: 'HR and payroll services',
-      iconUrl: '',
-      zapCount: 4321
+      id: 'slack',
+      name: 'Slack',
+      description: 'Send payroll notifications to your team channels',
+      iconUrl: 'https://cdn.zapier.com/storage/services/da3ff465abd3a3e1b687c36e1cb16cce.png',
+      zapCount: 982
     },
     {
-      id: 'app-003',
-      name: 'Gusto',
-      description: 'Payroll, benefits & HR',
-      iconUrl: '',
-      zapCount: 3654
+      id: 'google-sheets',
+      name: 'Google Sheets',
+      description: 'Export and analyze payroll data in spreadsheets',
+      iconUrl: 'https://cdn.zapier.com/storage/services/62c82a8d3a2efff75068b1b5587d3a08.png',
+      zapCount: 1678
     },
     {
-      id: 'app-004',
+      id: 'xero',
       name: 'Xero',
-      description: 'Cloud accounting software',
-      iconUrl: '',
-      zapCount: 3211
+      description: 'Connect your Xero accounting with payroll',
+      iconUrl: 'https://cdn.zapier.com/storage/services/1508df9b34c46e1998ffde9550ca7942.png',
+      zapCount: 567
     },
     {
-      id: 'app-005',
-      name: 'Bill.com',
-      description: 'Business payments platform',
-      iconUrl: '',
-      zapCount: 2876
-    },
-    {
-      id: 'app-006',
-      name: 'Expensify',
-      description: 'Expense management',
-      iconUrl: '',
-      zapCount: 2543
+      id: 'gmail',
+      name: 'Gmail',
+      description: 'Send automated payroll reports via email',
+      iconUrl: 'https://cdn.zapier.com/storage/services/6cf3f5a461feadfba7abc93c4c395f33.png',
+      zapCount: 845
     }
   ];
 }
@@ -202,136 +197,166 @@ export function getPopularPayrollApps(): ZapierApp[] {
  * Connect to Zapier API
  */
 export async function connectToZapier(apiKey: string): Promise<boolean> {
-  // In a real implementation, this would connect to the Zapier API
-  console.log('Connecting to Zapier with API key:', apiKey);
-  
-  // Simulate API call
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(true);
-    }, 1000);
-  });
+  // This would typically validate the API key with Zapier
+  // Mocked implementation for demo purposes
+  try {
+    console.log('Connecting to Zapier with API key:', apiKey);
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return true;
+  } catch (error) {
+    console.error('Error connecting to Zapier:', error);
+    return false;
+  }
 }
 
 /**
  * Get user's Zaps
  */
 export async function getUserZaps(): Promise<Zap[]> {
-  // In a real implementation, this would fetch the user's Zaps from the Zapier API
-  console.log('Fetching user Zaps');
-  
-  // Return mock data
-  return [
-    {
-      id: 'zap-001',
-      title: 'Process Weekly Payroll',
-      description: 'Automatically process payroll when timesheets are approved',
-      status: 'enabled',
-      lastModified: new Date(Date.now() - 7 * 86400000), // 7 days ago
-      triggers: [
-        {
-          id: 'trigger-001',
-          appId: 'app-007',
-          appName: 'Monday.com',
-          description: 'When a status changes to "Approved"',
-          triggerEvent: 'Status Change'
-        }
-      ],
-      actions: [
-        {
-          id: 'action-001',
-          appId: 'app-001',
-          appName: 'QuickBooks',
-          description: 'Create a new payroll run',
-          actionEvent: 'Create Payroll Run'
-        }
-      ]
-    },
-    {
-      id: 'zap-002',
-      title: 'Notify Tax Filing Deadlines',
-      description: 'Send Slack message before tax filing deadlines',
-      status: 'enabled',
-      lastModified: new Date(Date.now() - 14 * 86400000), // 14 days ago
-      triggers: [
-        {
-          id: 'trigger-002',
-          appId: 'app-008',
-          appName: 'Google Calendar',
-          description: 'When an event is coming up',
-          triggerEvent: 'Upcoming Event'
-        }
-      ],
-      actions: [
-        {
-          id: 'action-002',
-          appId: 'app-009',
-          appName: 'Slack',
-          description: 'Send a message to a channel',
-          actionEvent: 'Send Channel Message'
-        }
-      ]
-    }
-  ];
+  // This would typically fetch from Zapier API
+  // Mocked implementation for demo purposes
+  try {
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Return mock data
+    return [
+      {
+        id: 'zap-123',
+        title: 'Send Payroll Reports to Google Sheets',
+        status: 'enabled',
+        lastModified: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+        triggers: [
+          {
+            id: 'trigger-1',
+            appId: 'payrollpro',
+            appName: 'PayrollPro AI',
+            description: 'When a payroll report is generated',
+            triggerEvent: 'payroll_report_generated'
+          }
+        ],
+        actions: [
+          {
+            id: 'action-1',
+            appId: 'google-sheets',
+            appName: 'Google Sheets',
+            description: 'Create a new row in "Payroll Reports" spreadsheet',
+            actionEvent: 'create_spreadsheet_row'
+          }
+        ]
+      },
+      {
+        id: 'zap-456',
+        title: 'Tax Filing Deadline Notifications',
+        status: 'enabled',
+        lastModified: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        triggers: [
+          {
+            id: 'trigger-2',
+            appId: 'payrollpro',
+            appName: 'PayrollPro AI',
+            description: 'When a tax filing deadline is approaching',
+            triggerEvent: 'tax_deadline_approaching'
+          }
+        ],
+        actions: [
+          {
+            id: 'action-2',
+            appId: 'slack',
+            appName: 'Slack',
+            description: 'Send a message to #finance channel',
+            actionEvent: 'send_channel_message'
+          }
+        ]
+      }
+    ];
+  } catch (error) {
+    console.error('Error fetching user Zaps:', error);
+    return [];
+  }
 }
 
 /**
  * Create a new Zap from a template
  */
 export async function createZapFromTemplate(templateId: string, customConfig: any): Promise<Zap | null> {
-  // In a real implementation, this would create a new Zap using the Zapier API
-  console.log('Creating Zap from template:', templateId, customConfig);
-  
-  // Find the template
-  const template = PAYROLL_ZAP_TEMPLATES.find(t => t.id === templateId);
-  if (!template) return null;
-  
-  // Create a new Zap based on the template
-  const newZap: Zap = {
-    id: `zap-${Date.now()}`,
-    title: template.name,
-    description: template.description,
-    status: 'draft',
-    lastModified: new Date(),
-    triggers: [
-      {
-        id: `trigger-${Date.now()}`,
-        appId: 'app-custom',
-        appName: template.trigger.appName,
-        description: `When ${template.trigger.triggerEvent}`,
-        triggerEvent: template.trigger.triggerEvent
-      }
-    ],
-    actions: [
-      {
-        id: `action-${Date.now()}`,
-        appId: 'app-custom',
-        appName: template.action.appName,
-        description: `Perform ${template.action.actionEvent}`,
-        actionEvent: template.action.actionEvent
-      }
-    ]
-  };
-  
-  return newZap;
+  // This would typically create a Zap via Zapier API
+  // Mocked implementation for demo purposes
+  try {
+    console.log(`Creating Zap from template ${templateId} with config:`, customConfig);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1200));
+    
+    const template = PAYROLL_ZAP_TEMPLATES.find(t => t.id === templateId);
+    if (!template) {
+      throw new Error('Template not found');
+    }
+    
+    // Return a mock Zap based on the template
+    return {
+      id: `zap-${Date.now().toString().slice(-6)}`,
+      title: template.name,
+      description: template.description,
+      status: 'draft',
+      lastModified: new Date(),
+      triggers: [
+        {
+          id: `trigger-${Date.now().toString().slice(-4)}`,
+          appId: template.trigger.appName.toLowerCase().replace(' ', '-'),
+          appName: template.trigger.appName,
+          description: `When ${template.trigger.triggerEvent.replace('_', ' ')}`,
+          triggerEvent: template.trigger.triggerEvent
+        }
+      ],
+      actions: [
+        {
+          id: `action-${Date.now().toString().slice(-4)}`,
+          appId: template.action.appName.toLowerCase().replace(' ', '-'),
+          appName: template.action.appName,
+          description: `${template.action.actionEvent.replace('_', ' ')}`,
+          actionEvent: template.action.actionEvent
+        }
+      ]
+    };
+  } catch (error) {
+    console.error('Error creating Zap from template:', error);
+    return null;
+  }
 }
 
 /**
  * Execute a Zap with specific data
  */
 export async function executeZap(zapId: string, inputData: Record<string, any>): Promise<ZapExecution> {
-  // In a real implementation, this would execute a Zap using the Zapier API
-  console.log('Executing Zap:', zapId, inputData);
-  
-  // Return mock execution result
-  return {
-    zapId,
-    status: 'success',
-    timestamp: new Date(),
-    inputData,
-    outputData: {
-      result: 'Zap executed successfully',
-      details: 'The operation was completed as expected'
-    }
-  };
+  // This would typically execute a Zap via Zapier API
+  // Mocked implementation for demo purposes
+  try {
+    console.log(`Executing Zap ${zapId} with data:`, inputData);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Return mock execution result
+    return {
+      zapId,
+      status: 'success',
+      timestamp: new Date(),
+      inputData,
+      outputData: {
+        result: 'Zap executed successfully',
+        details: 'Data was processed and actions were performed'
+      }
+    };
+  } catch (error) {
+    console.error('Error executing Zap:', error);
+    return {
+      zapId,
+      status: 'error',
+      timestamp: new Date(),
+      inputData,
+      error: String(error)
+    };
+  }
 }
