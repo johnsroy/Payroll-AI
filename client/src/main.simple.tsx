@@ -1,11 +1,12 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 
-function BasicApp() {
+// Define a minimal home component
+function Home() {
   return (
-    <div>
-      <h1>Hello World</h1>
-      <p>This is a simple test app</p>
+    <div style={{ padding: "2rem" }}>
+      <h1 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1rem" }}>PayrollPro AI Home</h1>
+      <p style={{ marginBottom: "1rem" }}>Welcome to the PayrollPro AI platform.</p>
     </div>
   );
 }
@@ -23,6 +24,6 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <BasicApp />
+    <Home />
   </React.StrictMode>
 );
