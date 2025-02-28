@@ -1,186 +1,124 @@
-import React, { useState } from 'react';
-import { useLocation } from 'wouter';
-import MultiAgentChat from '../components/ai/MultiAgentChat';
-
-type AgentType = 'tax' | 'expense' | 'compliance' | 'data' | 'research' | 'reasoning';
-
-interface Agent {
-  id: string;
-  type: AgentType;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  capabilities: string[];
-  color: string;
-}
+import { useState } from 'react';
+import { SimpleMockAIChat } from '@/components/ui/SimpleMockAIChat';
+import { useAI } from '@/lib/aiContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Calculator, Receipt, ClipboardCheck } from 'lucide-react';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
 
 export default function AIAssistantPage() {
-  const [, setLocation] = useLocation();
-  
-  // Check if user is authenticated
-  React.useEffect(() => {
-    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-    if (!isAuthenticated) {
-      setLocation('/auth/login');
-    }
-  }, [setLocation]);
-
-  // List of specialized agents
-  const agents: Agent[] = [
-    {
-      id: 'tax',
-      type: 'tax',
-      name: 'Tax Agent',
-      description: 'Specialized in tax regulations and calculations',
-      icon: <span className="text-2xl">📊</span>,
-      capabilities: [
-        'Calculate payroll taxes',
-        'Provide tax filing guidance',
-        'Optimize tax withholding',
-        'Track tax deadlines',
-        'Explain tax regulations',
-      ],
-      color: 'border-green-200 bg-green-50',
-    },
-    {
-      id: 'compliance',
-      type: 'compliance',
-      name: 'Compliance Agent',
-      description: 'Ensures adherence to payroll regulations',
-      icon: <span className="text-2xl">✅</span>,
-      capabilities: [
-        'Monitor regulatory changes',
-        'Verify compliance requirements',
-        'Provide compliance checklists',
-        'Track reporting deadlines',
-        'Generate compliance reports',
-      ],
-      color: 'border-purple-200 bg-purple-50',
-    },
-    {
-      id: 'expense',
-      type: 'expense',
-      name: 'Expense Agent',
-      description: 'Handles expense categorization and analysis',
-      icon: <span className="text-2xl">💰</span>,
-      capabilities: [
-        'Categorize expenses',
-        'Analyze spending patterns',
-        'Identify cost-saving opportunities',
-        'Track budget vs. actual',
-        'Generate expense reports',
-      ],
-      color: 'border-blue-200 bg-blue-50',
-    },
-    {
-      id: 'data',
-      type: 'data',
-      name: 'Data Analysis Agent',
-      description: 'Analyzes payroll data for insights',
-      icon: <span className="text-2xl">📈</span>,
-      capabilities: [
-        'Generate payroll reports',
-        'Detect data anomalies',
-        'Forecast payroll expenses',
-        'Analyze workforce metrics',
-        'Create visualization suggestions',
-      ],
-      color: 'border-yellow-200 bg-yellow-50',
-    },
-  ];
+  const { activeAgentType, availableAgents } = useAI();
+  const [chatExpanded, setChatExpanded] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">AI Assistant</h1>
-              <p className="text-gray-600">Multi-agent payroll assistant powered by AI</p>
-            </div>
-            <button 
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors"
-              onClick={() => setLocation('/dashboard')}
-            >
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="flex min-h-screen flex-col">
+      <Header />
       
-      <main className="container mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Sidebar with agent info */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium mb-4">Specialized AI Agents</h2>
-              <p className="text-gray-600 mb-4">
-                Our multi-agent system combines specialized AI agents to provide comprehensive payroll assistance.
-              </p>
-              
-              <div className="space-y-4">
-                {agents.map((agent) => (
-                  <div 
-                    key={agent.id}
-                    className={`border rounded-md p-4 ${agent.color}`}
-                  >
-                    <div className="flex items-center mb-2">
-                      {agent.icon}
-                      <div className="ml-3">
-                        <h3 className="font-medium">{agent.name}</h3>
-                        <p className="text-xs text-gray-500">{agent.description}</p>
-                      </div>
-                    </div>
-                    <div className="mt-2">
-                      <h4 className="text-xs font-medium text-gray-700 mb-1">Capabilities:</h4>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        {agent.capabilities.map((capability, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="mr-1">•</span>
-                            <span>{capability}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+      <main className="flex-1 container mx-auto px-4 py-12">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold tracking-tight mb-4">
+              AI Payroll Assistant
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Our AI-powered assistant helps you with tax calculations, expense categorization, and compliance monitoring.
+            </p>
+          </div>
+
+          {!chatExpanded && (
+            <>
+              <div className="grid gap-6 md:grid-cols-3 mb-12">
+                {availableAgents.map((agent) => (
+                  <AgentCard 
+                    key={agent.type}
+                    type={agent.type}
+                    name={agent.name}
+                    description={agent.description}
+                    capabilities={agent.capabilities}
+                    isActive={activeAgentType === agent.type}
+                  />
                 ))}
               </div>
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-medium mb-2">How It Works</h2>
-              <p className="text-sm text-gray-600 mb-4">
-                When you ask a question, our system:
-              </p>
-              <ol className="text-sm text-gray-600 space-y-2">
-                <li className="flex items-start">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-medium mr-2">1</span>
-                  <span>Analyzes your query and identifies relevant agents</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-medium mr-2">2</span>
-                  <span>Routes your question to specialized agents</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-medium mr-2">3</span>
-                  <span>Collects and integrates responses from each agent</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center text-xs font-medium mr-2">4</span>
-                  <span>Provides a comprehensive answer with expertise from multiple domains</span>
-                </li>
-              </ol>
-            </div>
-          </div>
-          
-          {/* Chat interface */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden h-[700px]">
-              <MultiAgentChat />
-            </div>
-          </div>
+              
+              <div className="mx-auto max-w-2xl">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Start a conversation</CardTitle>
+                    <CardDescription>
+                      Ask your payroll questions and our AI assistant will help you find the answers.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <SimpleMockAIChat
+                      expanded={chatExpanded} 
+                      onToggleExpand={() => setChatExpanded(!chatExpanded)} 
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+
+          {chatExpanded && (
+            <SimpleMockAIChat 
+              expanded={true} 
+              onToggleExpand={() => setChatExpanded(false)} 
+            />
+          )}
         </div>
       </main>
+      
+      <Footer />
     </div>
+  );
+}
+
+function AgentCard({ 
+  type, 
+  name, 
+  description, 
+  capabilities = [], 
+  isActive 
+}: { 
+  type: string; 
+  name: string; 
+  description: string; 
+  capabilities: string[]; 
+  isActive: boolean;
+}) {
+  // Choose icon based on agent type
+  const getIcon = () => {
+    switch (type) {
+      case 'tax':
+        return <Calculator className="h-10 w-10 text-primary" />;
+      case 'expense':
+        return <Receipt className="h-10 w-10 text-primary" />;
+      case 'compliance':
+        return <ClipboardCheck className="h-10 w-10 text-primary" />;
+      default:
+        return <Calculator className="h-10 w-10 text-primary" />; 
+    }
+  };
+
+  return (
+    <Card className={`hover:shadow-md transition-shadow overflow-hidden ${isActive ? 'border-primary' : ''}`}>
+      <div className="p-6">
+        <div className="flex items-center gap-4">
+          {getIcon()}
+          <h3 className="text-xl font-semibold">{name}</h3>
+        </div>
+        <p className="mt-2 text-muted-foreground">{description}</p>
+        
+        <div className="mt-4">
+          <h4 className="text-sm font-medium mb-2">Capabilities:</h4>
+          <ul className="text-sm list-disc pl-5 space-y-1">
+            {capabilities.slice(0, 3).map((capability, i) => (
+              <li key={i}>{capability}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </Card>
   );
 }

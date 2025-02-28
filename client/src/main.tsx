@@ -1,26 +1,9 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App";
+import AppRoot from "./AppRoot";
 import "./index.css";
-
-// Ensure we have styles for the whole page
-const globalStyles = `
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  * {
-    box-sizing: border-box;
-  }
-`;
-
-// Create a style element and append it to head
-const styleEl = document.createElement('style');
-styleEl.innerHTML = globalStyles;
-document.head.appendChild(styleEl);
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
 
 // Get the root element
 const rootElement = document.getElementById("root");
@@ -35,6 +18,8 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <AppRoot />
+    </QueryClientProvider>
   </React.StrictMode>
 );

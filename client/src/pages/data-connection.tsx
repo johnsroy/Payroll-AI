@@ -571,6 +571,7 @@ export default function DataConnectionPage() {
                 >
                   <ZapierIntegrationPanel 
                     zapierApps={zapierApps}
+                    templates={ZapierIntegration.PAYROLL_ZAP_TEMPLATES}
                     onConnectZapier={() => console.log('Connecting to Zapier...')}
                   />
                 </motion.div>

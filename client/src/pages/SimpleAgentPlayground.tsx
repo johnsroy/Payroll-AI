@@ -383,71 +383,99 @@ const SimpleAgentPlayground: React.FC = () => {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                         >
-                          <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm max-w-[80%]">
-                            <div className="flex items-center gap-2 text-xs font-medium mb-2 text-blue-600">
-                              <span className={`w-4 h-4 rounded-full ${getAgentColor(activeAgent)} flex items-center justify-center`}>
-                                {getAgentIcon(activeAgent)}
-                              </span>
-                              {agents.find(a => a.type === activeAgent)?.name || 'AI Assistant'}
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                              <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                              <div className="h-2 w-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                          <div className="max-w-[80%] rounded-2xl p-4 bg-white border border-gray-200 shadow-sm">
+                            <div className="flex space-x-2 items-center">
+                              <motion.div 
+                                className="w-2 h-2 rounded-full bg-blue-400"
+                                animate={{ scale: [1, 1.5, 1] }}
+                                transition={{ 
+                                  duration: 1.5,
+                                  repeat: Infinity,
+                                  repeatType: "loop",
+                                  ease: "easeInOut",
+                                  delay: 0
+                                }}
+                              ></motion.div>
+                              <motion.div 
+                                className="w-2 h-2 rounded-full bg-blue-400"
+                                animate={{ scale: [1, 1.5, 1] }}
+                                transition={{ 
+                                  duration: 1.5,
+                                  repeat: Infinity,
+                                  repeatType: "loop",
+                                  ease: "easeInOut",
+                                  delay: 0.2
+                                }}
+                              ></motion.div>
+                              <motion.div 
+                                className="w-2 h-2 rounded-full bg-blue-400"
+                                animate={{ scale: [1, 1.5, 1] }}
+                                transition={{ 
+                                  duration: 1.5,
+                                  repeat: Infinity,
+                                  repeatType: "loop",
+                                  ease: "easeInOut",
+                                  delay: 0.4
+                                }}
+                              ></motion.div>
                             </div>
                           </div>
                         </motion.div>
                       )}
                       
+                      {error && (
+                        <motion.div 
+                          className="flex justify-center"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <div className="rounded-lg p-3 bg-red-100 text-red-700 text-sm">
+                            {error}
+                          </div>
+                        </motion.div>
+                      )}
                       <div ref={messagesEndRef} />
                     </div>
                   )}
                 </AnimatePresence>
-                
-                {error && (
-                  <motion.div 
-                    className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mt-4"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
-                    <p>{error}</p>
-                  </motion.div>
-                )}
               </div>
               
               {/* Input Form */}
-              <div className="p-4 border-t border-gray-100">
+              <div className="border-t border-gray-200 p-6 bg-white">
                 <form onSubmit={handleSubmit} className="flex space-x-3">
                   <motion.input
                     ref={inputRef}
-                    className="flex-grow px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    type="text"
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder={`Ask the ${agents.find(a => a.type === activeAgent)?.name || 'AI'} a question...`}
                     disabled={isLoading}
+                    className="flex-grow border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     whileFocus={{ boxShadow: "0 0 0 3px rgba(59, 130, 246, 0.3)" }}
                   />
                   <motion.button
                     type="submit"
-                    className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={isLoading || !inputValue.trim()}
-                    whileHover={!isLoading && inputValue.trim() ? { scale: 1.05 } : {}}
-                    whileTap={!isLoading && inputValue.trim() ? { scale: 0.95 } : {}}
+                    className="bg-blue-600 text-white p-3 rounded-lg disabled:bg-blue-400 flex items-center justify-center"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                   >
-                    {isLoading ? 'Sending...' : 'Send'}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                    </svg>
                   </motion.button>
                 </form>
                 
                 {messages.length > 0 && (
                   <motion.div 
-                    className="mt-3 text-right"
+                    className="mt-3 text-xs text-gray-500 text-center"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.2 }}
                   >
                     <motion.button
-                      className="text-sm text-gray-500 hover:text-blue-600"
                       onClick={() => setMessages([])}
+                      className="text-blue-600 hover:text-blue-700"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >

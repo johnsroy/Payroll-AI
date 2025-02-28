@@ -73,66 +73,78 @@ export interface ZapExecution {
 }
 
 /**
- * Zap template definition
- */
-export interface ZapTemplate {
-  id: string;
-  title: string;
-  description: string;
-  services: string[];
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  category: 'payroll' | 'accounting' | 'hr' | 'taxes' | 'onboarding';
-  url: string;
-}
-
-/**
  * Payroll-specific Zapier template definitions
  */
-export const PAYROLL_ZAP_TEMPLATES: ZapTemplate[] = [
+export const PAYROLL_ZAP_TEMPLATES = [
   {
     id: 'zap-template-001',
-    title: 'Payroll Processing Automation',
+    name: 'Payroll Processing Automation',
     description: 'Automatically process payroll when timesheets are approved',
-    services: ['Monday.com', 'QuickBooks'],
-    difficulty: 'intermediate',
-    category: 'payroll',
-    url: 'https://zapier.com/apps/monday/integrations/quickbooks'
+    trigger: {
+      appName: 'Monday.com',
+      triggerEvent: 'Status Change to Approved'
+    },
+    action: {
+      appName: 'QuickBooks',
+      actionEvent: 'Create Payroll Run'
+    },
+    popularityScore: 95
   },
   {
     id: 'zap-template-002',
-    title: 'Tax Filing Reminder',
+    name: 'Tax Filing Reminder',
     description: 'Send notification before tax filing deadlines',
-    services: ['Google Calendar', 'Slack'],
-    difficulty: 'beginner',
-    category: 'taxes',
-    url: 'https://zapier.com/apps/google-calendar/integrations/slack'
+    trigger: {
+      appName: 'Google Calendar',
+      triggerEvent: 'Upcoming Event'
+    },
+    action: {
+      appName: 'Slack',
+      actionEvent: 'Send Channel Message'
+    },
+    popularityScore: 87
   },
   {
     id: 'zap-template-003',
-    title: 'Employee Onboarding',
+    name: 'Employee Onboarding',
     description: 'Set up payroll accounts for new employees',
-    services: ['Greenhouse', 'ADP Workforce'],
-    difficulty: 'intermediate',
-    category: 'onboarding',
-    url: 'https://zapier.com/apps/greenhouse/integrations/adp-workforce'
+    trigger: {
+      appName: 'Greenhouse',
+      triggerEvent: 'New Employee Hired'
+    },
+    action: {
+      appName: 'ADP Workforce',
+      actionEvent: 'Create Employee'
+    },
+    popularityScore: 92
   },
   {
     id: 'zap-template-004',
-    title: 'Expense Report Approval',
+    name: 'Expense Report Approval',
     description: 'Process approved expense reports for reimbursement',
-    services: ['Expensify', 'Bill.com'],
-    difficulty: 'intermediate',
-    category: 'accounting',
-    url: 'https://zapier.com/apps/expensify/integrations/billcom'
+    trigger: {
+      appName: 'Expensify',
+      triggerEvent: 'Report Approved'
+    },
+    action: {
+      appName: 'Bill.com',
+      actionEvent: 'Create Payment'
+    },
+    popularityScore: 88
   },
   {
     id: 'zap-template-005',
-    title: 'Timesheet Notifications',
+    name: 'Timesheet Notifications',
     description: 'Remind employees to submit timesheets before payroll deadlines',
-    services: ['Schedule', 'Email by Zapier'],
-    difficulty: 'beginner',
-    category: 'payroll',
-    url: 'https://zapier.com/apps/schedule/integrations/email'
+    trigger: {
+      appName: 'Schedule',
+      triggerEvent: 'Date & Time'
+    },
+    action: {
+      appName: 'Email by Zapier',
+      actionEvent: 'Send Email'
+    },
+    popularityScore: 85
   }
 ];
 
@@ -277,7 +289,7 @@ export async function createZapFromTemplate(templateId: string, customConfig: an
   // Create a new Zap based on the template
   const newZap: Zap = {
     id: `zap-${Date.now()}`,
-    title: template.title,
+    title: template.name,
     description: template.description,
     status: 'draft',
     lastModified: new Date(),
@@ -285,18 +297,18 @@ export async function createZapFromTemplate(templateId: string, customConfig: an
       {
         id: `trigger-${Date.now()}`,
         appId: 'app-custom',
-        appName: template.services[0],
-        description: `When trigger from ${template.services[0]}`,
-        triggerEvent: 'Custom Trigger'
+        appName: template.trigger.appName,
+        description: `When ${template.trigger.triggerEvent}`,
+        triggerEvent: template.trigger.triggerEvent
       }
     ],
     actions: [
       {
         id: `action-${Date.now()}`,
         appId: 'app-custom',
-        appName: template.services[1],
-        description: `Action for ${template.services[1]}`,
-        actionEvent: 'Custom Action'
+        appName: template.action.appName,
+        description: `Perform ${template.action.actionEvent}`,
+        actionEvent: template.action.actionEvent
       }
     ]
   };
