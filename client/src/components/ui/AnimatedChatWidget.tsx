@@ -16,7 +16,7 @@ interface AnimatedChatWidgetProps {
 }
 
 export function AnimatedChatWidget({
-  initialMessage = "Hello! I'm PayBuddy, your AI payroll assistant. How can I help you today?",
+  initialMessage = "Hello! I am PayBuddy, your AI payroll assistant. How can I help you today?",
   position = 'bottom-right',
   theme = 'light',
   characterName = 'PayBuddy'
@@ -93,9 +93,9 @@ export function AnimatedChatWidget({
     } else if (inputLower.includes('expense') || inputLower.includes('receipt')) {
       return "Our AI can automatically categorize your expenses and identify potential tax deductions. Just upload your receipts or connect your accounting software.";
     } else if (inputLower.includes('compliance') || inputLower.includes('regulation')) {
-      return "I'll keep you up-to-date with changing tax regulations and compliance requirements. Is there a specific state or regulation you'd like to know about?";
+      return "I will keep you up-to-date with changing tax regulations and compliance requirements. Is there a specific state or regulation you would like to know about?";
     } else if (inputLower.includes('hi') || inputLower.includes('hello') || inputLower.includes('hey')) {
-      return `Hello! I'm ${characterName}, your AI payroll assistant. I can help with tax calculations, compliance questions, and expense categorization.`;
+      return `Hello! I am ${characterName}, your AI payroll assistant. I can help with tax calculations, compliance questions, and expense categorization.`;
     } else {
       return "I can assist with payroll tasks like tax calculations, expense categorization, and compliance monitoring. What specific help do you need today?";
     }
