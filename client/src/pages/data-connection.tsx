@@ -8,7 +8,8 @@ import {
   UploadIcon, 
   BrainIcon, 
   ClipboardCheckIcon,
-  PlayIcon
+  PlayIcon,
+  Zap as ZapIcon
 } from 'lucide-react';
 
 import { BackgroundParticles } from '../components/animations/BackgroundParticles';
@@ -18,6 +19,9 @@ import ConnectDataSourceModal from '../components/data-connection/ConnectDataSou
 import { DataSource, DataSourceType } from '../lib/dataConnectionAgent';
 import { StepProgress, Step } from '../components/workflow/StepProgress';
 import { AIRecommendations } from '../components/analysis/AIRecommendations';
+import { WorkflowMenu } from '../components/layout/WorkflowMenu';
+import { WorkflowBanner } from '../components/workflow/WorkflowBanner';
+import { ZapierIntegrationPanel } from '../components/data-connection/ZapierIntegrationPanel';
 import * as ZapierIntegration from '../lib/zapierIntegration';
 
 interface FileItem {
@@ -233,9 +237,35 @@ export default function DataConnectionPage() {
     }
   };
 
+  const getStepTitle = () => {
+    switch(currentStep) {
+      case 'upload': return 'Connect & Upload';
+      case 'analyze': return 'AI Analysis';
+      case 'review': return 'Review Recommendations';
+      case 'implement': return 'Implementation';
+    }
+  };
+  
+  const getStepDescription = () => {
+    switch(currentStep) {
+      case 'upload': 
+        return 'Connect to your data sources and upload relevant payroll files';
+      case 'analyze': 
+        return 'Our AI analyzes your data for optimization opportunities and compliance issues';
+      case 'review': 
+        return 'Review and approve AI-generated recommendations';
+      case 'implement': 
+        return 'Implement approved changes through integrations with your existing tools';
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="relative py-12 bg-blue-600 text-white overflow-hidden">
+      {/* Top Navigation Menu */}
+      <WorkflowMenu />
+
+      {/* Hero Header */}
+      <div className="relative py-10 bg-blue-600 text-white overflow-hidden">
         <BackgroundParticles />
         <div className="container mx-auto px-4 relative z-10">
           <div className="flex items-center justify-between">
@@ -246,7 +276,7 @@ export default function DataConnectionPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                Data Connections
+                PayrollPro AI Workflow
               </motion.h1>
               <motion.p 
                 className="mt-2 text-blue-100"
@@ -254,7 +284,7 @@ export default function DataConnectionPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
-                Connect to your data sources to import payroll and financial information
+                A 4-step process to optimize your payroll operations with AI
               </motion.p>
             </div>
             <motion.div
@@ -271,18 +301,25 @@ export default function DataConnectionPage() {
             </motion.div>
           </div>
           
-          <div className="mt-12">
+          <div className="mt-8">
             <StepProgress 
               currentStep={currentStep}
               completedSteps={completedSteps}
               onStepClick={handleStepClick}
-              className="mb-6"
+              className="mb-4"
             />
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Current step information banner */}
+        <WorkflowBanner 
+          currentStep={currentStep}
+          title={getStepTitle()}
+          description={getStepDescription()}
+        />
+        
         {/* Step 1: Upload/Connect - Show data sources and files */}
         {currentStep === 'upload' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -475,85 +512,113 @@ export default function DataConnectionPage() {
 
         {/* Step 4: Implement - Show Zapier integrations */}
         {currentStep === 'implement' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="bg-white rounded-lg shadow p-8 max-w-5xl mx-auto"
-          >
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                Implement with Zapier Integration
-              </h2>
-              <p className="text-gray-600 max-w-4xl">
-                Connect your payroll data with these popular applications to automate the recommendations.
-                These integrations will help you implement the identified optimizations and keep your systems in sync.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {zapierApps.map((app, index) => (
+          <div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+              <div className="lg:col-span-1">
                 <motion.div
-                  key={app.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="bg-white rounded-lg shadow overflow-hidden"
+                >
+                  <div className="p-6 border-b border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-900">Implementation Options</h3>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Choose how you want to implement the approved recommendations
+                    </p>
+                  </div>
+                  <div className="px-4 py-5 sm:p-6">
+                    <div className="space-y-4">
+                      <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="flex-shrink-0 mr-3 p-2 bg-blue-100 rounded-full">
+                          <ZapIcon className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">Zapier Integration</h4>
+                          <p className="text-xs text-gray-500">Automate with 5,000+ apps</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center p-3 rounded-lg border border-gray-200">
+                        <div className="flex-shrink-0 mr-3 p-2 bg-gray-100 rounded-full">
+                          <FileIcon className="h-6 w-6 text-gray-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">Export as Documents</h4>
+                          <p className="text-xs text-gray-500">Download as PDF, CSV, or Excel</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center p-3 rounded-lg border border-gray-200">
+                        <div className="flex-shrink-0 mr-3 p-2 bg-gray-100 rounded-full">
+                          <PlayIcon className="h-6 w-6 text-gray-600" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-medium text-gray-900">API Integration</h4>
+                          <p className="text-xs text-gray-500">Connect via REST API</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+              
+              <div className="lg:col-span-2">
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="border border-gray-200 rounded-lg p-6 hover:border-blue-400 hover:shadow-md transition-all"
+                  transition={{ duration: 0.5, delay: 0.4 }}
                 >
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mr-4">
-                      <img 
-                        src={app.iconUrl} 
-                        alt={app.name} 
-                        className="w-8 h-8 object-contain" 
-                        onError={(e) => {
-                          // If image fails to load, show a fallback icon
-                          e.currentTarget.style.display = 'none';
-                          const nextElement = e.currentTarget.nextElementSibling;
-                          if (nextElement) {
-                            (nextElement as HTMLElement).style.display = 'block';
-                          }
-                        }}
-                      />
-                      <div className="w-8 h-8 text-blue-500 hidden">
-                        <ZapIcon className="w-8 h-8" />
+                  <ZapierIntegrationPanel 
+                    zapierApps={zapierApps}
+                    templates={ZapierIntegration.PAYROLL_ZAP_TEMPLATES}
+                    onConnectZapier={() => console.log('Connecting to Zapier...')}
+                  />
+                </motion.div>
+              </div>
+            </div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="bg-white rounded-lg shadow p-6 max-w-5xl mx-auto"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Implementation Summary</h3>
+              <div className="space-y-4">
+                {recommendations.filter(rec => rec.status === 'approved' || rec.status === 'implemented').map((rec, index) => (
+                  <div key={rec.id} className="flex items-start border-l-4 border-blue-500 pl-4 py-2">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">{rec.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{rec.description}</p>
+                      <div className="flex items-center mt-2">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          rec.status === 'implemented' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {rec.status === 'implemented' ? 'Implemented' : 'Approved'}
+                        </span>
+                        {rec.potentialSavings && (
+                          <span className="ml-2 text-xs text-gray-500">
+                            Potential savings: ${rec.potentialSavings.toLocaleString()}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{app.name}</h3>
-                      <p className="text-xs text-gray-500">{app.zapCount.toLocaleString()} zaps</p>
+                      {rec.status !== 'implemented' && (
+                        <button
+                          onClick={() => handleRecommendationStatusChange(rec.id, 'implemented')}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Implement
+                        </button>
+                      )}
                     </div>
-                  </div>
-                  <p className="text-sm text-gray-600 mb-4">{app.description}</p>
-                  <button
-                    className="w-full py-2 bg-gray-100 text-gray-800 rounded font-medium hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                  >
-                    Configure Integration
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
-              <h3 className="font-semibold text-lg text-gray-900 mb-2">Popular PayrollPro AI Templates</h3>
-              <p className="text-gray-600 mb-4">
-                Get started quickly with these pre-built Zapier integrations for payroll management.
-              </p>
-              <div className="space-y-4">
-                {ZapierIntegration.PAYROLL_ZAP_TEMPLATES.slice(0, 3).map((template, index) => (
-                  <div key={template.id} className="bg-white p-4 rounded border border-gray-200 flex justify-between items-center">
-                    <div>
-                      <h4 className="font-medium text-gray-900">{template.name}</h4>
-                      <p className="text-sm text-gray-600">{template.description}</p>
-                    </div>
-                    <button className="px-4 py-2 bg-blue-100 text-blue-800 rounded hover:bg-blue-200 transition-colors">
-                      Use Template
-                    </button>
                   </div>
                 ))}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         )}
       </div>
 
