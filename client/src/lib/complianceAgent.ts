@@ -17,7 +17,7 @@ interface ComplianceRequirement {
   applies_to: string[];
   employee_threshold?: number;
   regions: string[];
-  deadline_type: 'fixed' | 'relative' | 'recurring';
+  deadline_type: string;
   deadline_details?: any;
   reference_url?: string;
   penalties?: string;
@@ -837,7 +837,7 @@ Include relevant deadlines, citations to specific regulations, and potential pen
           description: 'Ongoing compliance required'
         },
         reference_url: 'https://dol.ny.gov/minimum-wage-0',
-        penalties: 'Unpaid wages, 100% liquidated damages, interest, and attorney's fees',
+        penalties: 'Unpaid wages, 100% liquidated damages, interest, and attorney\'s fees',
         last_updated: '2024-01-01'
       },
       {
@@ -851,7 +851,7 @@ Include relevant deadlines, citations to specific regulations, and potential pen
           'Display or post a notice about paid family leave',
           'Include information about paid family leave in employee handbooks'
         ],
-        citations: ['NY Workers' Compensation Law § 200 et seq.'],
+        citations: ['NY Workers Compensation Law § 200 et seq.'],
         applies_to: ['all private employers'],
         regions: ['NY'],
         deadline_type: 'relative',
