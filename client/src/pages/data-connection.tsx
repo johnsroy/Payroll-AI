@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileTextIcon, FileSpreadsheetIcon, FileIcon, ChevronRightIcon } from 'lucide-react';
+import { 
+  FileTextIcon, 
+  FileSpreadsheetIcon, 
+  FileIcon, 
+  ChevronRightIcon, 
+  UploadIcon, 
+  BrainIcon, 
+  ClipboardCheckIcon,
+  PlayIcon
+} from 'lucide-react';
 
 import { BackgroundParticles } from '../components/animations/BackgroundParticles';
 import { WavyBackground } from '../components/animations/WavyBackground';
 import DataSourcesPanel from '../components/data-connection/DataSourcesPanel';
 import ConnectDataSourceModal from '../components/data-connection/ConnectDataSourceModal';
 import { DataSource, DataSourceType } from '../lib/dataConnectionAgent';
+import { StepProgress, Step } from '../components/workflow/StepProgress';
+import { AIRecommendations } from '../components/analysis/AIRecommendations';
+import * as ZapierIntegration from '../lib/zapierIntegration';
 
 interface FileItem {
   id: string;
@@ -20,6 +32,11 @@ interface FileItem {
 export default function DataConnectionPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDataSource, setSelectedDataSource] = useState<DataSource | null>(null);
+  const [currentStep, setCurrentStep] = useState<Step>('upload');
+  const [completedSteps, setCompletedSteps] = useState<Step[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [zapierApps, setZapierApps] = useState<ZapierIntegration.ZapierApp[]>([]);
   const [files, setFiles] = useState<FileItem[]>([
     {
       id: "file-001",
@@ -74,6 +91,120 @@ export default function DataConnectionPage() {
   const handleConnect = (type: DataSourceType, name: string) => {
     console.log(`Connected to ${name} (${type})`);
     // This would normally call the API to connect to the data source
+    setCompletedSteps([...completedSteps, 'upload']);
+    setCurrentStep('analyze');
+  };
+  
+  // Load Zapier apps when needed
+  React.useEffect(() => {
+    if (currentStep === 'implement') {
+      const loadZapierApps = async () => {
+        const apps = await ZapierIntegration.getPopularPayrollApps();
+        setZapierApps(apps);
+      };
+      loadZapierApps();
+    }
+  }, [currentStep]);
+  
+  // Generate mock recommendations when analyzing
+  React.useEffect(() => {
+    if (currentStep === 'analyze' && !isAnalyzing && recommendations.length === 0) {
+      const startAnalysis = async () => {
+        setIsAnalyzing(true);
+        
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // Generate mock recommendations
+        setRecommendations([
+          {
+            id: 'rec-001',
+            title: 'Optimize Tax Withholding Strategy',
+            description: 'Based on the employee data, we detected potential for optimizing tax withholding strategies. Several employees appear to have excessive withholding that could be adjusted to provide better cash flow while maintaining compliance.',
+            type: 'tax',
+            priority: 'high',
+            potentialSavings: 12500,
+            implementationDifficulty: 'medium',
+            status: 'pending',
+          },
+          {
+            id: 'rec-002',
+            title: 'Payroll Process Automation Opportunity',
+            description: 'Your manual payroll processing is taking approximately 12 hours per pay period. By implementing automated payroll workflows and integrating with your existing systems, you could reduce processing time by up to 70%.',
+            type: 'optimization',
+            priority: 'medium',
+            potentialSavings: 8750,
+            implementationDifficulty: 'easy',
+            status: 'pending',
+          },
+          {
+            id: 'rec-003',
+            title: 'State Tax Filing Compliance Risk',
+            description: 'We detected that your company has employees in 3 states where you may not be properly registered for payroll taxes. This creates compliance risks that should be addressed immediately.',
+            type: 'compliance',
+            priority: 'high',
+            complianceRisk: 'Potential penalty exposure of $25,000+',
+            implementationDifficulty: 'complex',
+            status: 'pending',
+          },
+        ]);
+        
+        setIsAnalyzing(false);
+        setCompletedSteps([...completedSteps, 'analyze']);
+        setCurrentStep('review');
+      };
+      
+      startAnalysis();
+    }
+  }, [currentStep, isAnalyzing, recommendations, completedSteps]);
+  
+  const handleStepClick = (step: Step) => {
+    if (completedSteps.includes(step) || 
+        step === currentStep || 
+        completedSteps.includes(getPreviousStep(step))) {
+      setCurrentStep(step);
+    }
+  };
+  
+  const getPreviousStep = (step: Step): Step => {
+    switch (step) {
+      case 'upload': return 'upload';
+      case 'analyze': return 'upload';
+      case 'review': return 'analyze';
+      case 'implement': return 'review';
+    }
+  };
+  
+  const handleRecommendationStatusChange = (id: string, status: string) => {
+    setRecommendations(
+      recommendations.map(rec => 
+        rec.id === id ? { ...rec, status } : rec
+      )
+    );
+    
+    if (status === 'implemented') {
+      // If at least one recommendation is implemented, consider the implementation step done
+      if (!completedSteps.includes('implement')) {
+        setCompletedSteps([...completedSteps, 'implement']);
+      }
+    }
+    
+    // If all recommendations have been addressed (approved, rejected, or implemented)
+    const allAddressed = recommendations
+      .filter(rec => rec.id !== id)
+      .every(rec => rec.status !== 'pending');
+      
+    if (allAddressed && status !== 'pending') {
+      // If no recommendations are pending, consider the review step done
+      if (!completedSteps.includes('review')) {
+        setCompletedSteps([...completedSteps, 'review']);
+      }
+      
+      // Move to implement step
+      if (currentStep === 'review') {
+        setCurrentStep('implement');
+      }
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
