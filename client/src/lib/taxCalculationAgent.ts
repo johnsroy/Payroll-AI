@@ -57,7 +57,7 @@ export class TaxCalculationAgent extends BaseAgent {
   private socialSecurityWageCap = 168600;
   private additionalMedicareThreshold = 200000; // Individual threshold
 
-  constructor(config: AgentConfig = {}) {
+  constructor(config: AgentConfig = { name: "Tax Calculation Agent" }) {
     const defaultSystemPrompt = `You are the Tax Calculation Agent, specialized in tax calculations and providing tax information.
         
 Your capabilities include:
@@ -616,7 +616,26 @@ Net Pay: $${netPay.toFixed(2)}
   private async getTaxRates(params: any): Promise<any> {
     const { tax_type, state, year = 2024 } = params;
     
-    const result = {
+    const result: {
+      tax_type: string;
+      state: string | undefined;
+      year: number;
+      rates: {
+        federal_income?: Record<string, TaxBracket[]>;
+        state_income?: TaxBracket[] | string;
+        fica?: {
+          social_security: {
+            rate: number;
+            wage_cap: number;
+          };
+          medicare: {
+            rate: number;
+            additional_rate: number;
+            additional_threshold: number;
+          };
+        };
+      }
+    } = {
       tax_type,
       state,
       year,

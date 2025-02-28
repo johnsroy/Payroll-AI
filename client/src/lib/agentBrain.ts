@@ -83,6 +83,7 @@ export class AgentBrain {
   private initializeAgents(): void {
     // Initialize tax calculation agent
     const taxAgent = new TaxCalculationAgent({
+      name: "Tax Calculation Agent",
       userId: this.userId,
       companyId: this.companyId
     });
@@ -90,6 +91,7 @@ export class AgentBrain {
     
     // Initialize compliance agent
     const complianceAgent = new ComplianceAgent({
+      name: "Compliance Agent",
       userId: this.userId,
       companyId: this.companyId
     });
@@ -97,6 +99,7 @@ export class AgentBrain {
     
     // Initialize expense categorization agent
     const expenseAgent = new ExpenseCategorizationAgent({
+      name: "Expense Categorization Agent",
       userId: this.userId,
       companyId: this.companyId
     });
@@ -104,6 +107,7 @@ export class AgentBrain {
     
     // Initialize data analysis agent
     const dataAnalysisAgent = new DataAnalysisAgent({
+      name: "Data Analysis Agent",
       userId: this.userId,
       companyId: this.companyId
     });
@@ -140,9 +144,9 @@ export class AgentBrain {
             success: true, 
             resultLength: webSearchResults.length 
           });
-        } catch (error) {
+        } catch (error: unknown) {
           this.addReasoningStep('Internet Search Failed', { 
-            error: error.message 
+            error: error instanceof Error ? error.message : String(error) 
           });
           // Continue without search results
         }
@@ -199,8 +203,8 @@ export class AgentBrain {
         agentsConsulted: memoryItem.agentsConsulted,
         reasoningChain: memoryItem.reasoningChain
       };
-    } catch (error) {
-      console.error('Error in AgentBrain.processQuery:', error);
+    } catch (error: unknown) {
+      console.error('Error in AgentBrain.processQuery:', error instanceof Error ? error.message : String(error));
       
       // Return graceful error response
       return {
@@ -354,8 +358,8 @@ export class AgentBrain {
           metadata: item.metadata || {}
         }));
       }
-    } catch (error) {
-      console.error('Error loading memory:', error);
+    } catch (error: unknown) {
+      console.error('Error loading memory:', error instanceof Error ? error.message : String(error));
     }
   }
   
@@ -381,8 +385,8 @@ export class AgentBrain {
           user_id: this.userId,
           company_id: this.companyId
         });
-    } catch (error) {
-      console.error('Error saving memory:', error);
+    } catch (error: unknown) {
+      console.error('Error saving memory:', error instanceof Error ? error.message : String(error));
     }
   }
   
