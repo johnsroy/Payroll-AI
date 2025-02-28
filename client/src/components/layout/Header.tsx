@@ -1,206 +1,114 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { Link, useLocation } from "wouter";
-import { Clock } from "lucide-react";
-import MobileMenu from "./MobileMenu";
-import { mainNavLinks, featuresDropdown, resourcesDropdown, companyDropdown } from "@/config/navigation";
+import React, { useState } from 'react';
+import { Link } from 'wouter';
 
 export default function Header() {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [location] = useLocation();
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
   };
-
+  
   return (
-    <header className={`sticky top-0 bg-white z-50 ${isScrolled ? 'shadow-sm' : ''}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-20">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <Clock className="w-8 h-8 text-primary" />
-              <span className="ml-2 text-xl font-bold text-primary-dark">PayrollPro</span>
-            </Link>
-          </div>
+    <header className="bg-white shadow-sm sticky top-0 z-40">
+      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+        <Link href="/" className="flex items-center">
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-8 w-8 text-blue-600" 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" 
+            />
+          </svg>
+          <span className="ml-2 text-xl font-bold text-gray-900">PayrollPro AI</span>
+        </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
-            {/* Features Dropdown */}
-            <div className="relative group">
-              <Link href="/features" className="flex items-center text-text-dark hover:text-primary transition px-2 py-1 rounded-md">
-                Features
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-4 w-4 ml-1" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M19 9l-7 7-7-7" 
-                  />
-                </svg>
-              </Link>
-              <div className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-                <div className="py-1">
-                  {featuresDropdown.map((item, index) => (
-                    <Link 
-                      key={index}
-                      href={item.href} 
-                      className="block px-4 py-2 text-sm text-text-dark hover:bg-gray-50"
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            {/* Resources Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center text-text-dark hover:text-primary transition px-2 py-1 rounded-md">
-                Resources
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-4 w-4 ml-1" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M19 9l-7 7-7-7" 
-                  />
-                </svg>
-              </button>
-              <div className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-                <div className="py-1">
-                  {resourcesDropdown.map((item, index) => (
-                    <Link 
-                      key={index}
-                      href={item.href} 
-                      className="block px-4 py-2 text-sm text-text-dark hover:bg-gray-50"
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            {/* Main Nav Links */}
-            {mainNavLinks.map((item, index) => (
-              <Link 
-                key={index}
-                href={item.href} 
-                className={`text-text-dark hover:text-primary transition px-2 py-1 rounded-md ${
-                  location === item.href ? 'text-primary font-medium' : ''
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-            
-            {/* Company Dropdown */}
-            <div className="relative group">
-              <button className="flex items-center text-text-dark hover:text-primary transition px-2 py-1 rounded-md">
-                Company
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-4 w-4 ml-1" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth="2" 
-                    d="M19 9l-7 7-7-7" 
-                  />
-                </svg>
-              </button>
-              <div className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-                <div className="py-1">
-                  {companyDropdown.map((item, index) => (
-                    <Link 
-                      key={index}
-                      href={item.href} 
-                      className="block px-4 py-2 text-sm text-text-dark hover:bg-gray-50"
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </nav>
+        <nav className="hidden md:flex space-x-8">
+          <Link href="/features" className="text-gray-700 hover:text-blue-600 transition">
+            Features
+          </Link>
+          <Link href="/pricing" className="text-gray-700 hover:text-blue-600 transition">
+            Pricing
+          </Link>
+          <Link href="/blog" className="text-gray-700 hover:text-blue-600 transition">
+            Blog
+          </Link>
+        </nav>
 
-          {/* CTA Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link href="/login" className="text-text-dark hover:text-primary transition">
-              Login
+        <div className="hidden md:flex items-center space-x-4">
+          <Link href="/login" className="text-gray-700 hover:text-blue-600 transition">
+            Login
+          </Link>
+          <Link href="/signup" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+            Get Started
+          </Link>
+        </div>
+        
+        <button 
+          className="md:hidden text-gray-500 hover:text-gray-700 focus:outline-none"
+          onClick={toggleMenu}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2} 
+              d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} 
+            />
+          </svg>
+        </button>
+      </div>
+      
+      {/* Mobile menu */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-white py-4 px-4 shadow-md">
+          <nav className="flex flex-col space-y-3">
+            <Link 
+              href="/features"
+              className="text-gray-700 hover:text-blue-600 transition py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Features
             </Link>
             <Link 
-              href="/get-started-button" 
-              className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md transition"
+              href="/pricing"
+              className="text-gray-700 hover:text-blue-600 transition py-2"
+              onClick={() => setIsMenuOpen(false)}
             >
-              Get Started
+              Pricing
             </Link>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <button 
-              onClick={toggleMobileMenu} 
-              className="text-text-dark p-2"
-              aria-label="Toggle mobile menu"
+            <Link 
+              href="/blog"
+              className="text-gray-700 hover:text-blue-600 transition py-2"
+              onClick={() => setIsMenuOpen(false)}
             >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-6 w-6" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
+              Blog
+            </Link>
+            <div className="pt-3 border-t border-gray-200">
+              <Link 
+                href="/login"
+                className="block text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setIsMenuOpen(false)}
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth="2" 
-                  d="M4 6h16M4 12h16M4 18h16" 
-                />
-              </svg>
-            </button>
-          </div>
+                Login
+              </Link>
+              <Link 
+                href="/signup"
+                className="block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition mt-2 text-center"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Get Started
+              </Link>
+            </div>
+          </nav>
         </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <MobileMenu 
-        isOpen={isMobileMenuOpen} 
-        mainNavLinks={mainNavLinks}
-        featuresDropdown={featuresDropdown}
-      />
+      )}
     </header>
   );
 }
