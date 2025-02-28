@@ -13,28 +13,27 @@ interface FloatingIllustrationProps {
 export function FloatingIllustration({
   src,
   alt,
-  width = 80,
-  height = 80,
+  width = 100,
+  height = 100,
   className = '',
   delay = 0
 }: FloatingIllustrationProps) {
   return (
     <motion.div
-      className={`relative ${className}`}
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay }}
+      transition={{ duration: 0.6, delay }}
+      className={`relative ${className}`}
     >
       <motion.div
-        animate={{
-          y: [0, -10, 0],
+        animate={{ 
+          y: [0, -8, 0],
         }}
         transition={{
-          duration: 4,
-          repeat: Infinity,
-          repeatType: "reverse",
+          duration: 3,
           ease: "easeInOut",
-          delay
+          times: [0, 0.5, 1],
+          repeat: Infinity,
         }}
       >
         <img 
@@ -43,6 +42,7 @@ export function FloatingIllustration({
           width={width} 
           height={height}
           className="object-contain"
+          style={{ maxWidth: '100%', height: 'auto' }}
         />
       </motion.div>
     </motion.div>

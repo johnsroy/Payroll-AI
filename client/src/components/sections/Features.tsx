@@ -2,102 +2,105 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { 
-  Calculator, Clock, CheckSquare, Shield, ChartBar, DollarSign, FileText, Users 
+  Calculator, 
+  FileText, 
+  Shield, 
+  Briefcase, 
+  LineChart, 
+  UserPlus
 } from 'lucide-react';
-import { AnimatedFeatureCard } from '../animations/AnimatedFeatureCard';
-import { WavyBackground } from '../animations/WavyBackground';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function Features() {
-  const [ref, inView] = useInView({
+  const { ref, inView } = useInView({
+    threshold: 0.1,
     triggerOnce: true,
-    threshold: 0.1
   });
 
   const features = [
     {
-      icon: <Calculator className="w-6 h-6 text-blue-600" />,
-      title: 'Automated Payroll',
-      description: 'Process payroll in minutes with our AI-powered automation system that calculates taxes and deductions with precision.'
+      icon: <Calculator className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mb-5" />,
+      title: "Tax Calculation",
+      description: "Intelligent tax calculations for federal, state, and local jurisdictions with automatic updates for regulatory changes."
     },
     {
-      icon: <Clock className="w-6 h-6 text-blue-600" />,
-      title: 'Time Tracking',
-      description: 'Track employee hours with our intuitive time tracking system. Supports multiple input methods including mobile and biometric.'
+      icon: <FileText className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mb-5" />,
+      title: "Expense Categorization",
+      description: "AI-powered expense categorization that learns from your business patterns and adapts to your unique needs."
     },
     {
-      icon: <CheckSquare className="w-6 h-6 text-blue-600" />,
-      title: 'Compliance Management',
-      description: 'Stay compliant with federal, state, and local regulations with our continuously updated compliance engine.'
+      icon: <Shield className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mb-5" />,
+      title: "Compliance Monitoring",
+      description: "Proactive monitoring of regulatory changes and compliance requirements across multiple jurisdictions."
     },
     {
-      icon: <Shield className="w-6 h-6 text-blue-600" />,
-      title: 'Secure Data Protection',
-      description: 'Enterprise-grade security ensures your sensitive payroll data is always protected with encryption and strict access controls.'
+      icon: <Briefcase className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mb-5" />,
+      title: "Multi-Entity Support",
+      description: "Manage payroll for multiple business entities with different requirements from a single dashboard."
     },
     {
-      icon: <ChartBar className="w-6 h-6 text-blue-600" />,
-      title: 'Advanced Analytics',
-      description: 'Gain insights into labor costs, overtime trends, and department budgets with customizable reports and dashboards.'
+      icon: <LineChart className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mb-5" />,
+      title: "Data Analytics",
+      description: "Powerful analytics and reporting tools that provide insights into labor costs, tax liabilities, and more."
     },
     {
-      icon: <DollarSign className="w-6 h-6 text-blue-600" />,
-      title: 'Expense Management',
-      description: 'Track, approve, and reimburse employee expenses with AI-powered categorization and fraud detection.'
-    },
-    {
-      icon: <FileText className="w-6 h-6 text-blue-600" />,
-      title: 'Tax Filing',
-      description: 'Automatically generate and file tax forms including W-2s, 1099s, and quarterly reports with electronic submission.'
-    },
-    {
-      icon: <Users className="w-6 h-6 text-blue-600" />,
-      title: 'Employee Self-Service',
-      description: 'Empower employees with access to paystubs, W-2s, time-off requests, and benefits information through our secure portal.'
+      icon: <UserPlus className="h-10 w-10 text-indigo-600 dark:text-indigo-400 mb-5" />,
+      title: "Employee Self-Service",
+      description: "User-friendly portal for employees to access pay stubs, tax documents, and update personal information."
     }
   ];
 
-  const headerVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: "easeOut"
-      }
-    }
-  };
-
   return (
-    <WavyBackground className="py-20" waveColor="#f0f9ff">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div ref={ref} className="text-center mb-16">
-          <motion.div
-            initial="hidden"
-            animate={inView ? "visible" : "hidden"}
-            variants={headerVariants}
+    <section className="py-16 md:py-24" ref={ref}>
+      <div className="container mx-auto px-4">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-sm font-semibold tracking-wider text-indigo-600 dark:text-indigo-400 uppercase"
           >
-            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-              Powerful Features for Modern Payroll
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our AI-powered platform simplifies complex payroll tasks and provides insights that help you make better decisions.
-            </p>
-          </motion.div>
+            Features
+          </motion.span>
+          
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-3xl md:text-4xl font-bold mt-2 mb-4 text-gray-900 dark:text-white"
+          >
+            Payroll processing reimagined
+          </motion.h2>
+          
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-xl text-gray-600 dark:text-gray-300"
+          >
+            Discover how our AI-powered features can transform your payroll operations
+          </motion.p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <AnimatedFeatureCard
+            <motion.div
               key={index}
-              icon={feature.icon}
-              title={feature.title}
-              description={feature.description}
-              index={index}
-            />
+              initial={{ opacity: 0, y: 30 }}
+              animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+              transition={{ duration: 0.5, delay: index * 0.1 + 0.3 }}
+            >
+              <Card className="h-full hover:shadow-lg transition-shadow duration-300">
+                <CardContent className="pt-6">
+                  {feature.icon}
+                  <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">{feature.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
         </div>
       </div>
-    </WavyBackground>
+    </section>
   );
 }

@@ -1,63 +1,88 @@
-"use client";
-
-import { useState } from "react";
-import FAQItem from "@/components/ui/FAQItem";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
+import { AnimatedFAQItem } from '../animations/AnimatedFAQItem';
 
 export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-  
-  const faqItems = [
+  const { ref, inView } = useInView({
+    threshold: 0.1,
+    triggerOnce: true,
+  });
+
+  const faqs = [
     {
-      question: "How does the payroll processing work?",
-      answer: "Our payroll processing is fully automated. You simply review and approve payroll before each pay period, and our system handles the calculations, tax withholdings, and payments. Employees receive direct deposits on payday, and all relevant tax forms are automatically generated and filed."
+      question: "What is PayrollPro AI?",
+      answer: "PayrollPro AI is an innovative payroll processing solution powered by a multi-agent AI system designed to streamline payroll operations. It combines tax calculation, expense categorization, and compliance monitoring capabilities with an intuitive user interface."
     },
     {
-      question: "Is PayrollPro suitable for my business size?",
-      answer: "Yes! PayrollPro is designed to scale with your business. We serve clients ranging from small businesses with just a few employees to enterprises with thousands of team members. Our tiered pricing ensures you only pay for what you need, and you can upgrade as your business grows."
+      question: "How does the multi-agent system work?",
+      answer: "Our multi-agent architecture divides complex payroll tasks among specialized AI agents, each with its own expertise area. The Tax Agent handles tax calculations, the Expense Agent automates categorization, and the Compliance Agent monitors regulatory changes. These agents work together, coordinated by a central reasoning agent, to deliver comprehensive and accurate payroll processing."
     },
     {
-      question: "How secure is my company and employee data?",
-      answer: "Security is our top priority. PayrollPro employs bank-level security measures including 256-bit encryption, multi-factor authentication, and regular security audits. We're SOC 2 certified and compliant with all relevant data protection regulations, ensuring your sensitive information is always protected."
+      question: "Is PayrollPro AI suitable for small businesses?",
+      answer: "Absolutely! PayrollPro AI is designed to scale with your business needs. Small businesses benefit from automation that reduces administrative overhead, while larger organizations appreciate the advanced compliance features and multi-state tax handling capabilities."
     },
     {
-      question: "Can PayrollPro integrate with my existing systems?",
-      answer: "Absolutely. PayrollPro offers seamless integration with popular accounting software, time tracking tools, HR systems, and more. Our Professional and Enterprise plans include API access for custom integrations with your existing business systems. We can help determine the best integration strategy for your specific needs."
+      question: "How accurate is the tax calculation?",
+      answer: "Our Tax Agent maintains an up-to-date database of federal, state, and local tax regulations across all 50 states. The system continuously monitors regulatory changes and updates its calculations accordingly, ensuring accurate payroll tax calculations with over 99.9% accuracy."
     },
     {
-      question: "How long does it take to set up PayrollPro?",
-      answer: "Most businesses are up and running with PayrollPro in less than a week. Our implementation team helps with the setup process, including importing employee data, configuring tax settings, and training your team. For larger organizations with complex needs, we offer dedicated implementation support to ensure a smooth transition."
+      question: "Can PayrollPro AI integrate with my existing software?",
+      answer: "Yes, PayrollPro AI offers integration capabilities with popular accounting software, time-tracking tools, and HR management systems through our API. We also offer pre-built integrations with major platforms like QuickBooks, Xero, ADP, and many others."
     },
     {
-      question: "What kind of customer support do you offer?",
-      answer: "We provide email and phone support for all customers. Basic and Professional plans include standard support during business hours, while Enterprise customers enjoy priority support with dedicated account managers. Our comprehensive knowledge base and video tutorials are available 24/7 for all users."
+      question: "How is my data secured?",
+      answer: "PayrollPro AI employs bank-level security protocols, including end-to-end encryption, multi-factor authentication, and regular security audits. We are SOC 2 Type II certified and fully compliant with GDPR and other relevant data protection regulations."
     }
   ];
-  
-  const toggleFAQ = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index);
-  };
-  
+
   return (
-    <section id="faq" className="py-16 md:py-24">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Frequently Asked Questions</h2>
-          <p className="text-lg text-text-light">
-            Got questions? We've got answers.
-          </p>
+    <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-800/50">
+      <div className="container mx-auto px-4" ref={ref}>
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={inView ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-sm font-semibold tracking-wider text-indigo-600 dark:text-indigo-400 uppercase"
+          >
+            FAQ
+          </motion.span>
+          
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-3xl md:text-4xl font-bold mt-2 mb-4 text-gray-900 dark:text-white"
+          >
+            Frequently Asked Questions
+          </motion.h2>
+          
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-xl text-gray-600 dark:text-gray-300"
+          >
+            Find answers to common questions about PayrollPro AI
+          </motion.p>
         </div>
 
-        <div className="space-y-4">
-          {faqItems.map((item, index) => (
-            <FAQItem 
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="max-w-3xl mx-auto divide-y divide-gray-200 dark:divide-gray-700"
+        >
+          {faqs.map((faq, index) => (
+            <AnimatedFAQItem 
               key={index}
-              question={item.question}
-              answer={item.answer}
-              isOpen={openIndex === index}
-              toggleFAQ={() => toggleFAQ(index)}
+              question={faq.question}
+              answer={faq.answer}
+              initiallyOpen={index === 0}
             />
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

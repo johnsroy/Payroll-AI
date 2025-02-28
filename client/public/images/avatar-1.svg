@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Avatar 1</title>
+    <g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect fill="#4F46E5" x="0" y="0" width="200" height="200" rx="100"></rect>
+        <text font-family="Arial-BoldMT, Arial" font-size="90" font-weight="bold" fill="#FFFFFF">
+            <tspan x="66" y="132">S</tspan>
+        </text>
+    </g>
+</svg>

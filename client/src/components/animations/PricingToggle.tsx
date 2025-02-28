@@ -8,27 +8,35 @@ interface PricingToggleProps {
 
 export function PricingToggle({ isAnnual, setIsAnnual }: PricingToggleProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4 mb-10">
-      <span className={`text-lg ${!isAnnual ? 'font-semibold text-blue-600' : 'text-gray-500'}`}>
+    <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-8 mb-12">
+      <div 
+        className={`font-medium text-base ${!isAnnual ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}
+      >
         Monthly
-      </span>
+      </div>
       
-      <motion.div 
-        className="relative h-8 w-16 rounded-full bg-blue-100 p-1 cursor-pointer"
-        onClick={() => setIsAnnual(!isAnnual)}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+      <div 
+        onClick={() => setIsAnnual(!isAnnual)} 
+        className="relative w-16 h-8 bg-gray-200 dark:bg-gray-700 rounded-full cursor-pointer flex items-center p-1"
       >
         <motion.div 
-          className="absolute h-6 w-6 rounded-full bg-blue-600"
           animate={{ x: isAnnual ? 32 : 0 }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className="w-6 h-6 rounded-full bg-indigo-600 dark:bg-indigo-500 shadow-md"
         />
-      </motion.div>
+        <span className="sr-only">{isAnnual ? 'Annual' : 'Monthly'} billing</span>
+      </div>
       
-      <span className={`text-lg ${isAnnual ? 'font-semibold text-blue-600' : 'text-gray-500'}`}>
-        Annual <span className="text-green-500 font-medium">Save 20%</span>
-      </span>
+      <div className="flex items-center">
+        <div 
+          className={`font-medium text-base ${isAnnual ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}
+        >
+          Annual
+        </div>
+        <div className="ml-2 px-2 py-0.5 text-xs font-semibold text-white bg-green-500 rounded-full">
+          Save 20%
+        </div>
+      </div>
     </div>
   );
 }

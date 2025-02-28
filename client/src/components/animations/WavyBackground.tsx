@@ -1,5 +1,4 @@
 import React, { ReactNode } from 'react';
-import { motion } from 'framer-motion';
 
 interface WavyBackgroundProps {
   children: ReactNode;
@@ -13,49 +12,33 @@ export function WavyBackground({
   waveColor = 'rgba(79, 70, 229, 0.1)'
 }: WavyBackgroundProps) {
   return (
-    <div className={`relative overflow-hidden ${className}`}>
-      {/* Top wave decoration */}
-      <div className="absolute top-0 left-0 right-0 overflow-hidden">
+    <div className={`relative overflow-hidden bg-white dark:bg-gray-900 ${className}`}>
+      {/* Top wave */}
+      <div className="absolute top-0 left-0 right-0 h-20 sm:h-28 overflow-hidden">
         <svg
-          className="w-full h-auto"
-          viewBox="0 0 1440 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 1200 120"
           preserveAspectRatio="none"
+          className="absolute top-0 w-full h-full transform rotate-180"
+          style={{ fill: waveColor }}
         >
-          <motion.path
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1 }}
-            d="M0 50C220 50 220 20 440 20C660 20 660 80 880 80C1100 80 1100 0 1320 0C1430 0 1440 25 1440 25V100H0V50Z"
-            fill={waveColor}
-          />
+          <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" />
         </svg>
       </div>
-
-      {/* Bottom wave decoration */}
-      <div className="absolute bottom-0 left-0 right-0 overflow-hidden">
-        <svg
-          className="w-full h-auto"
-          viewBox="0 0 1440 100"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          preserveAspectRatio="none"
-          style={{ transform: 'rotate(180deg)' }}
-        >
-          <motion.path
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, delay: 0.2 }}
-            d="M0 50C220 50 220 20 440 20C660 20 660 80 880 80C1100 80 1100 0 1320 0C1430 0 1440 25 1440 25V100H0V50Z"
-            fill={waveColor}
-          />
-        </svg>
-      </div>
-
-      {/* Content */}
+      
       <div className="relative z-10">
         {children}
+      </div>
+      
+      {/* Bottom wave */}
+      <div className="absolute bottom-0 left-0 right-0 h-20 sm:h-28 overflow-hidden">
+        <svg
+          viewBox="0 0 1200 120"
+          preserveAspectRatio="none"
+          className="absolute bottom-0 w-full h-full"
+          style={{ fill: waveColor }}
+        >
+          <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" />
+        </svg>
       </div>
     </div>
   );

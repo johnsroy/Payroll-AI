@@ -1,127 +1,135 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'wouter';
-import { ArrowRight, CheckCircle } from 'lucide-react';
 import { GradientBackground } from '../animations/GradientBackground';
+import { FloatingIllustration } from '../animations/FloatingIllustration';
+import { Button } from '@/components/ui/button';
+import { ArrowRight, CheckCircle } from 'lucide-react';
 
 export default function Hero() {
-  const features = [
-    'AI-powered payroll automation',
-    'Tax compliance across all 50 states',
-    'Real-time expense categorization',
-    'Secure employee self-service'
-  ];
-
   return (
-    <GradientBackground className="min-h-[90vh] flex items-center">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+    <GradientBackground className="py-16 md:py-24 overflow-hidden">
+      <div className="container mx-auto px-4 relative">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          {/* Left column - Text */}
-          <div>
+          {/* Left column - text content */}
+          <div className="max-w-2xl">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight mb-6">
-                Smarter Payroll <br />
-                <span className="text-blue-600">Powered by AI</span>
-              </h1>
+              <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 mb-4">
+                <span className="relative flex h-2 w-2 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                </span>
+                Introducing AI-Powered Payroll
+              </span>
             </motion.div>
-            
-            <motion.div
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 dark:text-white mb-6"
+            >
+              Effortless Payroll <span className="text-indigo-600 dark:text-indigo-400">Powered by AI</span>
+            </motion.h1>
+
+            <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-xl text-gray-600 dark:text-gray-300 mb-8"
             >
-              <p className="text-xl text-gray-600 mb-8">
-                Revolutionize your payroll process with our AI-powered system that automates calculations, 
-                ensures compliance, and provides valuable insights into your business finances.
-              </p>
-            </motion.div>
-            
+              PayrollPro AI revolutionizes payroll processing with advanced multi-agent architecture
+              for tax calculations, expense categorization, and compliance management.
+            </motion.p>
+
             <motion.div
-              className="mb-8"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-            >
-              <ul className="space-y-3">
-                {features.map((feature, index) => (
-                  <motion.li 
-                    key={index}
-                    className="flex items-center text-gray-700"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.3, delay: 0.5 + index * 0.1 }}
-                  >
-                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
-                    {feature}
-                  </motion.li>
-                ))}
-              </ul>
-            </motion.div>
-            
-            <motion.div
-              className="flex flex-col sm:flex-row gap-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.8 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-4 mb-8"
             >
-              <Link href="/signup">
-                <div className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-center transition-colors duration-200 flex items-center justify-center">
-                  Get Started
-                  <ArrowRight className="ml-2 h-4 w-4" />
+              <Button size="lg" className="group">
+                Get Started Free
+                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              
+              <Button size="lg" variant="outline">
+                Watch Demo
+              </Button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  <span className="text-gray-600 dark:text-gray-300">No credit card required</span>
                 </div>
-              </Link>
-              <Link href="/demo">
-                <div className="border border-gray-300 hover:border-gray-400 bg-white text-gray-800 px-6 py-3 rounded-lg font-medium text-center transition-colors duration-200">
-                  Request Demo
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  <span className="text-gray-600 dark:text-gray-300">Free 14-day trial</span>
                 </div>
-              </Link>
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                  <span className="text-gray-600 dark:text-gray-300">Cancel anytime</span>
+                </div>
+              </div>
             </motion.div>
           </div>
-          
-          {/* Right column - Image/Illustration */}
-          <motion.div
-            className="relative"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
-          >
-            <div className="bg-white p-4 rounded-2xl shadow-xl">
-              <div className="aspect-w-4 aspect-h-3 bg-gray-100 rounded-lg overflow-hidden relative">
-                {/* This is a placeholder for an actual image or illustration */}
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <div className="text-blue-600 font-bold text-xl">PayrollPro AI Dashboard</div>
-                </div>
-              </div>
-              
-              {/* Dashboard stats */}
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">Time Saved</div>
-                  <div className="text-2xl font-bold text-blue-700">35%</div>
-                </div>
-                <div className="bg-green-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">Accuracy</div>
-                  <div className="text-2xl font-bold text-green-700">99.9%</div>
-                </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">Cost Reduced</div>
-                  <div className="text-2xl font-bold text-purple-700">42%</div>
-                </div>
-                <div className="bg-orange-50 p-4 rounded-lg">
-                  <div className="text-sm text-gray-500">Compliance</div>
-                  <div className="text-2xl font-bold text-orange-700">100%</div>
-                </div>
-              </div>
-            </div>
 
-            {/* Decorative elements */}
-            <div className="absolute -top-6 -right-6 w-20 h-20 bg-blue-100 rounded-full z-[-1]"></div>
-            <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-green-100 rounded-full z-[-1]"></div>
-          </motion.div>
+          {/* Right column - illustration */}
+          <div className="relative">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8 }}
+              className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6"
+            >
+              <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
+                <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-cyan-50 dark:from-indigo-900/20 dark:to-cyan-900/20 flex items-center justify-center">
+                  <div className="text-center text-gray-400 dark:text-gray-500">
+                    <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p>Dashboard Preview</p>
+                  </div>
+                </div>
+                <div className="absolute top-0 right-0 p-4">
+                  <FloatingIllustration 
+                    src="/illustrations/robot.svg" 
+                    alt="AI Assistant"
+                    width={60}
+                    height={60}
+                    delay={0.3}
+                  />
+                </div>
+                <div className="absolute bottom-0 left-0 p-4">
+                  <FloatingIllustration 
+                    src="/illustrations/calculator.svg" 
+                    alt="Calculator"
+                    width={50}
+                    height={50}
+                    delay={0.5}
+                  />
+                </div>
+                <div className="absolute top-1/4 left-1/4">
+                  <FloatingIllustration 
+                    src="/illustrations/document.svg" 
+                    alt="Document"
+                    width={40}
+                    height={40}
+                    delay={0.7}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </div>
     </GradientBackground>
