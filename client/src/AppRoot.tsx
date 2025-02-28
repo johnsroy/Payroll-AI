@@ -7,6 +7,7 @@ import WorkflowHomePage from './pages/workflow-home';
 import WorkflowDataConnectionPage from './pages/workflow/data-connection';
 import WorkflowReviewPage from './pages/workflow/review';
 import WorkflowImplementPage from './pages/workflow/implement';
+import OAuthCallbackPage from './pages/auth/callback';
 
 const AppRoot: React.FC = () => {
   return (
@@ -53,6 +54,9 @@ const AppRoot: React.FC = () => {
           <Route path="/workflow/data-connection" component={WorkflowDataConnectionPage} />
           <Route path="/workflow/review" component={WorkflowReviewPage} />
           <Route path="/workflow/implement" component={WorkflowImplementPage} />
+          
+          {/* Auth Routes */}
+          <Route path="/auth/callback" component={OAuthCallbackPage} />
           
           {/* Landing Page */}
           <Route path="/" component={FullLandingPage} />

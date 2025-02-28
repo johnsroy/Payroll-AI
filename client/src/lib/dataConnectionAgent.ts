@@ -156,21 +156,92 @@ export function getFilesFromSource(sourceId: string): RemoteFile[] {
 
 /**
  * Connect to a new data source
+ * This function handles the OAuth flow for connecting to various cloud services
  */
-export function connectDataSource(type: DataSourceType, name: string): DataSource {
-  const newSource: DataSource = {
-    id: `connected-${Date.now()}`,
-    name: name,
-    type: type,
-    status: 'connected',
-    lastSynced: new Date(),
-    metadata: {
-      email: 'user@example.com',
-      totalFiles: Math.floor(Math.random() * 20) + 5 // Random number of files
-    }
-  };
+export async function connectDataSource(type: DataSourceType, name: string): Promise<DataSource> {
+  // For local files, we don't need OAuth
+  if (type === 'local') {
+    return {
+      id: `local-${Date.now()}`,
+      name: name,
+      type: type,
+      status: 'connected',
+      lastSynced: new Date(),
+      metadata: {
+        totalFiles: 0
+      }
+    };
+  }
+
+  // Save auth state in localStorage to retrieve after redirect
+  localStorage.setItem('payrollpro_auth_state', JSON.stringify({
+    dataSourceType: type,
+    dataSourceName: name,
+    timestamp: Date.now()
+  }));
+
+  // In a real implementation, this would trigger the OAuth flow by opening a popup
+  // or redirecting the user to the authUrl, then handling the callback.
+  // For demo purposes, we'll simulate a successful authentication flow.
   
-  return newSource;
+  return new Promise((resolve) => {
+    // Log the connection attempt for debugging
+    console.log(`Initiating connection to ${type} data source: ${name}`);
+    
+    // Simulate the OAuth redirect happening after a delay
+    setTimeout(() => {
+      // Create a new data source with simulated authentication data
+      const newSource: DataSource = {
+        id: `${type}-${Date.now()}`,
+        name: name,
+        type: type,
+        status: 'connected',
+        lastSynced: new Date(),
+        metadata: {
+          email: 'user@example.com',
+          totalFiles: Math.floor(Math.random() * 40) + 10, // Random number of files
+          accessToken: 'simulated-oauth-token-' + Math.random().toString(36).substring(2),
+          refreshToken: 'simulated-refresh-token-' + Math.random().toString(36).substring(2),
+          expiresAt: Date.now() + (3600 * 1000), // Expires in 1 hour
+          scopes: type === 'google_drive' 
+            ? ['https://www.googleapis.com/auth/drive.readonly']
+            : type === 'onedrive' 
+              ? ['files.read'] 
+              : []
+        }
+      };
+      
+      // Store connection information for persistence
+      const existingSources = JSON.parse(localStorage.getItem('payrollpro_data_sources') || '[]');
+      localStorage.setItem('payrollpro_data_sources', JSON.stringify([...existingSources, newSource]));
+      
+      resolve(newSource);
+    }, 1000);
+  });
+}
+
+/**
+ * Initialize OAuth configuration for a data source
+ * This would typically be called when setting up a new OAuth client
+ */
+export function initializeOAuthClient(type: DataSourceType, clientId: string, clientSecret: string, redirectUri: string): boolean {
+  console.log(`Initializing OAuth client for ${type} with ID: ${clientId}, redirect URI: ${redirectUri}`);
+  
+  // In a real implementation, this would set up the OAuth client configuration
+  // and store it securely for future use
+  
+  return true;
+}
+
+/**
+ * Set up Zapier Integration for no-code workflows
+ */
+export async function setupZapierIntegration(apiKey: string): Promise<boolean> {
+  console.log(`Setting up Zapier integration with API key: ${apiKey}`);
+  
+  // In a real implementation, this would register the app with Zapier's platform
+  
+  return true;
 }
 
 /**
