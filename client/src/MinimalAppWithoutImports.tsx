@@ -1,5 +1,3 @@
-import React from 'react';
-
 const Home = () => (
   <div className="p-6">
     <h1 className="text-2xl font-bold">PayrollPro AI</h1>
@@ -7,7 +5,7 @@ const Home = () => (
   </div>
 );
 
-const MinimalApp: React.FC = () => {
+const MinimalAppWithoutImports = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm p-4">
@@ -22,4 +20,4 @@ const MinimalApp: React.FC = () => {
   );
 };
 
-export default MinimalApp;
+export default MinimalAppWithoutImports;
