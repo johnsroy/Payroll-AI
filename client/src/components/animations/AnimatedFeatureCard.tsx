@@ -1,5 +1,6 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect } from 'react';
+import { motion, useAnimation } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
 
 interface AnimatedFeatureCardProps {
   icon: React.ReactNode;
@@ -11,41 +12,63 @@ interface AnimatedFeatureCardProps {
 export function AnimatedFeatureCard({ 
   icon, 
   title, 
-  description, 
+  description,
   index = 0 
 }: AnimatedFeatureCardProps) {
+  const controls = useAnimation();
+  const [ref, inView] = useInView({
+    threshold: 0.1,
+    triggerOnce: true
+  });
+
+  useEffect(() => {
+    if (inView) {
+      controls.start('visible');
+    }
+  }, [controls, inView]);
+
   const cardVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: 30,
-    },
-    visible: { 
-      opacity: 1, 
+    hidden: { y: 50, opacity: 0 },
+    visible: {
       y: 0,
+      opacity: 1,
       transition: {
         duration: 0.5,
-        delay: index * 0.2,
+        delay: index * 0.1,
+        ease: 'easeOut'
       }
     }
   };
-  
+
+  const iconVariants = {
+    hidden: { scale: 0.8, opacity: 0 },
+    visible: {
+      scale: 1,
+      opacity: 1,
+      transition: {
+        duration: 0.5,
+        delay: index * 0.1 + 0.2,
+        ease: 'easeOut'
+      }
+    }
+  };
+
   return (
     <motion.div
-      variants={cardVariants}
+      ref={ref}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-50px" }}
-      className="bg-white rounded-lg shadow-md p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+      animate={controls}
+      variants={cardVariants}
+      className="bg-white p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
     >
-      <div className="bg-blue-600 text-white p-3 rounded-lg inline-block mb-4">
+      <motion.div 
+        variants={iconVariants}
+        className="rounded-full bg-blue-100 w-12 h-12 flex items-center justify-center mb-4"
+      >
         {icon}
-      </div>
-      <h3 className="text-xl font-semibold mb-3">{title}</h3>
-      <p className="text-gray-600">
-        {description}
-      </p>
+      </motion.div>
+      <h3 className="text-xl font-semibold mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
     </motion.div>
   );
 }
-
-export default AnimatedFeatureCard;

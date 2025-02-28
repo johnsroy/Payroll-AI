@@ -14,69 +14,42 @@ export function WavyBackground({
 }: WavyBackgroundProps) {
   return (
     <div className={`relative overflow-hidden ${className}`}>
+      {/* Wave SVG animations */}
       <div className="absolute inset-0 z-0">
-        {/* First wave */}
         <motion.div
           className="absolute bottom-0 left-0 right-0"
-          style={{ 
-            height: '15vh',
-            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z' fill='${waveColor.replace('#', '%23')}' opacity='0.1'%3E%3C/path%3E%3C/svg%3E")`,
-            backgroundSize: 'cover'
-          }}
-          animate={{
-            y: [0, -10, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        
-        {/* Second wave */}
-        <motion.div
-          className="absolute bottom-0 left-0 right-0"
-          style={{ 
-            height: '10vh',
-            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z' fill='${waveColor.replace('#', '%23')}' opacity='0.2'%3E%3C/path%3E%3C/svg%3E")`,
-            backgroundSize: 'cover'
-          }}
-          animate={{
-            y: [0, -15, 0],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 0.5
-          }}
-        />
-        
-        {/* Third wave */}
-        <motion.div
-          className="absolute bottom-0 left-0 right-0"
-          style={{ 
-            height: '7vh',
-            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z' opacity='.25' fill='${waveColor.replace('#', '%23')}'%3E%3C/path%3E%3C/svg%3E")`,
-            backgroundSize: 'cover'
-          }}
-          animate={{
-            y: [0, -5, 0],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+        >
+          <svg
+            className="w-full h-auto"
+            viewBox="0 0 1440 320"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <motion.path
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 2, ease: "easeInOut" }}
+              d="M0,288L48,272C96,256,192,224,288,197.3C384,171,480,149,576,165.3C672,181,768,235,864,250.7C960,267,1056,245,1152,224C1248,203,1344,181,1392,170.7L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+              fill={waveColor}
+              fillOpacity="0.1"
+            />
+            <motion.path
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ duration: 2, delay: 0.2, ease: "easeInOut" }}
+              d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,128C960,128,1056,192,1152,208C1248,224,1344,192,1392,176L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
+              fill={waveColor}
+              fillOpacity="0.2"
+            />
+          </svg>
+        </motion.div>
       </div>
       
-      <div className="relative z-10">
-        {children}
-      </div>
+      {/* Content */}
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }
-
-export default WavyBackground;
