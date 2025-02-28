@@ -124,6 +124,92 @@ export class DataAnalysisAgent extends BaseAgent {
   ];
   
   constructor(config: any = {}) {
+    // Define data tools before the super call
+    const dataTools = [
+      {
+        name: "analyze_data",
+        description: "Analyze data from specified data sources",
+        parameters: {
+          type: "object",
+          properties: {
+            data_source_ids: {
+              type: "array",
+              items: {
+                type: "string"
+              },
+              description: "IDs of data sources to analyze"
+            },
+            analysis_type: {
+              type: "string",
+              enum: ["summary", "trends", "comparison", "anomaly", "projection"],
+              description: "Type of analysis to perform"
+            },
+            time_period: {
+              type: "string",
+              description: "Time period for the analysis (e.g., 'last month', 'Q2 2023', 'year-to-date')"
+            },
+            filters: {
+              type: "object",
+              description: "Filters to apply to the data"
+            }
+          },
+          required: ["data_source_ids", "analysis_type"]
+        }
+      },
+      {
+        name: "get_data_sources",
+        description: "Get available data sources",
+        parameters: {
+          type: "object",
+          properties: {
+            data_types: {
+              type: "array",
+              items: {
+                type: "string",
+                enum: ["payroll", "employee", "financial", "timesheet", "expense", "other"]
+              },
+              description: "Types of data sources to retrieve"
+            },
+            include_sample_data: {
+              type: "boolean",
+              description: "Whether to include sample data in the response"
+            }
+          }
+        }
+      },
+      {
+        name: "generate_forecast",
+        description: "Generate a financial or payroll forecast",
+        parameters: {
+          type: "object",
+          properties: {
+            data_source_ids: {
+              type: "array",
+              items: {
+                type: "string"
+              },
+              description: "IDs of data sources to use for forecasting"
+            },
+            forecast_type: {
+              type: "string",
+              enum: ["payroll", "revenue", "expenses", "headcount"],
+              description: "Type of forecast to generate"
+            },
+            periods: {
+              type: "number",
+              description: "Number of periods to forecast"
+            },
+            period_type: {
+              type: "string",
+              enum: ["day", "week", "month", "quarter", "year"],
+              description: "Type of period for the forecast"
+            }
+          },
+          required: ["data_source_ids", "forecast_type", "periods", "period_type"]
+        }
+      }
+    ];
+    
     super({
       name: config.name || "Data Analysis Agent",
       systemPrompt: config.systemPrompt || 
@@ -142,12 +228,15 @@ For financial forecasts, be clear about the assumptions made and the confidence 
       model: config.model || 'claude-3-7-sonnet-20250219',
       temperature: config.temperature !== undefined ? config.temperature : 0.1,
       maxTokens: config.maxTokens || 2000,
-      tools: config.tools || this.dataTools,
+      tools: config.tools || dataTools,
       memory: config.memory !== undefined ? config.memory : true,
       conversationId: config.conversationId,
       userId: config.userId,
       companyId: config.companyId
     });
+    
+    // Assign the tools to the class property after super call
+    this.dataTools = dataTools;
     
     // Initialize mock data sources for demonstration
     this.initializeMockDataSources();

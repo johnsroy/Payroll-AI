@@ -687,7 +687,7 @@ Include relevant deadlines, citations to specific regulations, and potential pen
           description: 'Respond to employee FMLA requests within 5 business days'
         },
         reference_url: 'https://www.dol.gov/agencies/whd/fmla',
-        penalties: 'Lost wages, benefits, other compensation, plus employment, reinstatement, promotion, and attorney's fees',
+        penalties: 'Lost wages, benefits, other compensation, plus employment, reinstatement, promotion, and attorney\'s fees',
         last_updated: '2023-01-01'
       },
       {
