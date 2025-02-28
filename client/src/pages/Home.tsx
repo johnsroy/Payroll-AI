@@ -242,6 +242,47 @@ export default function Home() {
         </div>
       </section>
       
+      {/* FAQ Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: "-100px" }}
+          >
+            <h2 className="text-blue-600 font-semibold uppercase tracking-wide">FAQ</h2>
+            <p className="mt-2 text-3xl font-bold text-gray-900">
+              Frequently Asked Questions
+            </p>
+          </motion.div>
+          
+          <div className="max-w-3xl mx-auto">
+            <AnimatedFAQItem 
+              question="How does the AI tax calculation work?" 
+              answer="Our AI tax calculation system uses machine learning models trained on the latest tax laws and regulations. It automatically applies the correct tax rates, deductions, and credits based on your specific situation and location."
+            />
+            <AnimatedFAQItem 
+              question="Can PayrollPro AI handle multi-state payroll?" 
+              answer="Yes! Our system is specifically designed to handle multi-state payroll complexities. It automatically applies the correct state tax rates and follows all state-specific regulations for each employee."
+            />
+            <AnimatedFAQItem 
+              question="How does the compliance monitoring work?" 
+              answer="Our AI continuously monitors federal, state, and local tax law changes. When changes occur that might affect your business, you receive immediate notifications with explanation and recommended actions."
+            />
+            <AnimatedFAQItem 
+              question="Is my data secure with PayrollPro AI?" 
+              answer="Absolutely. We use bank-level encryption for all data storage and transfers. Our systems undergo regular security audits and we maintain SOC 2 compliance. Your data privacy and security is our top priority."
+            />
+            <AnimatedFAQItem 
+              question="How much time will I save using PayrollPro AI?" 
+              answer="Most customers report saving 5-10 hours per month on payroll processing. The exact time saved depends on your company size and complexity, but our automated systems handle the complex calculations and compliance checks that typically take the most time."
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Testimonials Section */}
       <section className="py-20">
         <div className="container mx-auto px-4">
@@ -394,7 +435,7 @@ export default function Home() {
       
       {/* CTA Section */}
       <section className="py-20 bg-blue-600 text-white relative overflow-hidden">
-        <WavyBackground waveColor="text-blue-500">
+        <WavyBackground waveColor="#ffffff" className="py-20">
           <div className="container mx-auto px-4 text-center relative z-10">
             <motion.h2 
               className="text-3xl md:text-4xl font-bold mb-6"
