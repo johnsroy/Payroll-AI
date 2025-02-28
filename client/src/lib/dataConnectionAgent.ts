@@ -1,4 +1,5 @@
 import { BaseAgent, AgentConfig, AgentResponse } from './baseAgent';
+import { generateCompletion } from './openai';
 
 /**
  * Data source type definitions
@@ -168,7 +169,7 @@ export class DataConnectionAgent extends BaseAgent {
   /**
    * Initialize the Data Connection Agent
    */
-  constructor(config: AgentConfig = {}) {
+  constructor(config: AgentConfig = { name: "Data Connection Agent" }) {
     super({
       ...config,
       name: config.name || "Data Connection Agent",
@@ -791,33 +792,116 @@ export class DataConnectionAgent extends BaseAgent {
    * Get AI response for the query
    */
   private async getAIResponse(query: string, tools: any[]): Promise<string> {
-    // This is a mock implementation. In a real system, this would call
-    // the OpenAI or Anthropic API with the query and tools.
-    
-    // For demo purposes, we'll just return hardcoded responses
-    if (query.toLowerCase().includes('list data sources') || query.toLowerCase().includes('connected sources')) {
-      return "Let me check your connected data sources using get_data_sources()";
-    } else if (query.toLowerCase().includes('connect') && query.toLowerCase().includes('google drive')) {
-      return "I'll connect you to Google Drive using connect_data_source(type: \"google_drive\", name: \"My Google Drive\")";
-    } else if (query.toLowerCase().includes('disconnect') && query.toLowerCase().includes('dropbox')) {
-      return "I'll disconnect your Dropbox connection using disconnect_data_source(source_id: \"db-001\")";
-    } else if (query.toLowerCase().includes('list files') && query.toLowerCase().includes('google drive')) {
-      return "Let me list the files in your Google Drive using list_files(source_id: \"gd-001\")";
-    } else if (query.toLowerCase().includes('details') && query.toLowerCase().includes('payroll')) {
-      return "Let me get the details of your payroll file using get_file_details(source_id: \"gd-001\", file_id: \"file-001\")";
-    } else if (query.toLowerCase().includes('import') && query.toLowerCase().includes('employee')) {
-      return "I'll import the employee data file using import_file(source_id: \"gd-001\", file_id: \"file-002\", import_type: \"employee\")";
-    } else {
-      // Default response
-      return "I'm the Data Connection Agent. I can help you connect to external data sources like Google Drive, Dropbox, and OneDrive, and help you manage files within those sources. You can ask me to list your connected sources, connect to new sources, list files, get file details, and import files into the system. How can I assist you with your data connections today?";
+    try {
+      // Build a system prompt that explains the available tools
+      let toolsPrompt = 'You have access to the following tools:\n\n';
+      
+      tools.forEach(tool => {
+        toolsPrompt += `- ${tool.name}: ${tool.description}\n`;
+      });
+      
+      // Add instructions for tool usage format
+      toolsPrompt += '\nWhen you want to use a tool, use the exact syntax like this:';
+      toolsPrompt += '\nFor get_data_sources: get_data_sources()';
+      toolsPrompt += '\nFor connect_data_source: connect_data_source(type: "google_drive", name: "My Google Drive")';
+      toolsPrompt += '\nFor disconnect_data_source: disconnect_data_source(source_id: "source-id")';
+      toolsPrompt += '\nFor list_files: list_files(source_id: "source-id", path: "/folder", file_type: "xlsx")';
+      toolsPrompt += '\nFor get_file_details: get_file_details(source_id: "source-id", file_id: "file-id")';
+      toolsPrompt += '\nFor import_file: import_file(source_id: "source-id", file_id: "file-id", import_type: "payroll")';
+      
+      // Get AI response using OpenAI
+      const systemPrompt = `
+        You are the Data Connection Agent, specialized in helping users connect to external data sources 
+        and manage their data files. Your goal is to make it easy for users to import payroll and financial 
+        data from their preferred storage services.
+        
+        ${toolsPrompt}
+        
+        Always use these tools when appropriate. First understand what the user is asking for, then decide 
+        which tool to use. For example, if they ask about connected sources, use get_data_sources(). 
+        If they want to connect to Google Drive, use connect_data_source().
+        
+        Be helpful, clear, and concise in your responses.
+      `;
+      
+      const response = await generateCompletion(query, {
+        systemPrompt,
+        temperature: 0.3,
+        maxTokens: 1000
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Error generating AI response:', error);
+      
+      // Fallback to simpler responses in case of API error
+      if (query.toLowerCase().includes('list') || query.toLowerCase().includes('sources')) {
+        return "Let me check your connected data sources using get_data_sources()";
+      } else if (query.toLowerCase().includes('connect')) {
+        return "I'll connect you to a new data source. To do this, I'll need to know what type of source. For example: connect_data_source(type: \"google_drive\", name: \"My Google Drive\")";
+      } else if (query.toLowerCase().includes('files')) {
+        return "I can list files from your connected sources using list_files(source_id: \"gd-001\")";
+      } else {
+        return "I'm the Data Connection Agent. I can help you connect to external data sources and manage files. What would you like to do?";
+      }
     }
   }
 
   /**
    * Get relevant context for a data connection query from the knowledge base
+   * This could integrate with a vector database or other knowledge storage in a production system
    */
   protected async getRelevantContext(query: string): Promise<string | null> {
-    // This is a mock implementation
+    // For now, provide some static context based on the query content
+    if (query.toLowerCase().includes('google drive')) {
+      return `
+        Google Drive integration information:
+        - Supports file types: documents, spreadsheets, PDFs, images
+        - Authentication: OAuth 2.0
+        - API limits: 1,000 requests per day per user
+        - Common use cases: Importing payroll spreadsheets, employee documents, tax forms
+      `;
+    } 
+    
+    if (query.toLowerCase().includes('dropbox')) {
+      return `
+        Dropbox integration information:
+        - Supports file types: all file types
+        - Authentication: OAuth 2.0
+        - API limits: 100,000 requests per day per app
+        - Common use cases: Importing financial documents, receipts, expense reports
+      `;
+    }
+    
+    if (query.toLowerCase().includes('onedrive') || query.toLowerCase().includes('one drive')) {
+      return `
+        OneDrive integration information:
+        - Supports file types: Office documents, PDFs, images, etc.
+        - Authentication: Microsoft OAuth
+        - API limits: Varies based on license type
+        - Common use cases: Importing employee reviews, company policies, financial documents
+      `;
+    }
+    
+    // If query mentions files or formats
+    if (query.toLowerCase().includes('file') || 
+        query.toLowerCase().includes('format') || 
+        query.toLowerCase().includes('import')) {
+      return `
+        Supported file formats for payroll data:
+        - Excel (.xlsx, .xls): Best for structured payroll data
+        - CSV (.csv): Good for simple data tables
+        - PDF (.pdf): Good for official documents, but requires extraction
+        - JSON (.json): Useful for system-to-system integration
+        
+        Common import types:
+        - payroll: For payroll registers and run data
+        - employee: For employee demographic data
+        - expense: For expense reports and receipts
+        - tax: For tax forms and documentation
+      `;
+    }
+    
     return null;
   }
 }
