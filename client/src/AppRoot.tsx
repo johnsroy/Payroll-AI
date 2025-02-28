@@ -2,6 +2,7 @@ import React from 'react';
 import { Route, Switch, Link } from 'wouter';
 import FullLandingPage from './pages/FullLandingPage';
 import SimpleAgentPlayground from './pages/SimpleAgentPlayground';
+import DataConnectionPage from './pages/data-connection';
 
 const AppRoot: React.FC = () => {
   return (
@@ -17,6 +18,9 @@ const AppRoot: React.FC = () => {
             </Link>
             <Link href="/agents">
               <span className="text-gray-600 hover:text-blue-600 cursor-pointer">AI Playground</span>
+            </Link>
+            <Link href="/data-connection">
+              <span className="text-gray-600 hover:text-blue-600 cursor-pointer">Data Connection</span>
             </Link>
             <a href="#features" className="text-gray-600 hover:text-blue-600">Features</a>
             <a href="#pricing" className="text-gray-600 hover:text-blue-600">Pricing</a>
@@ -34,6 +38,7 @@ const AppRoot: React.FC = () => {
       <main className="flex-grow">
         <Switch>
           <Route path="/agents" component={SimpleAgentPlayground} />
+          <Route path="/data-connection" component={DataConnectionPage} />
           <Route path="/" component={FullLandingPage} />
           <Route component={() => (
             <div className="flex flex-col items-center justify-center h-full py-20">
@@ -64,6 +69,7 @@ const AppRoot: React.FC = () => {
                 <li><a href="#features" className="hover:text-white">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
                 <li><Link href="/agents"><span className="hover:text-white cursor-pointer">AI Playground</span></Link></li>
+                <li><Link href="/data-connection"><span className="hover:text-white cursor-pointer">Data Connection</span></Link></li>
               </ul>
             </div>
             <div>
