@@ -5,6 +5,18 @@ import path from 'path';
 import fs from 'fs';
 import { log } from '../vite';
 
+// Extend Express Request to include session
+declare global {
+  namespace Express {
+    interface Request {
+      session: {
+        userId?: string;
+        [key: string]: any;
+      }
+    }
+  }
+}
+
 // Create a router
 const router = Router();
 

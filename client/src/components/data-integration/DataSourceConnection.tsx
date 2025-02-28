@@ -96,7 +96,7 @@ export default function DataSourceConnection() {
   const loadDataSources = async () => {
     try {
       setLoading(true);
-      const response = await apiRequest<DataSource[]>('GET', '/api/data-sources');
+      const response = await apiRequest('GET', '/api/data-sources');
       setDataSources(response || []);
       setError(null);
     } catch (err) {
@@ -410,7 +410,7 @@ export default function DataSourceConnection() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-4 mb-8">
             <TabsTrigger value="file-upload" className="flex items-center gap-2">
-              <FileUpload className="h-4 w-4" />
+              <Upload className="h-4 w-4" />
               <span className="hidden sm:inline">CSV Upload</span>
               <span className="sm:hidden">CSV</span>
             </TabsTrigger>
