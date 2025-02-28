@@ -1,7 +1,44 @@
-import React from 'react';
-import { FloatingIllustration } from './components/animations/FloatingIllustration.tsx';
+import React, { useState } from 'react';
+import { FloatingIllustration } from './components/animations/FloatingIllustration';
+import { AnimatedRobot } from './components/animations/AnimatedRobot';
+import { ChatBubble } from './components/animations/ChatBubble';
+import { AnimatedAgentCard, Agent } from './components/animations/AnimatedAgentCard';
+import { WavyBackground } from './components/animations/WavyBackground';
 
 function SimpleApp() {
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
+  
+  // Available AI agents
+  const agents: Agent[] = [
+    {
+      name: "Tax Calculator",
+      role: "Finance Specialist",
+      description: "Handles all tax calculations with precision, including federal, state, and local taxes.",
+      icon: "💰",
+      color: "bg-green-100 text-green-600"
+    },
+    {
+      name: "Compliance Advisor",
+      role: "Regulatory Expert",
+      description: "Stays up-to-date with changing regulations and alerts you to upcoming deadlines.",
+      icon: "🛡️",
+      color: "bg-blue-100 text-blue-600"
+    },
+    {
+      name: "Expense Categorizer",
+      role: "Accounting Assistant",
+      description: "Automatically categorizes business expenses and identifies tax deduction opportunities.",
+      icon: "📊",
+      color: "bg-purple-100 text-purple-600"
+    },
+    {
+      name: "Data Analyst",
+      role: "Insights Generator",
+      description: "Analyzes your payroll data to provide actionable insights and optimization suggestions.",
+      icon: "📈",
+      color: "bg-yellow-100 text-yellow-600"
+    }
+  ];
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header */}
@@ -25,7 +62,7 @@ function SimpleApp() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-b from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
+      <WavyBackground className="py-20" waveColor="rgba(96, 165, 250, 0.15)">
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row items-center">
             <div className="lg:w-1/2 mb-10 lg:mb-0">
@@ -56,29 +93,23 @@ function SimpleApp() {
             </div>
             
             <div className="lg:w-1/2">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 relative">
-                <div className="flex items-center mb-4">
-                  <div className="h-12 w-12 rounded-full bg-blue-600 text-white flex items-center justify-center mr-4">
-                    <span className="text-xl">🤖</span>
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 relative z-10">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                  <div className="w-32 h-32 mx-auto md:mx-0">
+                    <AnimatedRobot />
                   </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">PayBuddy</h3>
-                    <p className="text-gray-600 dark:text-gray-400">Your AI payroll assistant</p>
+                  <div className="col-span-2">
+                    <ChatBubble 
+                      initialMessage="Hello! I'm PayBuddy, your AI payroll assistant. I can help with tax calculations, compliance questions, and expense categorization. Try me out!" 
+                      agentName="PayBuddy"
+                    />
                   </div>
                 </div>
-                <div className="bg-blue-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
-                  <p className="text-gray-700 dark:text-gray-300">
-                    Hello! I'm PayBuddy, your AI payroll assistant. I can help with tax calculations, compliance questions, and expense categorization. Try me out!
-                  </p>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 italic text-center">
-                  Click the chat bubble to interact with PayBuddy
-                </p>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      </WavyBackground>
 
       {/* Features Section */}
       <section id="features" className="py-20">
@@ -135,8 +166,63 @@ function SimpleApp() {
         </div>
       </section>
       
+      {/* AI Agents Section */}
+      <section className="py-20 bg-gray-50 dark:bg-gray-800/50 relative overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-16">
+            <h2 className="text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wide">AI Agents</h2>
+            <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+              Meet Your AI Assistants
+            </p>
+            <p className="mt-4 text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+              Our specialized AI agents work together to handle every aspect of your payroll process, combining expertise in different domains.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto mb-10">
+            {agents.map((agent, index) => (
+              <AnimatedAgentCard 
+                key={agent.name} 
+                agent={agent}
+                index={index}
+                isSelected={selectedAgent === agent.name}
+                onClick={() => setSelectedAgent(agent.name)}
+              />
+            ))}
+          </div>
+          
+          {selectedAgent && (
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg max-w-4xl mx-auto">
+              <div className="flex items-center mb-4">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mr-4 
+                ${agents.find(a => a.name === selectedAgent)?.color}`}>
+                  <span className="text-xl">{agents.find(a => a.name === selectedAgent)?.icon}</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">{selectedAgent}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {agents.find(a => a.name === selectedAgent)?.role}
+                  </p>
+                </div>
+              </div>
+              
+              <ChatBubble 
+                initialMessage={`I'm the ${selectedAgent}. ${agents.find(a => a.name === selectedAgent)?.description} How can I assist you today?`}
+                agentName={selectedAgent}
+                agentAvatar={agents.find(a => a.name === selectedAgent)?.icon}
+                placeholder={`Ask the ${selectedAgent} something...`}
+              />
+            </div>
+          )}
+        </div>
+        
+        {/* Background decorative elements */}
+        <div className="absolute top-20 right-10 w-40 h-40 bg-blue-100 rounded-full opacity-20 dark:opacity-10"></div>
+        <div className="absolute bottom-20 left-10 w-60 h-60 bg-blue-200 rounded-full opacity-20 dark:opacity-10"></div>
+      </section>
+      
       {/* How It Works Section */}
-      <section id="how-it-works" className="py-20 bg-gray-50 dark:bg-gray-800/50">
+      <section id="how-it-works" className="py-20 bg-gray-50 dark:bg-gray-800/50 relative overflow-hidden">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <span className="text-sm font-semibold tracking-wider text-blue-600 dark:text-blue-400 uppercase">
@@ -157,28 +243,43 @@ function SimpleApp() {
               {
                 number: 1,
                 title: "Connect Your Data",
-                description: "Integrate with your existing HR systems or import employee data directly."
+                description: "Integrate with your existing HR systems or import employee data directly.",
+                illustration: "/illustrations/step1.svg"
               },
               {
                 number: 2,
                 title: "Configure AI Agents",
-                description: "Set up tax rules, expense categories, and compliance requirements for your business."
+                description: "Set up tax rules, expense categories, and compliance requirements for your business.",
+                illustration: "/illustrations/step2.svg"
               },
               {
                 number: 3,
                 title: "Run & Review",
-                description: "Process payroll with AI assistance and review the results before finalizing."
+                description: "Process payroll with AI assistance and review the results before finalizing.",
+                illustration: "/illustrations/step3.svg"
               }
             ].map((step, index) => (
               <div key={step.number} className="flex flex-col items-center text-center">
                 <div className="relative mb-6">
-                  <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center z-10 relative">
+                  {/* Step Illustration */}
+                  <div className="w-40 h-40 mb-4 mx-auto">
+                    <FloatingIllustration 
+                      src={step.illustration} 
+                      alt={step.title} 
+                      width={150} 
+                      height={150} 
+                      delay={index * 0.3}
+                    />
+                  </div>
+                  
+                  {/* Step Number */}
+                  <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center z-10 relative mx-auto my-4">
                     <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">{step.number}</span>
                   </div>
                   
                   {/* Connect steps with lines, except for the last step */}
                   {index < 2 && (
-                    <div className="hidden md:block absolute top-8 left-full w-full h-0.5 bg-blue-200 dark:bg-blue-800 -z-10 transform -translate-y-1/2" style={{ width: 'calc(100% - 3rem)' }} />
+                    <div className="hidden md:block absolute top-20 left-full w-full h-0.5 bg-blue-200 dark:bg-blue-800 -z-10 transform -translate-y-1/2" style={{ width: 'calc(100% - 3rem)' }} />
                   )}
                 </div>
                 
@@ -188,6 +289,10 @@ function SimpleApp() {
             ))}
           </div>
         </div>
+        
+        {/* Background decorative elements */}
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-blue-100 rounded-full opacity-20 dark:opacity-10"></div>
+        <div className="absolute -bottom-20 -right-20 w-60 h-60 bg-blue-200 rounded-full opacity-20 dark:opacity-10"></div>
       </section>
 
       {/* Testimonials Section */}
