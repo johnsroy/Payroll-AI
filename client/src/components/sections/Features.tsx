@@ -1,77 +1,103 @@
-"use client";
-
-import FeatureCard from "@/components/ui/FeatureCard";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
 import { 
-  DollarSign, 
-  CheckCircle, 
-  User, 
-  BarChart, 
-  FileText, 
-  CreditCard 
-} from "lucide-react";
+  Calculator, Clock, CheckSquare, Shield, ChartBar, DollarSign, FileText, Users 
+} from 'lucide-react';
+import { AnimatedFeatureCard } from '../animations/AnimatedFeatureCard';
+import { WavyBackground } from '../animations/WavyBackground';
 
 export default function Features() {
+  const [ref, inView] = useInView({
+    triggerOnce: true,
+    threshold: 0.1
+  });
+
   const features = [
     {
-      icon: <DollarSign className="h-6 w-6 text-primary" />,
-      title: "Automated Payroll Processing",
-      description: "Set up once and let our system handle the rest. Automatically calculate wages, deductions, and taxes for your entire team.",
-      link: "#"
+      icon: <Calculator className="w-6 h-6 text-blue-600" />,
+      title: 'Automated Payroll',
+      description: 'Process payroll in minutes with our AI-powered automation system that calculates taxes and deductions with precision.'
     },
     {
-      icon: <CheckCircle className="h-6 w-6 text-primary" />,
-      title: "Tax Compliance",
-      description: "Stay compliant with automatic tax calculations, filings, and payments at the federal, state, and local levels.",
-      link: "#"
+      icon: <Clock className="w-6 h-6 text-blue-600" />,
+      title: 'Time Tracking',
+      description: 'Track employee hours with our intuitive time tracking system. Supports multiple input methods including mobile and biometric.'
     },
     {
-      icon: <User className="h-6 w-6 text-primary" />,
-      title: "Employee Self-Service",
-      description: "Give your team access to their pay stubs, tax forms, and personal information through a secure online portal.",
-      link: "#"
+      icon: <CheckSquare className="w-6 h-6 text-blue-600" />,
+      title: 'Compliance Management',
+      description: 'Stay compliant with federal, state, and local regulations with our continuously updated compliance engine.'
     },
     {
-      icon: <BarChart className="h-6 w-6 text-primary" />,
-      title: "Comprehensive Reporting",
-      description: "Generate detailed reports on payroll expenses, taxes, labor costs, and more to gain valuable business insights.",
-      link: "#"
+      icon: <Shield className="w-6 h-6 text-blue-600" />,
+      title: 'Secure Data Protection',
+      description: 'Enterprise-grade security ensures your sensitive payroll data is always protected with encryption and strict access controls.'
     },
     {
-      icon: <FileText className="h-6 w-6 text-primary" />,
-      title: "HR Document Management",
-      description: "Store, organize, and securely share important employee documents and forms with proper access controls.",
-      link: "#"
+      icon: <ChartBar className="w-6 h-6 text-blue-600" />,
+      title: 'Advanced Analytics',
+      description: 'Gain insights into labor costs, overtime trends, and department budgets with customizable reports and dashboards.'
     },
     {
-      icon: <CreditCard className="h-6 w-6 text-primary" />,
-      title: "Direct Deposit & Payments",
-      description: "Deposit employee payments directly to their accounts or generate checks with our flexible payment options.",
-      link: "#"
+      icon: <DollarSign className="w-6 h-6 text-blue-600" />,
+      title: 'Expense Management',
+      description: 'Track, approve, and reimburse employee expenses with AI-powered categorization and fraud detection.'
+    },
+    {
+      icon: <FileText className="w-6 h-6 text-blue-600" />,
+      title: 'Tax Filing',
+      description: 'Automatically generate and file tax forms including W-2s, 1099s, and quarterly reports with electronic submission.'
+    },
+    {
+      icon: <Users className="w-6 h-6 text-blue-600" />,
+      title: 'Employee Self-Service',
+      description: 'Empower employees with access to paystubs, W-2s, time-off requests, and benefits information through our secure portal.'
     }
   ];
-  
+
+  const headerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
-    <section id="features" className="py-16 md:py-24">
+    <WavyBackground className="py-20" waveColor="#f0f9ff">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything you need to manage payroll</h2>
-          <p className="text-lg text-text-light">
-            Our comprehensive platform handles all aspects of payroll, from paychecks to tax filings.
-          </p>
+        <div ref={ref} className="text-center mb-16">
+          <motion.div
+            initial="hidden"
+            animate={inView ? "visible" : "hidden"}
+            variants={headerVariants}
+          >
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+              Powerful Features for Modern Payroll
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Our AI-powered platform simplifies complex payroll tasks and provides insights that help you make better decisions.
+            </p>
+          </motion.div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {features.map((feature, index) => (
-            <FeatureCard 
+            <AnimatedFeatureCard
               key={index}
               icon={feature.icon}
               title={feature.title}
               description={feature.description}
-              link={feature.link}
+              index={index}
             />
           ))}
         </div>
       </div>
-    </section>
+    </WavyBackground>
   );
 }
