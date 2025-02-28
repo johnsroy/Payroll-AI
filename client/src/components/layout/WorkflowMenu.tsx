@@ -50,10 +50,10 @@ export function WorkflowMenu() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between py-3">
           <Link href="/workflow-home">
-            <a className="flex items-center space-x-2 text-blue-600 font-medium">
+            <span className="flex items-center space-x-2 text-blue-600 font-medium cursor-pointer">
               <BarChart2Icon className="w-5 h-5" />
               <span>PayrollPro AI Workflow</span>
-            </a>
+            </span>
           </Link>
           
           <nav className="hidden md:flex items-center space-x-8">
@@ -62,8 +62,8 @@ export function WorkflowMenu() {
               
               return (
                 <Link key={item.href} href={item.href}>
-                  <a 
-                    className={`flex items-center space-x-1 text-sm ${
+                  <span 
+                    className={`flex items-center space-x-1 text-sm cursor-pointer ${
                       isActive 
                         ? 'text-blue-600 font-medium' 
                         : 'text-gray-600 hover:text-blue-600'
@@ -74,7 +74,7 @@ export function WorkflowMenu() {
                       {item.icon}
                     </div>
                     <span>{item.name}</span>
-                  </a>
+                  </span>
                 </Link>
               );
             })}
@@ -82,9 +82,9 @@ export function WorkflowMenu() {
           
           <div className="hidden md:block">
             <Link href="/">
-              <a className="text-sm text-gray-600 hover:text-blue-600">
+              <span className="text-sm text-gray-600 hover:text-blue-600 cursor-pointer">
                 Return to Home
-              </a>
+              </span>
             </Link>
           </div>
           

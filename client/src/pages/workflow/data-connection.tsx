@@ -416,9 +416,28 @@ export default function WorkflowDataConnectionPage() {
                           </div>
                           
                           <div className="p-6 overflow-auto flex-1">
-                            <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded border border-gray-200">
-                              {selectedFile.content || "No preview available"}
-                            </pre>
+                            {selectedFile.type === 'xlsx' || selectedFile.type === 'csv' ? (
+                              <table className="min-w-full divide-y divide-gray-200 border">
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                  {selectedFile.content?.split('\n').map((row, rowIndex) => (
+                                    <tr key={rowIndex}>
+                                      {row.split(',').map((cell, cellIndex) => (
+                                        <td 
+                                          key={cellIndex} 
+                                          className={`px-3 py-2 text-sm ${rowIndex === 0 ? 'font-medium bg-gray-50' : ''}`}
+                                        >
+                                          {cell}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            ) : (
+                              <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 p-4 rounded border border-gray-200">
+                                {selectedFile.content || "No preview available"}
+                              </pre>
+                            )}
                           </div>
                           
                           <div className="px-6 py-4 border-t border-gray-200 flex justify-end">

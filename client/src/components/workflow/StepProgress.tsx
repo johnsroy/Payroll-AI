@@ -1,12 +1,10 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { 
-  FileIcon, 
-  BarChart2Icon, 
+  FileUpIcon, 
+  SearchIcon, 
   CheckSquareIcon, 
-  ZapIcon, 
-  ArrowRightIcon,
-  CheckIcon
+  PlayIcon, 
+  CheckIcon 
 } from 'lucide-react';
 
 export type Step = 'upload' | 'analyze' | 'review' | 'implement';
@@ -19,8 +17,8 @@ interface StepProgressProps {
 }
 
 const steps: { key: Step; label: string }[] = [
-  { key: 'upload', label: 'Upload' },
-  { key: 'analyze', label: 'Analysis' },
+  { key: 'upload', label: 'Upload Data' },
+  { key: 'analyze', label: 'Analyze' },
   { key: 'review', label: 'Review' },
   { key: 'implement', label: 'Implement' }
 ];
@@ -34,92 +32,58 @@ export function StepProgress({
   const getStepNumber = (step: Step) => {
     return steps.findIndex(s => s.key === step) + 1;
   };
-  
+
   const isCurrentStep = (step: Step) => currentStep === step;
   const isCompletedStep = (step: Step) => completedSteps.includes(step);
   const isClickableStep = (step: Step) => {
-    if (isCurrentStep(step) || isCompletedStep(step)) return true;
+    if (!onStepClick) return false;
     
-    // Allow clicking the next step after the last completed step
-    const lastCompletedStepIndex = Math.max(
-      ...completedSteps.map(s => getStepNumber(s) - 1),
-      -1
-    );
-    const stepIndex = getStepNumber(step) - 1;
-    
-    return stepIndex === lastCompletedStepIndex + 1;
+    // Allow clicking on completed steps or the current step + 1
+    return isCompletedStep(step) || 
+           getStepNumber(step) === getStepNumber(currentStep) + 1;
   };
-  
+
   const getStepColor = (step: Step) => {
+    if (isCompletedStep(step)) return 'bg-green-500 text-white border-green-500';
     if (isCurrentStep(step)) {
       switch (step) {
-        case 'upload': return 'text-blue-600 border-blue-600 bg-blue-50';
-        case 'analyze': return 'text-blue-600 border-blue-600 bg-blue-50';
-        case 'review': return 'text-amber-600 border-amber-600 bg-amber-50';
-        case 'implement': return 'text-green-600 border-green-600 bg-green-50';
+        case 'upload': return 'bg-blue-500 text-white border-blue-500';
+        case 'analyze': return 'bg-blue-500 text-white border-blue-500';
+        case 'review': return 'bg-amber-500 text-white border-amber-500';
+        case 'implement': return 'bg-green-500 text-white border-green-500';
       }
     }
-    
-    if (isCompletedStep(step)) {
-      switch (step) {
-        case 'upload': return 'text-blue-600 border-blue-600 bg-blue-600';
-        case 'analyze': return 'text-blue-600 border-blue-600 bg-blue-600';
-        case 'review': return 'text-amber-600 border-amber-600 bg-amber-600';
-        case 'implement': return 'text-green-600 border-green-600 bg-green-600';
-      }
-    }
-    
-    return 'text-gray-400 border-gray-300 bg-white';
+    return 'bg-white text-gray-400 border-gray-300';
   };
-  
+
   const getConnectionColor = (step: Step) => {
-    const stepIndex = getStepNumber(step) - 1;
-    const prevStep = steps[stepIndex - 1]?.key;
+    // This gets the color of the line connecting this step to the previous step
+    const stepIndex = steps.findIndex(s => s.key === step);
+    if (stepIndex === 0) return ''; // No connection before the first step
     
-    if (!prevStep) return '';
-    
-    if (isCompletedStep(step)) {
-      switch (step) {
-        case 'upload': return 'bg-blue-600';
-        case 'analyze': return 'bg-blue-600';
-        case 'review': return 'bg-amber-600';
-        case 'implement': return 'bg-green-600';
-      }
-    }
-    
-    if (isCurrentStep(step) && isCompletedStep(prevStep)) {
-      switch (step) {
-        case 'upload': return 'bg-blue-600';
-        case 'analyze': return 'bg-blue-600';
-        case 'review': return 'bg-amber-600';
-        case 'implement': return 'bg-green-600';
-      }
-    }
+    const prevStep = steps[stepIndex - 1].key;
+    if (isCompletedStep(prevStep)) return 'bg-green-500';
     
     return 'bg-gray-300';
   };
-  
+
   const getStepIcon = (step: Step) => {
+    if (isCompletedStep(step)) {
+      return <CheckIcon className="w-5 h-5" />;
+    }
+
     switch (step) {
       case 'upload':
-        return isCompletedStep(step) ? 
-          <CheckIcon className="h-6 w-6 text-white" /> :
-          <FileIcon className="h-6 w-6" />;
+        return <FileUpIcon className="w-5 h-5" />;
       case 'analyze':
-        return isCompletedStep(step) ? 
-          <CheckIcon className="h-6 w-6 text-white" /> :
-          <BarChart2Icon className="h-6 w-6" />;
+        return <SearchIcon className="w-5 h-5" />;
       case 'review':
-        return isCompletedStep(step) ? 
-          <CheckIcon className="h-6 w-6 text-white" /> :
-          <CheckSquareIcon className="h-6 w-6" />;
+        return <CheckSquareIcon className="w-5 h-5" />;
       case 'implement':
-        return isCompletedStep(step) ? 
-          <CheckIcon className="h-6 w-6 text-white" /> :
-          <ZapIcon className="h-6 w-6" />;
+        return <PlayIcon className="w-5 h-5" />;
     }
   };
-  
+
   const handleStepClick = (step: Step) => {
     if (onStepClick && isClickableStep(step)) {
       onStepClick(step);
@@ -127,55 +91,34 @@ export function StepProgress({
   };
 
   return (
-    <div className={`${className}`}>
-      <div className="flex items-center justify-between">
-        {steps.map((step, index) => (
-          <React.Fragment key={step.key}>
-            {/* Step */}
-            <motion.button
-              className={`relative flex items-center justify-center w-12 h-12 rounded-full border-2 transition-colors ${
-                getStepColor(step.key)
-              } ${
-                isClickableStep(step.key) ? 'cursor-pointer' : 'cursor-default'
-              }`}
-              onClick={() => handleStepClick(step.key)}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: index * 0.15, duration: 0.3 }}
-              whileHover={isClickableStep(step.key) ? { scale: 1.05 } : {}}
-            >
-              {getStepIcon(step.key)}
-            </motion.button>
-            
-            {/* Connector */}
-            {index < steps.length - 1 && (
-              <motion.div 
-                className={`flex-1 h-1 max-w-24 mx-1 ${getConnectionColor(steps[index + 1].key)}`}
-                initial={{ scaleX: 0, opacity: 0 }}
-                animate={{ scaleX: 1, opacity: 1 }}
-                transition={{ delay: index * 0.15 + 0.1, duration: 0.4 }}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-      
-      <div className="flex items-center justify-between mt-2">
-        {steps.map((step, index) => (
-          <motion.div
-            key={`label-${step.key}`}
-            className={`text-sm font-medium transition-colors ${
-              isCurrentStep(step.key) ? 'text-gray-900' :
-              isCompletedStep(step.key) ? 'text-gray-700' : 'text-gray-500'
-            } w-12 text-center`}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.15 + 0.2, duration: 0.3 }}
+    <div className={`flex items-center justify-between ${className}`}>
+      {steps.map((step, index) => (
+        <React.Fragment key={step.key}>
+          {/* Step connection line */}
+          {index > 0 && (
+            <div className={`flex-1 h-1 ${getConnectionColor(step.key)}`} />
+          )}
+
+          {/* Step circle */}
+          <div 
+            className={`relative flex flex-col items-center group ${isClickableStep(step.key) ? 'cursor-pointer' : ''}`}
+            onClick={() => handleStepClick(step.key)}
           >
-            {step.label}
-          </motion.div>
-        ))}
-      </div>
+            <div className={`w-10 h-10 flex items-center justify-center rounded-full border-2 transition-colors ${getStepColor(step.key)}`}>
+              {getStepIcon(step.key)}
+            </div>
+            <div className="text-xs font-medium mt-2 text-center">
+              {step.label}
+            </div>
+            
+            {isClickableStep(step.key) && !isCurrentStep(step.key) && (
+              <div className="absolute -bottom-6 opacity-0 group-hover:opacity-100 transition-opacity text-xs text-blue-600 whitespace-nowrap">
+                Click to navigate
+              </div>
+            )}
+          </div>
+        </React.Fragment>
+      ))}
     </div>
   );
 }
