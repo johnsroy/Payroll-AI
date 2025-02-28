@@ -12,8 +12,7 @@ function Header() {
   return (
     <header className="bg-white shadow-sm">
       <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link href="/">
-          <a className="flex items-center">
+        <Link href="/" className="flex items-center">
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
               className="h-8 w-8 text-blue-600" 
@@ -29,29 +28,26 @@ function Header() {
               />
             </svg>
             <span className="ml-2 text-xl font-bold text-gray-900">PayrollPro AI</span>
-          </a>
         </Link>
 
         <nav className="hidden md:flex space-x-8">
-          <Link href="/features">
-            <a className="text-gray-700 hover:text-blue-600 transition">Features</a>
+          <Link href="/features" className="text-gray-700 hover:text-blue-600 transition">
+            Features
           </Link>
-          <Link href="/pricing">
-            <a className="text-gray-700 hover:text-blue-600 transition">Pricing</a>
+          <Link href="/pricing" className="text-gray-700 hover:text-blue-600 transition">
+            Pricing
           </Link>
-          <Link href="/blog">
-            <a className="text-gray-700 hover:text-blue-600 transition">Blog</a>
+          <Link href="/blog" className="text-gray-700 hover:text-blue-600 transition">
+            Blog
           </Link>
         </nav>
 
         <div className="flex items-center space-x-4">
-          <Link href="/login">
-            <a className="text-gray-700 hover:text-blue-600 transition">Login</a>
+          <Link href="/login" className="text-gray-700 hover:text-blue-600 transition">
+            Login
           </Link>
-          <Link href="/get-started">
-            <a className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
-              Get Started
-            </a>
+          <Link href="/get-started" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+            Get Started
           </Link>
         </div>
       </div>
@@ -152,13 +148,11 @@ function HomePage() {
                 giving you peace of mind and saving you hours every month.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/signup">
-                  <a className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center justify-center">
-                    Get Started 
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                    </svg>
-                  </a>
+                <Link href="/signup" className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center justify-center">
+                  Get Started 
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
                 </Link>
                 <a 
                   href="#demo" 
@@ -232,13 +226,11 @@ function HomePage() {
           <p className="text-xl mb-8 max-w-2xl mx-auto">
             Join thousands of businesses that have simplified their payroll process with PayrollPro AI.
           </p>
-          <Link href="/signup">
-            <a className="px-8 py-4 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors inline-flex items-center text-lg">
-              Get Started Now 
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </a>
+          <Link href="/signup" className="px-8 py-4 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors inline-flex items-center text-lg">
+            Get Started Now 
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
           </Link>
         </div>
       </section>
@@ -282,8 +274,8 @@ function NotFoundPage() {
     <div className="container mx-auto px-4 py-12 text-center">
       <h1 className="text-4xl font-bold mb-4">404</h1>
       <p className="mb-8">Page not found</p>
-      <Link href="/">
-        <a className="text-blue-600 hover:underline">Go back home</a>
+      <Link href="/" className="text-blue-600 hover:underline">
+        Go back home
       </Link>
     </div>
   );
