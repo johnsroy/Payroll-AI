@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
 
 interface TimelineItem {
   number: number;
@@ -14,19 +13,21 @@ interface AnimatedTimelineProps {
 
 export function AnimatedTimeline({ items }: AnimatedTimelineProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-8 relative">
-      {/* Progress line */}
-      <div className="hidden md:block absolute left-1/2 top-8 bottom-0 w-0.5 bg-blue-100 transform -translate-x-1/2 -z-10"/>
+    <div className="relative">
+      {/* Timeline line */}
+      <div className="absolute left-0 md:left-1/2 top-0 bottom-0 w-px bg-blue-200 transform -translate-x-1/2"></div>
       
-      {items.map((item, index) => (
-        <TimelineStep 
-          key={index}
-          number={item.number}
-          title={item.title}
-          description={item.description}
-          index={index}
-        />
-      ))}
+      <div className="space-y-12 relative">
+        {items.map((item, index) => (
+          <TimelineStep 
+            key={index}
+            number={item.number}
+            title={item.title}
+            description={item.description}
+            index={index}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -39,61 +40,39 @@ interface TimelineStepProps {
 }
 
 function TimelineStep({ number, title, description, index }: TimelineStepProps) {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  });
-  
-  const variants = {
-    hidden: { 
-      opacity: 0, 
-      y: 20 
-    },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: {
-        duration: 0.6,
-        delay: index * 0.3,
-      }
-    }
-  };
+  const isEven = index % 2 === 0;
   
   return (
-    <motion.div 
-      ref={ref}
-      variants={variants}
-      initial="hidden"
-      animate={inView ? "visible" : "hidden"}
-      className="text-center"
-    >
+    <div className={`flex flex-col md:flex-row items-center ${isEven ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
       <motion.div 
-        className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 relative"
-        whileHover={{ scale: 1.1 }}
-        transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        className={`md:w-1/2 mb-6 md:mb-0 ${isEven ? 'md:pr-12 md:text-right' : 'md:pl-12'}`}
+        initial={{ opacity: 0, x: isEven ? -50 : 50 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.8, delay: index * 0.2 }}
+        viewport={{ once: true, margin: "-100px" }}
       >
-        <span className="text-blue-600 font-bold text-xl">{number}</span>
-        
-        {index < 3 && (
-          <motion.div 
-            className="hidden md:block absolute w-full right-0 h-0.5 bg-blue-100 -z-10"
-            style={{ 
-              right: '-100%',
-              top: '50%',
-              width: 'calc(100% + 2rem)',
-              transformOrigin: 'left'
-            }}
-            initial={{ scaleX: 0 }}
-            animate={inView ? { scaleX: 1 } : { scaleX: 0 }}
-            transition={{ delay: index * 0.3 + 0.5, duration: 0.8 }}
-          />
-        )}
+        <h3 className="text-xl font-bold text-gray-900 mb-2">{title}</h3>
+        <p className="text-gray-600">{description}</p>
       </motion.div>
       
-      <h3 className="text-lg font-semibold mb-2">{title}</h3>
-      <p className="text-gray-600">
-        {description}
-      </p>
-    </motion.div>
+      <motion.div 
+        className="relative z-10 flex items-center justify-center h-12 w-12 rounded-full bg-blue-600 text-white font-bold text-lg shadow-md"
+        initial={{ opacity: 0, scale: 0.5 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        transition={{ 
+          duration: 0.5, 
+          delay: index * 0.2,
+          type: "spring",
+          stiffness: 200,
+        }}
+        viewport={{ once: true, margin: "-100px" }}
+      >
+        {number}
+      </motion.div>
+      
+      <div className="md:w-1/2"></div>
+    </div>
   );
 }
+
+export default AnimatedTimeline;

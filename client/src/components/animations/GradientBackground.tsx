@@ -8,55 +8,27 @@ interface GradientBackgroundProps {
 
 export function GradientBackground({ children, className = '' }: GradientBackgroundProps) {
   return (
-    <motion.div 
-      className={`bg-gradient-to-b from-blue-50 via-white to-blue-50 relative overflow-hidden ${className}`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-    >
-      {/* Animated gradient circles */}
+    <div className={`relative overflow-hidden ${className}`}>
       <motion.div 
-        className="absolute top-0 -left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
-        animate={{ 
-          x: [0, 20, 0], 
-          y: [0, 30, 0] 
+        className="absolute inset-0 bg-gradient-to-b from-blue-50 via-blue-100 to-white opacity-80 z-0"
+        animate={{
+          background: [
+            'linear-gradient(to bottom, #EFF6FF 0%, #DBEAFE 50%, #ffffff 100%)',
+            'linear-gradient(to bottom, #EBF5FF 0%, #E1F0FF 50%, #ffffff 100%)',
+            'linear-gradient(to bottom, #EFF6FF 0%, #DBEAFE 50%, #ffffff 100%)'
+          ]
         }}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 15,
-          ease: "easeInOut",
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          ease: "easeInOut"
         }}
       />
-      
-      <motion.div 
-        className="absolute -bottom-8 right-0 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
-        animate={{ 
-          x: [0, -30, 0], 
-          y: [0, -20, 0] 
-        }}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 20,
-          ease: "easeInOut",
-          delay: 1
-        }}
-      />
-      
-      <motion.div 
-        className="absolute top-1/3 right-1/4 w-64 h-64 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
-        animate={{ 
-          x: [0, 40, 0], 
-          y: [0, -40, 0] 
-        }}
-        transition={{ 
-          repeat: Infinity, 
-          duration: 18,
-          ease: "easeInOut",
-          delay: 2
-        }}
-      />
-      
-      {children}
-    </motion.div>
+      <div className="relative z-10">
+        {children}
+      </div>
+    </div>
   );
 }
+
+export default GradientBackground;

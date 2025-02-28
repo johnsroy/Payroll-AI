@@ -1,6 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
 
 interface AnimatedFeatureCardProps {
   icon: React.ReactNode;
@@ -15,11 +14,6 @@ export function AnimatedFeatureCard({
   description, 
   index = 0 
 }: AnimatedFeatureCardProps) {
-  const [ref, inView] = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-  });
-  
   const cardVariants = {
     hidden: { 
       opacity: 0, 
@@ -37,10 +31,10 @@ export function AnimatedFeatureCard({
   
   return (
     <motion.div
-      ref={ref}
       variants={cardVariants}
       initial="hidden"
-      animate={inView ? "visible" : "hidden"}
+      whileInView="visible"
+      viewport={{ once: true, margin: "-50px" }}
       className="bg-white rounded-lg shadow-md p-6 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
     >
       <div className="bg-blue-600 text-white p-3 rounded-lg inline-block mb-4">
@@ -53,3 +47,5 @@ export function AnimatedFeatureCard({
     </motion.div>
   );
 }
+
+export default AnimatedFeatureCard;

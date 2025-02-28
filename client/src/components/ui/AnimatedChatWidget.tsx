@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { v4 as uuidv4 } from 'uuid';
 
 interface Message {
   id: string;
@@ -17,7 +16,7 @@ interface AnimatedChatWidgetProps {
 }
 
 export function AnimatedChatWidget({
-  initialMessage = "Hi there! 👋 I'm your PayrollPro AI assistant. How can I help you today?",
+  initialMessage = "Hello! I'm PayBuddy, your AI payroll assistant. How can I help you today?",
   position = 'bottom-right',
   theme = 'light',
   characterName = 'PayBuddy'
@@ -28,12 +27,12 @@ export function AnimatedChatWidget({
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Add the initial assistant message when the component mounts
   useEffect(() => {
-    // Add initial message when component mounts
-    if (initialMessage && messages.length === 0) {
+    if (messages.length === 0) {
       setMessages([
         {
-          id: uuidv4(),
+          id: '1',
           content: initialMessage,
           role: 'assistant',
           timestamp: new Date()
@@ -42,206 +41,219 @@ export function AnimatedChatWidget({
     }
   }, [initialMessage]);
 
+  // Auto-scroll to the bottom when new messages are added
   useEffect(() => {
-    // Scroll to bottom when messages change
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const toggleChat = () => {
+    setIsOpen(!isOpen);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim() === '') return;
-    
+
     // Add user message
     const userMessage: Message = {
-      id: uuidv4(),
+      id: Date.now().toString(),
       content: inputValue,
       role: 'user',
       timestamp: new Date()
     };
     
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsTyping(true);
-    
-    // Simulate AI response after a short delay
+
+    // Simulate AI response after a delay
     setTimeout(() => {
       const assistantMessage: Message = {
-        id: uuidv4(),
-        content: getRandomResponse(inputValue),
+        id: (Date.now() + 1).toString(),
+        content: getAIResponse(inputValue),
         role: 'assistant',
         timestamp: new Date()
       };
       
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
       setIsTyping(false);
     }, 1500);
   };
 
-  const getRandomResponse = (query: string) => {
-    const responses = [
-      "I'd be happy to help you with that!",
-      "Great question! Let me look into that for you.",
-      "That's something I can definitely assist with.",
-      "I understand what you're asking. Here's what you need to know...",
-      "Thanks for your question. Let me explain how this works..."
-    ];
+  // Simple mock AI response function
+  const getAIResponse = (input: string): string => {
+    const inputLower = input.toLowerCase();
     
-    return responses[Math.floor(Math.random() * responses.length)];
-  };
-
-  const positionClasses = {
-    'bottom-right': 'bottom-5 right-5',
-    'bottom-left': 'bottom-5 left-5'
-  };
-  
-  const themeClasses = {
-    light: {
-      widget: 'bg-white text-gray-800',
-      header: 'bg-blue-600 text-white',
-      button: 'bg-blue-600 text-white hover:bg-blue-700',
-      userMessage: 'bg-blue-600 text-white',
-      aiMessage: 'bg-gray-100 text-gray-800'
-    },
-    dark: {
-      widget: 'bg-gray-800 text-white',
-      header: 'bg-blue-800 text-white',
-      button: 'bg-blue-700 text-white hover:bg-blue-800',
-      userMessage: 'bg-blue-700 text-white',
-      aiMessage: 'bg-gray-700 text-white'
+    if (inputLower.includes('tax') || inputLower.includes('taxes')) {
+      return "I can help you calculate tax withholdings based on your employee information. Would you like me to explain federal, state, or local tax requirements?";
+    } else if (inputLower.includes('expense') || inputLower.includes('receipt')) {
+      return "Our AI can automatically categorize your expenses and identify potential tax deductions. Just upload your receipts or connect your accounting software.";
+    } else if (inputLower.includes('compliance') || inputLower.includes('regulation')) {
+      return "I'll keep you up-to-date with changing tax regulations and compliance requirements. Is there a specific state or regulation you'd like to know about?";
+    } else if (inputLower.includes('hi') || inputLower.includes('hello') || inputLower.includes('hey')) {
+      return `Hello! I'm ${characterName}, your AI payroll assistant. I can help with tax calculations, compliance questions, and expense categorization.`;
+    } else {
+      return "I can assist with payroll tasks like tax calculations, expense categorization, and compliance monitoring. What specific help do you need today?";
     }
   };
 
+  const positionClass = position === 'bottom-right' 
+    ? 'bottom-24 right-4 sm:right-8' 
+    : 'bottom-24 left-4 sm:left-8';
+
+  const themeClass = theme === 'dark' 
+    ? 'bg-gray-800 text-white' 
+    : 'bg-white text-gray-800';
+
   return (
-    <div className={`fixed ${positionClasses[position]} z-50`}>
+    <>
       {/* Chat button */}
       <motion.button
-        className={`rounded-full w-14 h-14 flex items-center justify-center shadow-lg ${themeClasses[theme].button}`}
+        className={`fixed ${position === 'bottom-right' ? 'right-4 sm:right-8' : 'left-4 sm:left-8'} bottom-4 w-14 h-14 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg z-50`}
+        onClick={toggleChat}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
-        onClick={() => setIsOpen(!isOpen)}
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1 }}
       >
         {isOpen ? (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
           </svg>
         )}
       </motion.button>
 
-      {/* Chat widget */}
+      {/* Chat window */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className={`absolute bottom-16 ${position === 'bottom-right' ? 'right-0' : 'left-0'} w-80 sm:w-96 rounded-lg shadow-xl overflow-hidden ${themeClasses[theme].widget}`}
+            className={`fixed ${positionClass} z-40 w-80 md:w-96 h-96 rounded-lg shadow-xl overflow-hidden ${themeClass} flex flex-col`}
             initial={{ opacity: 0, y: 20, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            transition={{ duration: 0.3 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 500 }}
           >
             {/* Chat header */}
-            <div className={`p-4 ${themeClasses[theme].header} flex items-center`}>
+            <div className="p-4 bg-blue-600 text-white flex items-center">
               <motion.div 
-                className="w-10 h-10 rounded-full bg-white p-1 mr-3 overflow-hidden"
-                initial={{ rotate: -30 }}
-                animate={{ rotate: 0 }}
-                transition={{ duration: 0.5, type: "spring" }}
+                className="w-8 h-8 rounded-full bg-white text-blue-600 flex items-center justify-center mr-3 text-sm font-bold"
+                animate={{ 
+                  rotate: [0, 10, 0, -10, 0],
+                  scale: [1, 1.1, 1, 1.1, 1]
+                }}
+                transition={{ 
+                  duration: 4,
+                  repeat: Infinity,
+                  repeatDelay: 2
+                }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                  <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                  <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                </svg>
+                🤖
               </motion.div>
               <div>
-                <h3 className="font-semibold">{characterName}</h3>
-                <p className="text-xs opacity-80">AI Assistant</p>
+                <h3 className="font-bold">{characterName}</h3>
+                <p className="text-xs opacity-80">AI Payroll Assistant</p>
               </div>
             </div>
-
+            
             {/* Chat messages */}
-            <div className="h-80 overflow-y-auto p-4 flex flex-col space-y-3">
-              {messages.map(message => (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {messages.map((message) => (
                 <motion.div
                   key={message.id}
-                  className={`max-w-3/4 rounded-lg p-3 ${
-                    message.role === 'user' 
-                      ? `${themeClasses[theme].userMessage} self-end` 
-                      : `${themeClasses[theme].aiMessage} self-start`
-                  }`}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {message.content}
+                  <div 
+                    className={`max-w-[80%] rounded-lg p-3 ${
+                      message.role === 'user' 
+                        ? 'bg-blue-600 text-white rounded-br-none'
+                        : theme === 'light' 
+                          ? 'bg-gray-200 text-gray-800 rounded-bl-none'
+                          : 'bg-gray-700 text-white rounded-bl-none'
+                    }`}
+                  >
+                    {message.content}
+                  </div>
                 </motion.div>
               ))}
               
+              {/* Typing indicator */}
               {isTyping && (
                 <motion.div
-                  className={`max-w-3/4 rounded-lg p-3 self-start ${themeClasses[theme].aiMessage}`}
+                  className="flex justify-start"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="flex space-x-1">
-                    <motion.div 
-                      className="w-2 h-2 rounded-full bg-blue-600"
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 0.5, repeat: Infinity, delay: 0 }}
-                    />
-                    <motion.div 
-                      className="w-2 h-2 rounded-full bg-blue-600"
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 0.5, repeat: Infinity, delay: 0.1 }}
-                    />
-                    <motion.div 
-                      className="w-2 h-2 rounded-full bg-blue-600"
-                      animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 0.5, repeat: Infinity, delay: 0.2 }}
-                    />
+                  <div 
+                    className={`rounded-lg p-3 ${
+                      theme === 'light' 
+                        ? 'bg-gray-200 text-gray-800 rounded-bl-none'
+                        : 'bg-gray-700 text-white rounded-bl-none'
+                    }`}
+                  >
+                    <div className="flex space-x-1">
+                      <motion.div 
+                        className="w-2 h-2 rounded-full bg-blue-600" 
+                        animate={{ y: [0, -5, 0] }}
+                        transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
+                      />
+                      <motion.div 
+                        className="w-2 h-2 rounded-full bg-blue-600" 
+                        animate={{ y: [0, -5, 0] }}
+                        transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
+                      />
+                      <motion.div 
+                        className="w-2 h-2 rounded-full bg-blue-600" 
+                        animate={{ y: [0, -5, 0] }}
+                        transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
+                      />
+                    </div>
                   </div>
                 </motion.div>
               )}
-              
               <div ref={messagesEndRef} />
             </div>
-
+            
             {/* Chat input */}
-            <form onSubmit={handleSubmit} className="p-3 border-t">
-              <div className="flex space-x-2">
+            <form onSubmit={handleSubmit} className="p-3 border-t border-gray-300 dark:border-gray-700">
+              <div className="flex">
                 <input
                   type="text"
                   value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
+                  onChange={handleInputChange}
                   placeholder="Type your message..."
-                  className="flex-1 px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`flex-1 py-2 px-3 rounded-l-lg focus:outline-none ${
+                    theme === 'dark' 
+                      ? 'bg-gray-700 text-white placeholder-gray-400 border-gray-600'
+                      : 'bg-gray-100 text-gray-800 placeholder-gray-500 border-gray-300'
+                  }`}
                 />
-                <motion.button
+                <button
                   type="submit"
-                  className={`rounded-full p-2 ${themeClasses[theme].button}`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  disabled={inputValue.trim() === ''}
+                  className="bg-blue-600 text-white py-2 px-4 rounded-r-lg hover:bg-blue-700 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
                   </svg>
-                </motion.button>
+                </button>
               </div>
             </form>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
+
+export default AnimatedChatWidget;
