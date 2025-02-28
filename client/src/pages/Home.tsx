@@ -4,6 +4,10 @@ import { motion } from 'framer-motion';
 import { AnimatedChatWidget } from '@/components/ui/AnimatedChatWidget';
 import { BackgroundParticles } from '@/components/animations/BackgroundParticles';
 import { GradientBackground } from '@/components/animations/GradientBackground';
+import { WavyBackground } from '@/components/animations/WavyBackground';
+import { AnimatedFeatureCard } from '@/components/animations/AnimatedFeatureCard';
+import { AnimatedTimeline } from '@/components/animations/AnimatedTimeline';
+import { AnimatedFAQItem } from '@/components/animations/AnimatedFAQItem';
 
 export default function Home() {
   return (
@@ -198,54 +202,43 @@ export default function Home() {
       {/* How It Works Section */}
       <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: "-100px" }}
+          >
             <h2 className="text-blue-600 font-semibold uppercase tracking-wide">How It Works</h2>
             <p className="mt-2 text-3xl font-bold text-gray-900">
               Powered by Advanced AI Agents
             </p>
-          </div>
+          </motion.div>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-blue-600 font-bold text-xl">1</span>
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Upload Data</h3>
-              <p className="text-gray-600">
-                Connect your accounting software or upload your payroll data.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-blue-600 font-bold text-xl">2</span>
-              </div>
-              <h3 className="text-lg font-semibold mb-2">AI Analysis</h3>
-              <p className="text-gray-600">
-                Our specialized AI agents analyze and categorize your data.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-blue-600 font-bold text-xl">3</span>
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Get Insights</h3>
-              <p className="text-gray-600">
-                Receive tailored recommendations and compliance alerts.
-              </p>
-            </div>
-            
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-blue-600 font-bold text-xl">4</span>
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Save Time</h3>
-              <p className="text-gray-600">
-                Process payroll with confidence, saving hours every month.
-              </p>
-            </div>
-          </div>
+          <AnimatedTimeline 
+            items={[
+              {
+                number: 1,
+                title: "Upload Data",
+                description: "Connect your accounting software or upload your payroll data."
+              },
+              {
+                number: 2,
+                title: "AI Analysis",
+                description: "Our specialized AI agents analyze and categorize your data."
+              },
+              {
+                number: 3,
+                title: "Get Insights",
+                description: "Receive tailored recommendations and compliance alerts."
+              },
+              {
+                number: 4,
+                title: "Save Time",
+                description: "Process payroll with confidence, saving hours every month."
+              }
+            ]} 
+          />
         </div>
       </section>
       
@@ -353,20 +346,120 @@ export default function Home() {
         </div>
       </section>
       
-      {/* CTA Section */}
-      <section className="py-20 bg-blue-600 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-6">Ready to Transform Your Payroll Management?</h2>
-          <p className="text-xl mb-8 max-w-2xl mx-auto">
-            Join thousands of businesses that have simplified their payroll process with PayrollPro AI.
-          </p>
-          <Link href="/signup" className="px-8 py-4 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors inline-flex items-center text-lg">
-            Get Started Now 
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </Link>
+      {/* FAQ Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: "-100px" }}
+          >
+            <h2 className="text-blue-600 font-semibold uppercase tracking-wide">FAQ</h2>
+            <p className="mt-2 text-3xl font-bold text-gray-900">
+              Frequently Asked Questions
+            </p>
+          </motion.div>
+          
+          <div className="max-w-3xl mx-auto">
+            <AnimatedFAQItem 
+              question="How accurate is the tax calculation system?" 
+              answer="Our tax calculation system is highly accurate, regularly updated with the latest tax laws and regulations. It handles federal, state, and local taxes with precision and has been validated against industry standards." 
+              initiallyOpen={true}
+            />
+            
+            <AnimatedFAQItem 
+              question="Can I integrate with my existing accounting software?" 
+              answer="Yes! PayrollPro AI is designed to integrate seamlessly with popular accounting software including QuickBooks, Xero, FreshBooks, and many others. Our open API also allows for custom integrations with proprietary systems." 
+            />
+            
+            <AnimatedFAQItem 
+              question="How does the AI assistant help with compliance?" 
+              answer="Our AI assistant continuously monitors regulatory changes across federal, state, and local jurisdictions. It provides proactive alerts about upcoming deadlines, requirement changes, and specific actions needed to maintain compliance with all relevant regulations." 
+            />
+            
+            <AnimatedFAQItem 
+              question="Is my data secure?" 
+              answer="Absolutely. We employ bank-level encryption, strict access controls, and regular security audits. Your data is stored in SOC 2 Type II certified data centers, and we never share your information with third parties without explicit permission." 
+            />
+            
+            <AnimatedFAQItem 
+              question="What kind of support do you offer?" 
+              answer="We provide 24/7 access to our AI assistant for immediate answers to common questions. Additionally, all plans include email support with a 24-hour response time, while our premium plans offer dedicated account managers and priority phone support." 
+            />
+          </div>
         </div>
+      </section>
+      
+      {/* CTA Section */}
+      <section className="py-20 bg-blue-600 text-white relative overflow-hidden">
+        <WavyBackground waveColor="text-blue-500">
+          <div className="container mx-auto px-4 text-center relative z-10">
+            <motion.h2 
+              className="text-3xl md:text-4xl font-bold mb-6"
+              initial={{ opacity: 0, y: -20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              Ready to Transform Your Payroll Management?
+            </motion.h2>
+            
+            <motion.p 
+              className="text-xl mb-8 max-w-2xl mx-auto"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              Join thousands of businesses that have simplified their payroll process with PayrollPro AI.
+            </motion.p>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              <Link href="/signup">
+                <motion.a 
+                  className="px-8 py-4 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors inline-flex items-center text-lg cursor-pointer shadow-lg"
+                  whileHover={{ 
+                    scale: 1.05,
+                    boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Get Started Now 
+                  <motion.svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-5 w-5 ml-2" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </motion.svg>
+                </motion.a>
+              </Link>
+            </motion.div>
+            
+            <motion.div 
+              className="mt-12 flex justify-center space-x-6 text-sm opacity-75"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              viewport={{ once: true, margin: "-100px" }}
+            >
+              <a href="#" className="hover:underline">Terms & Conditions</a>
+              <a href="#" className="hover:underline">Privacy Policy</a>
+              <a href="#" className="hover:underline">Contact Us</a>
+            </motion.div>
+          </div>
+        </WavyBackground>
       </section>
       
       {/* Animated Chat Widget */}
