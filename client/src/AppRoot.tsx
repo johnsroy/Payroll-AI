@@ -5,6 +5,8 @@ import SimpleAgentPlayground from './pages/SimpleAgentPlayground';
 import DataConnectionPage from './pages/data-connection';
 import MinimalPayrollPage from './pages/minimal-payroll';
 import SimpleDocumentsPage from './pages/simple-documents';
+import EnhancedDocumentManagementPage from './pages/enhanced-document-management';
+import SimpleDocumentTestPage from './pages/simple-document-test';
 
 const AppRoot: React.FC = () => {
   return (
@@ -23,6 +25,9 @@ const AppRoot: React.FC = () => {
             </Link>
             <Link href="/document-management">
               <span className="text-gray-600 hover:text-blue-600 cursor-pointer">Document Management</span>
+            </Link>
+            <Link href="/enhanced-documents">
+              <span className="text-gray-600 hover:text-blue-600 cursor-pointer">Enhanced Documents</span>
             </Link>
             <Link href="/agents">
               <span className="text-gray-600 hover:text-blue-600 cursor-pointer">AI Playground</span>
@@ -49,6 +54,8 @@ const AppRoot: React.FC = () => {
           <Route path="/data-connection" component={DataConnectionPage} />
           <Route path="/payroll-entry" component={MinimalPayrollPage} />
           <Route path="/document-management" component={SimpleDocumentsPage} />
+          <Route path="/enhanced-documents" component={EnhancedDocumentManagementPage} />
+          <Route path="/simple-document-test" component={SimpleDocumentTestPage} />
           <Route path="/" component={FullLandingPage} />
           <Route component={() => (
             <div className="flex flex-col items-center justify-center h-full py-20">
@@ -80,6 +87,7 @@ const AppRoot: React.FC = () => {
                 <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
                 <li><Link href="/payroll-entry"><span className="hover:text-white cursor-pointer">Payroll Entry</span></Link></li>
                 <li><Link href="/document-management"><span className="hover:text-white cursor-pointer">Document Management</span></Link></li>
+                <li><Link href="/enhanced-documents"><span className="hover:text-white cursor-pointer">Enhanced Documents</span></Link></li>
                 <li><Link href="/agents"><span className="hover:text-white cursor-pointer">AI Playground</span></Link></li>
                 <li><Link href="/data-connection"><span className="hover:text-white cursor-pointer">Data Connection</span></Link></li>
               </ul>
