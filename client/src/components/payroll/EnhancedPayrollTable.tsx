@@ -1,24 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
+'use client'
+
+import React, { useState, useEffect } from 'react'
 import { 
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Search, PlusCircle, Save, Trash2, Edit, X, AlertCircle } from 'lucide-react';
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Search, HelpCircle, AlertCircle, ArrowUpDown } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Employee {
   id: string
@@ -42,117 +42,61 @@ interface PayrollTableProps {
 }
 
 export function EnhancedPayrollTable({ onSave }: PayrollTableProps) {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [employeesToDelete, setEmployeesToDelete] = useState<string[]>([]);
-  const [confirmSaveDialogOpen, setConfirmSaveDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [totals, setTotals] = useState({
-    regularHours: 0,
-    overtimeHours: 0,
-    deductions: 0,
-    bonuses: 0,
-    taxes: 0,
-    netPay: 0
-  });
-  
-  // Mock API call to get initial data
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
+  const [sortConfig, setSortConfig] = useState<{
+    key: keyof Employee | null,
+    direction: 'ascending' | 'descending'
+  }>({ key: null, direction: 'ascending' })
+
+  // Initialize with sample data
   useEffect(() => {
-    // Simulating data fetching
-    setTimeout(() => {
-      const initialData = [
-        {
-          id: '1',
-          employee_id: 'EMP001',
-          employee_name: 'John Doe',
-          pay_period_start: '2025-02-01',
-          pay_period_end: '2025-02-15',
-          regular_hours: 80,
-          overtime_hours: 5,
-          deductions: 150,
-          bonuses: 200,
-          taxes: 320,
-          net_pay: 2230,
-          comments: 'Regular performance',
-          isEditing: false
-        },
-        {
-          id: '2',
-          employee_id: 'EMP002',
-          employee_name: 'Jane Smith',
-          pay_period_start: '2025-02-01',
-          pay_period_end: '2025-02-15',
-          regular_hours: 75,
-          overtime_hours: 0,
-          deductions: 120,
-          bonuses: 0,
-          taxes: 280,
-          net_pay: 1850,
-          comments: 'Part-time',
-          isEditing: false
-        }
-      ];
-      setEmployees(initialData);
-      setFilteredEmployees(initialData);
-      calculateTotals(initialData);
-    }, 500);
-  }, []);
+    const initialData: Employee[] = [
+      {
+        id: '1',
+        employee_id: 'EMP001',
+        employee_name: 'John Doe',
+        pay_period_start: '2025-02-01',
+        pay_period_end: '2025-02-15',
+        regular_hours: 80,
+        overtime_hours: 5,
+        deductions: 150,
+        bonuses: 200,
+        taxes: 320,
+        net_pay: 2230,
+        comments: '',
+        validation: {}
+      },
+      {
+        id: '2',
+        employee_id: 'EMP002',
+        employee_name: 'Jane Smith',
+        pay_period_start: '2025-02-01',
+        pay_period_end: '2025-02-15',
+        regular_hours: 75,
+        overtime_hours: 0,
+        deductions: 120,
+        bonuses: 0,
+        taxes: 280,
+        net_pay: 1850,
+        comments: '',
+        validation: {}
+      }
+    ]
+    setEmployees(initialData)
+    setFilteredEmployees(initialData)
+  }, [])
 
-  // Calculate totals for the footer row
-  const calculateTotals = (data: Employee[]) => {
-    const newTotals = data.reduce((acc, employee) => {
-      return {
-        regularHours: acc.regularHours + employee.regular_hours,
-        overtimeHours: acc.overtimeHours + employee.overtime_hours,
-        deductions: acc.deductions + employee.deductions,
-        bonuses: acc.bonuses + employee.bonuses,
-        taxes: acc.taxes + employee.taxes,
-        netPay: acc.netPay + employee.net_pay
-      };
-    }, {
-      regularHours: 0,
-      overtimeHours: 0,
-      deductions: 0,
-      bonuses: 0,
-      taxes: 0,
-      netPay: 0
-    });
-    
-    setTotals(newTotals);
-  };
-
-  // Format currency for display
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(amount);
-  };
-  
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-  
-  // Create a new employee record
+  // Create a new employee
   const createEmptyEmployee = (): Employee => {
-    const newId = String(Math.max(...employees.map(e => Number(e.id)), 0) + 1);
-    const paddedId = String(newId).padStart(3, '0');
-    
     return {
-      id: newId,
-      employee_id: `EMP${paddedId}`,
+      id: crypto.randomUUID(),
+      employee_id: `EMP${Math.floor(1000 + Math.random() * 9000)}`,
       employee_name: '',
-      pay_period_start: new Date().toISOString().split('T')[0],
-      pay_period_end: new Date(Date.now() + 14*24*60*60*1000).toISOString().split('T')[0],
+      pay_period_start: formatDate(new Date()),
+      pay_period_end: formatDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)), // 14 days later
       regular_hours: 0,
       overtime_hours: 0,
       deductions: 0,
@@ -160,499 +104,579 @@ export function EnhancedPayrollTable({ onSave }: PayrollTableProps) {
       taxes: 0,
       net_pay: 0,
       comments: '',
-      isEditing: true,
       validation: {}
-    };
-  };
-  
+    }
+  }
+
+  // Format date to YYYY-MM-DD
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  // Filter employees when search term changes
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredEmployees(employees)
+    } else {
+      const term = searchTerm.toLowerCase()
+      const filtered = employees.filter(emp => 
+        emp.employee_id.toLowerCase().includes(term) ||
+        emp.employee_name.toLowerCase().includes(term)
+      )
+      setFilteredEmployees(filtered)
+    }
+  }, [searchTerm, employees])
+
   // Add a new employee
-  const handleAddEmployee = () => {
-    const newEmployee = createEmptyEmployee();
-    const updatedEmployees = [...employees, newEmployee];
-    setEmployees(updatedEmployees);
-    setFilteredEmployees(applySearch(updatedEmployees, searchQuery));
-  };
-  
-  // Handle field change for an employee
-  const handleFieldChange = (id: string, field: keyof Employee, value: any) => {
-    const updatedEmployees = employees.map(emp => {
-      if (emp.id === id) {
-        const updatedEmployee = { ...emp, [field]: value };
-        
-        // Validate the field
-        const validation = { ...updatedEmployee.validation || {} };
-        const errorMessage = validateField(updatedEmployee, field, value);
-        
-        if (errorMessage) {
-          validation[field] = errorMessage;
-        } else {
-          delete validation[field];
-        }
-        
-        updatedEmployee.validation = validation;
-        
-        // If field affects net pay, recalculate
-        if (['regular_hours', 'overtime_hours', 'deductions', 'bonuses', 'taxes'].includes(field)) {
-          updatedEmployee.net_pay = calculateNetPay(
-            updatedEmployee.regular_hours,
-            updatedEmployee.overtime_hours,
-            updatedEmployee.deductions,
-            updatedEmployee.bonuses,
-            updatedEmployee.taxes
-          );
-        }
-        
-        return updatedEmployee;
-      }
-      return emp;
-    });
-    
-    setEmployees(updatedEmployees);
-    setFilteredEmployees(applySearch(updatedEmployees, searchQuery));
-    calculateTotals(updatedEmployees);
-  };
-  
-  // Calculate net pay based on input values
-  const calculateNetPay = (
-    regularHours: number,
-    overtimeHours: number,
-    deductions: number,
-    bonuses: number,
-    taxes: number
-  ): number => {
-    const regularPay = regularHours * 25; // $25/hour
-    const overtimePay = overtimeHours * 37.5; // $37.5/hour (1.5x)
-    return regularPay + overtimePay + bonuses - deductions - taxes;
-  };
-  
-  // Toggle edit mode for an employee
-  const toggleEditMode = (id: string) => {
-    setEmployees(employees.map(emp => {
-      if (emp.id === id) {
-        return { ...emp, isEditing: !emp.isEditing };
-      }
-      return emp;
-    }));
-    
-    setFilteredEmployees(applySearch(employees, searchQuery));
-  };
-  
-  // Validate field input
+  const addEmployee = () => {
+    const newEmployee = createEmptyEmployee()
+    setEmployees([...employees, newEmployee])
+  }
+
+  // Remove an employee
+  const removeEmployee = (id: string) => {
+    setEmployees(employees.filter(emp => emp.id !== id))
+  }
+
+  // Validate a field
   const validateField = (employee: Employee, field: keyof Employee, value: any): string => {
     switch (field) {
-      case 'employee_id':
-        if (!value) return 'Employee ID is required';
-        if (employees.some(e => e.employee_id === value && e.id !== employee.id)) {
-          return 'Employee ID must be unique';
-        }
-        return '';
-        
       case 'employee_name':
-        if (!value) return 'Employee name is required';
-        return '';
-        
-      case 'regular_hours':
-        if (value < 0) return 'Hours cannot be negative';
-        if (value > 168) return 'Hours exceed maximum weekly hours (168)';
-        return '';
-        
-      case 'overtime_hours':
-        if (value < 0) return 'Hours cannot be negative';
-        if (value > 80) return 'Overtime hours seem excessive';
-        return '';
-        
+        return value.trim() === '' ? 'Name is required' : ''
+      case 'employee_id':
+        return value.trim() === '' ? 'Employee ID is required' : ''
       case 'pay_period_start':
+        return value === '' ? 'Start date is required' : ''
       case 'pay_period_end':
-        if (!value) return 'Date is required';
-        const startDate = field === 'pay_period_end' ? new Date(employee.pay_period_start) : null;
-        const endDate = field === 'pay_period_start' ? new Date(employee.pay_period_end) : null;
-        const currentDate = new Date(value);
-        
-        if (startDate && currentDate > startDate) {
-          return 'End date must be after start date';
-        }
-        if (endDate && currentDate < endDate) {
-          return 'Start date must be before end date';
-        }
-        return '';
-        
+        if (value === '') return 'End date is required'
+        if (new Date(value) < new Date(employee.pay_period_start)) 
+          return 'End date must be after start date'
+        return ''
+      case 'regular_hours':
+        return value < 0 ? 'Hours cannot be negative' : ''
+      case 'overtime_hours':
+        return value < 0 ? 'Hours cannot be negative' : ''
+      case 'deductions':
+        return value < 0 ? 'Deductions cannot be negative' : ''
+      case 'bonuses':
+        return value < 0 ? 'Bonuses cannot be negative' : ''
       default:
-        return '';
+        return ''
     }
-  };
-  
-  // Apply search filter to employees
-  const applySearch = (data: Employee[], query: string): Employee[] => {
-    if (!query.trim()) return data;
+  }
+
+  // Update an employee field
+  const updateEmployee = (id: string, field: keyof Employee, value: any) => {
+    const updatedEmployees = employees.map(emp => {
+      if (emp.id === id) {
+        // Create updated employee
+        const updated = { ...emp, [field]: value }
+        
+        // Validate the field
+        const validationMessage = validateField(updated, field, value)
+        const validation = { ...updated.validation, [field]: validationMessage }
+        updated.validation = validation
+        
+        // Recalculate net pay
+        if (['regular_hours', 'overtime_hours', 'deductions', 'bonuses', 'taxes'].includes(field as string)) {
+          const regularPay = updated.regular_hours * 25  // Assuming $25/hr
+          const overtimePay = updated.overtime_hours * 37.5  // Assuming $37.5/hr for overtime
+          updated.net_pay = regularPay + overtimePay + updated.bonuses - updated.deductions - updated.taxes
+        }
+        
+        return updated
+      }
+      return emp
+    })
     
-    const lowercaseQuery = query.toLowerCase();
-    return data.filter(employee => 
-      employee.employee_id.toLowerCase().includes(lowercaseQuery) ||
-      employee.employee_name.toLowerCase().includes(lowercaseQuery)
-    );
-  };
-  
-  // Handle search input change
-  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const query = event.target.value;
-    setSearchQuery(query);
-    setFilteredEmployees(applySearch(employees, query));
-  };
-  
-  // Handle delete confirmation
-  const confirmDelete = (id: string) => {
-    setEmployeesToDelete([id]);
-    setConfirmDialogOpen(true);
-  };
-  
-  // Delete employees after confirmation
-  const handleDeleteConfirmed = () => {
-    const updatedEmployees = employees.filter(emp => !employeesToDelete.includes(emp.id));
-    setEmployees(updatedEmployees);
-    setFilteredEmployees(applySearch(updatedEmployees, searchQuery));
-    calculateTotals(updatedEmployees);
-    setConfirmDialogOpen(false);
-    setEmployeesToDelete([]);
-  };
-  
-  // Save all employee data
+    setEmployees(updatedEmployees)
+  }
+
+  // Handle sorting - fixed version that handles null key
+  const requestSort = (key: keyof Employee) => {
+    let direction: 'ascending' | 'descending' = 'ascending'
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending'
+    }
+    setSortConfig({ key, direction })
+    
+    // Apply sorting
+    const sortedData = [...filteredEmployees].sort((a, b) => {
+      // Get the values to compare
+      const valueA = a[key];
+      const valueB = b[key];
+      
+      // Safe comparison with type checks
+      if (typeof valueA === 'string' && typeof valueB === 'string') {
+        return direction === 'ascending' 
+          ? valueA.localeCompare(valueB) 
+          : valueB.localeCompare(valueA);
+      } else if (typeof valueA === 'number' && typeof valueB === 'number') {
+        return direction === 'ascending' 
+          ? valueA - valueB 
+          : valueB - valueA;
+      } else {
+        // Fall back to string comparison for other types
+        const strA = String(valueA || '');
+        const strB = String(valueB || '');
+        return direction === 'ascending' 
+          ? strA.localeCompare(strB) 
+          : strB.localeCompare(strA);
+      }
+    });
+    
+    setFilteredEmployees(sortedData);
+  }
+
+  // Handle save
   const handleSave = () => {
-    // Check if there are any validation errors
-    const hasErrors = employees.some(emp => 
-      emp.validation && Object.keys(emp.validation).length > 0
-    );
+    // Validate all employees
+    let hasErrors = false
+    const validatedEmployees = employees.map(emp => {
+      const validation: Record<string, string> = {}
+      const fieldsToValidate: (keyof Employee)[] = [
+        'employee_id', 'employee_name', 'pay_period_start', 'pay_period_end',
+        'regular_hours', 'overtime_hours', 'deductions', 'bonuses'
+      ]
+      
+      fieldsToValidate.forEach(field => {
+        const validationMessage = validateField(emp, field, emp[field])
+        if (validationMessage) {
+          hasErrors = true
+          validation[field] = validationMessage
+        }
+      })
+      
+      return { ...emp, validation }
+    })
     
     if (hasErrors) {
-      alert('Please fix validation errors before saving');
-      return;
+      setEmployees(validatedEmployees)
+      setFilteredEmployees(validatedEmployees.filter(emp => {
+        if (!searchTerm.trim()) return true
+        const term = searchTerm.toLowerCase()
+        return emp.employee_id.toLowerCase().includes(term) || 
+               emp.employee_name.toLowerCase().includes(term)
+      }))
+      alert('Please fix validation errors before saving')
+      return
     }
     
-    setConfirmSaveDialogOpen(true);
-  };
-  
-  // Save confirmed
-  const handleSaveConfirmed = async () => {
-    setIsLoading(true);
-    
-    try {
-      // Remove editing flags before saving
-      const dataToSave = employees.map(({ isEditing, validation, ...emp }) => emp);
-      
-      // Call the onSave callback if provided
-      if (onSave) {
-        onSave(dataToSave);
+    // If valid, ask for confirmation
+    setConfirmDialogOpen(true)
+  }
+
+  // Calculate total values for the summary row
+  const calculateSummary = () => {
+    return filteredEmployees.reduce((summary, emp) => {
+      return {
+        regular_hours: summary.regular_hours + emp.regular_hours,
+        overtime_hours: summary.overtime_hours + emp.overtime_hours,
+        deductions: summary.deductions + emp.deductions,
+        bonuses: summary.bonuses + emp.bonuses,
+        taxes: summary.taxes + emp.taxes,
+        net_pay: summary.net_pay + emp.net_pay
       }
-      
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setConfirmSaveDialogOpen(false);
-      setIsLoading(false);
-      
-      // Set all employees to non-editing mode
-      setEmployees(employees.map(emp => ({ ...emp, isEditing: false })));
-      alert('Payroll data saved successfully!');
-    } catch (error) {
-      console.error('Error saving payroll data:', error);
-      setIsLoading(false);
-      alert('Failed to save payroll data. Please try again.');
-    }
-  };
+    }, {
+      regular_hours: 0,
+      overtime_hours: 0,
+      deductions: 0,
+      bonuses: 0,
+      taxes: 0,
+      net_pay: 0
+    })
+  }
+  
+  const summary = calculateSummary()
+
+  // Confirm save
+  const confirmSave = () => {
+    if (onSave) onSave(employees)
+    setConfirmDialogOpen(false)
+    alert('Payroll data saved successfully!')
+  }
+
+  // Render the table header with sort buttons
+  const renderTableHeader = (label: string, key: keyof Employee) => {
+    return (
+      <th className="border p-2 bg-gray-100">
+        <div className="flex items-center justify-between">
+          <span>{label}</span>
+          <button 
+            className="ml-1 text-gray-500 hover:text-gray-700"
+            onClick={() => requestSort(key)}
+          >
+            <ArrowUpDown size={14} />
+          </button>
+        </div>
+      </th>
+    )
+  }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+    <div className="container mx-auto p-4">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
           <Input
-            placeholder="Search employees..."
-            value={searchQuery}
-            onChange={handleSearch}
-            className="pl-10"
+            placeholder="Search by ID or name..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         
         <div className="flex gap-2">
-          <Button onClick={handleAddEmployee} className="flex items-center gap-1">
-            <PlusCircle className="h-4 w-4" />
+          <Button 
+            variant="outline"
+            onClick={addEmployee}
+          >
             Add Employee
           </Button>
           
-          <Button onClick={handleSave} variant="secondary" className="flex items-center gap-1">
-            <Save className="h-4 w-4" />
-            Save All
+          <Button 
+            variant="default"
+            onClick={handleSave}
+          >
+            Save Payroll Data
           </Button>
         </div>
       </div>
       
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">ID</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Pay Period</TableHead>
-              <TableHead className="text-right">Reg. Hours</TableHead>
-              <TableHead className="text-right">OT Hours</TableHead>
-              <TableHead className="text-right">Deductions</TableHead>
-              <TableHead className="text-right">Bonuses</TableHead>
-              <TableHead className="text-right">Taxes</TableHead>
-              <TableHead className="text-right">Net Pay</TableHead>
-              <TableHead>Comments</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          
-          <TableBody>
-            {filteredEmployees.map(employee => (
-              <TableRow key={employee.id} className={employee.isEditing ? 'bg-blue-50' : ''}>
-                <TableCell>
-                  {employee.isEditing ? (
-                    <div className="space-y-1">
-                      <Input 
-                        value={employee.employee_id}
-                        onChange={e => handleFieldChange(employee.id, 'employee_id', e.target.value)}
-                        className={employee.validation?.employee_id ? 'border-red-500' : ''}
-                      />
-                      {employee.validation?.employee_id && (
-                        <div className="text-xs text-red-500">{employee.validation.employee_id}</div>
-                      )}
-                    </div>
-                  ) : (
-                    employee.employee_id
+      <div className="overflow-x-auto rounded-lg border border-gray-200 shadow">
+        <table className="min-w-full bg-white">
+          <thead>
+            <tr>
+              {renderTableHeader('Employee ID', 'employee_id')}
+              {renderTableHeader('Name', 'employee_name')}
+              {renderTableHeader('Pay Period Start', 'pay_period_start')}
+              {renderTableHeader('Pay Period End', 'pay_period_end')}
+              {renderTableHeader('Regular Hours', 'regular_hours')}
+              {renderTableHeader('Overtime Hours', 'overtime_hours')}
+              {renderTableHeader('Deductions', 'deductions')}
+              {renderTableHeader('Bonuses', 'bonuses')}
+              {renderTableHeader('Taxes', 'taxes')}
+              {renderTableHeader('Net Pay', 'net_pay')}
+              <th className="border p-2 bg-gray-100">Comments</th>
+              <th className="border p-2 bg-gray-100">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredEmployees.map(emp => (
+              <tr key={emp.id} className="hover:bg-gray-50">
+                <td className="border p-2 relative">
+                  <Input 
+                    type="text"
+                    className={`w-full p-1 ${emp.validation?.employee_id ? 'border-red-500' : ''}`}
+                    value={emp.employee_id}
+                    onChange={e => updateEmployee(emp.id, 'employee_id', e.target.value)}
+                  />
+                  {emp.validation?.employee_id && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertCircle className="h-4 w-4 text-red-500 absolute right-2 top-2.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{emp.validation.employee_id}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
-                </TableCell>
-                
-                <TableCell>
-                  {employee.isEditing ? (
-                    <div className="space-y-1">
-                      <Input 
-                        value={employee.employee_name}
-                        onChange={e => handleFieldChange(employee.id, 'employee_name', e.target.value)}
-                        className={employee.validation?.employee_name ? 'border-red-500' : ''}
-                      />
-                      {employee.validation?.employee_name && (
-                        <div className="text-xs text-red-500">{employee.validation.employee_name}</div>
-                      )}
-                    </div>
-                  ) : (
-                    employee.employee_name
+                </td>
+                <td className="border p-2 relative">
+                  <Input 
+                    type="text"
+                    className={`w-full p-1 ${emp.validation?.employee_name ? 'border-red-500' : ''}`}
+                    value={emp.employee_name}
+                    onChange={e => updateEmployee(emp.id, 'employee_name', e.target.value)}
+                  />
+                  {emp.validation?.employee_name && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertCircle className="h-4 w-4 text-red-500 absolute right-2 top-2.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{emp.validation.employee_name}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
-                </TableCell>
-                
-                <TableCell>
-                  {employee.isEditing ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="space-y-1">
-                        <div className="text-xs text-gray-500">Start</div>
-                        <Input 
-                          type="date"
-                          value={employee.pay_period_start}
-                          onChange={e => handleFieldChange(employee.id, 'pay_period_start', e.target.value)}
-                          className={employee.validation?.pay_period_start ? 'border-red-500' : ''}
-                        />
-                        {employee.validation?.pay_period_start && (
-                          <div className="text-xs text-red-500">{employee.validation.pay_period_start}</div>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-1">
-                        <div className="text-xs text-gray-500">End</div>
-                        <Input 
-                          type="date"
-                          value={employee.pay_period_end}
-                          onChange={e => handleFieldChange(employee.id, 'pay_period_end', e.target.value)}
-                          className={employee.validation?.pay_period_end ? 'border-red-500' : ''}
-                        />
-                        {employee.validation?.pay_period_end && (
-                          <div className="text-xs text-red-500">{employee.validation.pay_period_end}</div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div>{formatDate(employee.pay_period_start)}</div>
-                      <div className="text-gray-500">to</div>
-                      <div>{formatDate(employee.pay_period_end)}</div>
-                    </div>
+                </td>
+                <td className="border p-2 relative">
+                  <Input 
+                    type="date"
+                    className={`w-full p-1 ${emp.validation?.pay_period_start ? 'border-red-500' : ''}`}
+                    value={emp.pay_period_start}
+                    onChange={e => updateEmployee(emp.id, 'pay_period_start', e.target.value)}
+                  />
+                  {emp.validation?.pay_period_start && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertCircle className="h-4 w-4 text-red-500 absolute right-2 top-2.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{emp.validation.pay_period_start}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
-                </TableCell>
-                
-                <TableCell className="text-right">
-                  {employee.isEditing ? (
-                    <div className="space-y-1">
-                      <Input 
-                        type="number"
-                        value={employee.regular_hours}
-                        onChange={e => handleFieldChange(employee.id, 'regular_hours', Number(e.target.value))}
-                        className={employee.validation?.regular_hours ? 'border-red-500 text-right' : 'text-right'}
-                      />
-                      {employee.validation?.regular_hours && (
-                        <div className="text-xs text-red-500">{employee.validation.regular_hours}</div>
-                      )}
-                    </div>
-                  ) : (
-                    employee.regular_hours
+                </td>
+                <td className="border p-2 relative">
+                  <Input 
+                    type="date"
+                    className={`w-full p-1 ${emp.validation?.pay_period_end ? 'border-red-500' : ''}`}
+                    value={emp.pay_period_end}
+                    onChange={e => updateEmployee(emp.id, 'pay_period_end', e.target.value)}
+                  />
+                  {emp.validation?.pay_period_end && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertCircle className="h-4 w-4 text-red-500 absolute right-2 top-2.5" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{emp.validation.pay_period_end}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
-                </TableCell>
-                
-                <TableCell className="text-right">
-                  {employee.isEditing ? (
-                    <div className="space-y-1">
-                      <Input 
-                        type="number"
-                        value={employee.overtime_hours}
-                        onChange={e => handleFieldChange(employee.id, 'overtime_hours', Number(e.target.value))}
-                        className={employee.validation?.overtime_hours ? 'border-red-500 text-right' : 'text-right'}
-                      />
-                      {employee.validation?.overtime_hours && (
-                        <div className="text-xs text-red-500">{employee.validation.overtime_hours}</div>
-                      )}
-                    </div>
-                  ) : (
-                    employee.overtime_hours
-                  )}
-                </TableCell>
-                
-                <TableCell className="text-right">
-                  {employee.isEditing ? (
+                </td>
+                <td className="border p-2 relative">
+                  <div className="flex items-center">
                     <Input 
                       type="number"
-                      value={employee.deductions}
-                      onChange={e => handleFieldChange(employee.id, 'deductions', Number(e.target.value))}
-                      className="text-right"
+                      className={`w-full p-1 ${emp.validation?.regular_hours ? 'border-red-500' : ''}`}
+                      value={emp.regular_hours}
+                      onChange={e => updateEmployee(emp.id, 'regular_hours', Number(e.target.value))}
+                      min="0"
+                      step="0.5"
                     />
-                  ) : (
-                    formatCurrency(employee.deductions)
-                  )}
-                </TableCell>
-                
-                <TableCell className="text-right">
-                  {employee.isEditing ? (
-                    <Input 
-                      type="number"
-                      value={employee.bonuses}
-                      onChange={e => handleFieldChange(employee.id, 'bonuses', Number(e.target.value))}
-                      className="text-right"
-                    />
-                  ) : (
-                    formatCurrency(employee.bonuses)
-                  )}
-                </TableCell>
-                
-                <TableCell className="text-right">
-                  {employee.isEditing ? (
-                    <Input 
-                      type="number"
-                      value={employee.taxes}
-                      onChange={e => handleFieldChange(employee.id, 'taxes', Number(e.target.value))}
-                      className="text-right"
-                    />
-                  ) : (
-                    formatCurrency(employee.taxes)
-                  )}
-                </TableCell>
-                
-                <TableCell className="text-right font-semibold">
-                  {formatCurrency(employee.net_pay)}
-                </TableCell>
-                
-                <TableCell>
-                  {employee.isEditing ? (
-                    <Input 
-                      value={employee.comments}
-                      onChange={e => handleFieldChange(employee.id, 'comments', e.target.value)}
-                    />
-                  ) : (
-                    employee.comments
-                  )}
-                </TableCell>
-                
-                <TableCell>
-                  <div className="flex space-x-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => toggleEditMode(employee.id)}
-                      className="h-8 w-8"
-                    >
-                      {employee.isEditing ? <X className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => confirmDelete(employee.id)}
-                      className="h-8 w-8 text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 ml-1 text-gray-400" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Standard hours at base pay rate ($25/hr)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {emp.validation?.regular_hours && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertCircle className="h-4 w-4 text-red-500 absolute right-6 top-2.5" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{emp.validation.regular_hours}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+                <td className="border p-2 relative">
+                  <div className="flex items-center">
+                    <Input 
+                      type="number"
+                      className={`w-full p-1 ${emp.validation?.overtime_hours ? 'border-red-500' : ''}`}
+                      value={emp.overtime_hours}
+                      onChange={e => updateEmployee(emp.id, 'overtime_hours', Number(e.target.value))}
+                      min="0"
+                      step="0.5"
+                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 ml-1 text-gray-400" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Overtime hours at 1.5x rate ($37.50/hr)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {emp.validation?.overtime_hours && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertCircle className="h-4 w-4 text-red-500 absolute right-6 top-2.5" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{emp.validation.overtime_hours}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </td>
+                <td className="border p-2 relative">
+                  <div className="flex items-center">
+                    <Input 
+                      type="number"
+                      className={`w-full p-1 ${emp.validation?.deductions ? 'border-red-500' : ''}`}
+                      value={emp.deductions}
+                      onChange={e => updateEmployee(emp.id, 'deductions', Number(e.target.value))}
+                      min="0"
+                      step="0.01"
+                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 ml-1 text-gray-400" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Total deductions (benefits, retirement, etc.)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {emp.validation?.deductions && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertCircle className="h-4 w-4 text-red-500 absolute right-6 top-2.5" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{emp.validation.deductions}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </td>
+                <td className="border p-2 relative">
+                  <div className="flex items-center">
+                    <Input 
+                      type="number"
+                      className={`w-full p-1 ${emp.validation?.bonuses ? 'border-red-500' : ''}`}
+                      value={emp.bonuses}
+                      onChange={e => updateEmployee(emp.id, 'bonuses', Number(e.target.value))}
+                      min="0"
+                      step="0.01"
+                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 ml-1 text-gray-400" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Additional compensation (bonuses, commissions)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    {emp.validation?.bonuses && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <AlertCircle className="h-4 w-4 text-red-500 absolute right-6 top-2.5" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{emp.validation.bonuses}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </div>
+                </td>
+                <td className="border p-2">
+                  <div className="flex items-center">
+                    <Input 
+                      type="number"
+                      className="w-full p-1"
+                      value={emp.taxes}
+                      onChange={e => updateEmployee(emp.id, 'taxes', Number(e.target.value))}
+                      min="0"
+                      step="0.01"
+                    />
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-4 w-4 ml-1 text-gray-400" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>All taxes (income, FICA, etc.)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </td>
+                <td className="border p-2 font-semibold text-right">
+                  ${emp.net_pay.toFixed(2)}
+                </td>
+                <td className="border p-2">
+                  <Input 
+                    type="text"
+                    className="w-full p-1"
+                    value={emp.comments}
+                    onChange={e => updateEmployee(emp.id, 'comments', e.target.value)}
+                    placeholder="Add notes..."
+                  />
+                </td>
+                <td className="border p-2">
+                  <Button 
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => removeEmployee(emp.id)}
+                  >
+                    Remove
+                  </Button>
+                </td>
+              </tr>
             ))}
             
-            {/* Summary Row */}
-            <TableRow className="bg-gray-100 font-semibold">
-              <TableCell colSpan={3}>Totals</TableCell>
-              <TableCell className="text-right">{totals.regularHours}</TableCell>
-              <TableCell className="text-right">{totals.overtimeHours}</TableCell>
-              <TableCell className="text-right">{formatCurrency(totals.deductions)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(totals.bonuses)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(totals.taxes)}</TableCell>
-              <TableCell className="text-right">{formatCurrency(totals.netPay)}</TableCell>
-              <TableCell colSpan={2}></TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
+            {/* Summary row */}
+            <tr className="bg-gray-100 font-semibold">
+              <td colSpan={4} className="border p-2 text-right">Summary Totals:</td>
+              <td className="border p-2 text-right">{summary.regular_hours.toFixed(1)}</td>
+              <td className="border p-2 text-right">{summary.overtime_hours.toFixed(1)}</td>
+              <td className="border p-2 text-right">${summary.deductions.toFixed(2)}</td>
+              <td className="border p-2 text-right">${summary.bonuses.toFixed(2)}</td>
+              <td className="border p-2 text-right">${summary.taxes.toFixed(2)}</td>
+              <td className="border p-2 text-right">${summary.net_pay.toFixed(2)}</td>
+              <td colSpan={2} className="border p-2"></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       
-      {/* No results message */}
-      {filteredEmployees.length === 0 && (
-        <div className="text-center py-8 text-gray-500">
-          No employees found. Try adjusting your search or add a new employee.
-        </div>
-      )}
-      
-      {/* Delete Confirmation Dialog */}
+      {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogTitle>Confirm Payroll Submission</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this employee record? This action cannot be undone.
+              You are about to submit payroll data for {employees.length} employees with a 
+              total net pay of ${summary.net_pay.toFixed(2)}. 
+              This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <div className="py-4">
+            <h4 className="font-medium mb-2">Summary</h4>
+            <ul className="space-y-1 text-sm">
+              <li>Total Employees: {employees.length}</li>
+              <li>Total Regular Hours: {summary.regular_hours.toFixed(1)}</li>
+              <li>Total Overtime Hours: {summary.overtime_hours.toFixed(1)}</li>
+              <li>Total Deductions: ${summary.deductions.toFixed(2)}</li>
+              <li>Total Bonuses: ${summary.bonuses.toFixed(2)}</li>
+              <li>Total Taxes: ${summary.taxes.toFixed(2)}</li>
+              <li className="font-bold">Total Net Pay: ${summary.net_pay.toFixed(2)}</li>
+            </ul>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirmed}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Save Confirmation Dialog */}
-      <Dialog open={confirmSaveDialogOpen} onOpenChange={setConfirmSaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save Payroll Data</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to save all payroll data? This will update employee records in the system.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmSaveDialogOpen(false)} disabled={isLoading}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveConfirmed} disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Changes'}
+            <Button onClick={confirmSave}>
+              Confirm Submission
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 }
