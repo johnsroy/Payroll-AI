@@ -1,10 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { PlusCircle } from "lucide-react"
+import React, { useState } from 'react'
 
 interface Employee {
   id: string
@@ -20,164 +16,124 @@ interface PayrollTableProps {
 
 export function SimplePayrollTable({ onSave }: PayrollTableProps) {
   const [employees, setEmployees] = useState<Employee[]>([
-    { id: "EMP0001", name: "John Doe", regularHours: 40, overtimeHours: 5, netPay: 1250 },
-    { id: "EMP0002", name: "Jane Smith", regularHours: 35, overtimeHours: 0, netPay: 875 }
+    { id: '1', name: 'John Doe', regularHours: 40, overtimeHours: 5, netPay: 1125 },
+    { id: '2', name: 'Jane Smith', regularHours: 38, overtimeHours: 0, netPay: 950 }
   ])
-  
-  const [editingCell, setEditingCell] = useState<{rowIndex: number, columnName: string} | null>(null)
-  
-  // Create a new empty employee record
+
   function createEmptyEmployee(): Employee {
     return {
-      id: `EMP${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+      id: crypto.randomUUID(),
       name: '',
       regularHours: 0,
       overtimeHours: 0,
       netPay: 0
     }
   }
-  
-  // Add a new employee row
-  const addNewEmployee = () => {
+
+  const addEmployee = () => {
     setEmployees([...employees, createEmptyEmployee()])
   }
-  
-  // Start editing a cell
-  const startEditing = (rowIndex: number, columnName: string) => {
-    setEditingCell({ rowIndex, columnName })
+
+  const removeEmployee = (id: string) => {
+    setEmployees(employees.filter(emp => emp.id !== id))
   }
-  
-  // Handle cell value change
-  const handleCellChange = (rowIndex: number, columnName: string, value: string) => {
-    const updatedEmployees = [...employees]
-    
-    if (columnName === 'regularHours' || columnName === 'overtimeHours') {
-      const numValue = parseFloat(value)
-      updatedEmployees[rowIndex] = {
-        ...updatedEmployees[rowIndex],
-        [columnName]: isNaN(numValue) ? 0 : numValue
+
+  const updateEmployee = (id: string, field: keyof Employee, value: any) => {
+    setEmployees(employees.map(emp => {
+      if (emp.id === id) {
+        const updated = { ...emp, [field]: value }
+        
+        // Recalculate net pay if hours change
+        if (field === 'regularHours' || field === 'overtimeHours') {
+          const regularPay = updated.regularHours * 25
+          const overtimePay = updated.overtimeHours * 37.5
+          updated.netPay = regularPay + overtimePay
+        }
+        
+        return updated
       }
-    } else {
-      updatedEmployees[rowIndex] = {
-        ...updatedEmployees[rowIndex],
-        [columnName]: value
-      }
-    }
-    
-    setEmployees(updatedEmployees)
+      return emp
+    }))
   }
-  
-  // Finish editing a cell
-  const finishEditing = () => {
-    setEditingCell(null)
-  }
-  
-  // Calculate net pay
-  useEffect(() => {
-    const updatedEmployees = employees.map(employee => {
-      // Simple calculation formula - regular hours at $25/hr, overtime at $37.5/hr
-      const netPay = (employee.regularHours * 25) + (employee.overtimeHours * 37.5)
-      return {
-        ...employee,
-        netPay
-      }
-    })
-    
-    setEmployees(updatedEmployees)
-  }, [employees.map(e => `${e.regularHours},${e.overtimeHours}`).join('|')])
-  
-  // Save data
+
   const handleSave = () => {
-    if (onSave) {
-      onSave(employees)
-    }
-    console.log('Saving payroll data:', employees)
+    if (onSave) onSave(employees)
+    alert('Payroll data saved!')
   }
-  
+
   return (
-    <div className="w-full space-y-4 rounded-md border p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Payroll Data Entry</h2>
-        <div className="flex items-center space-x-2">
-          <Button onClick={addNewEmployee} variant="outline" className="flex items-center gap-1">
-            <PlusCircle className="h-4 w-4" />
-            New Entry
-          </Button>
-          <Button onClick={handleSave} variant="default">Save Changes</Button>
-        </div>
+    <div className="container mx-auto p-4">
+      <h2 className="text-xl font-bold mb-4">Payroll Data Entry</h2>
+      
+      <div className="mb-4 flex justify-between">
+        <button 
+          className="bg-blue-500 text-white px-4 py-2 rounded"
+          onClick={addEmployee}
+        >
+          Add Employee
+        </button>
+        
+        <button 
+          className="bg-green-500 text-white px-4 py-2 rounded"
+          onClick={handleSave}
+        >
+          Save Payroll Data
+        </button>
       </div>
       
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Employee Name</TableHead>
-              <TableHead>Regular Hours</TableHead>
-              <TableHead>Overtime Hours</TableHead>
-              <TableHead>Net Pay ($)</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {employees.map((employee, rowIndex) => (
-              <TableRow key={employee.id}>
-                <TableCell>{employee.id}</TableCell>
-                <TableCell onDoubleClick={() => startEditing(rowIndex, 'name')}>
-                  {editingCell?.rowIndex === rowIndex && editingCell.columnName === 'name' ? (
-                    <Input
-                      value={employee.name}
-                      onChange={(e) => handleCellChange(rowIndex, 'name', e.target.value)}
-                      onBlur={finishEditing}
-                      onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                      autoFocus
-                    />
-                  ) : (
-                    employee.name || <span className="text-gray-400 italic">Click to add name</span>
-                  )}
-                </TableCell>
-                <TableCell onDoubleClick={() => startEditing(rowIndex, 'regularHours')}>
-                  {editingCell?.rowIndex === rowIndex && editingCell.columnName === 'regularHours' ? (
-                    <Input
-                      value={String(employee.regularHours)}
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      onChange={(e) => handleCellChange(rowIndex, 'regularHours', e.target.value)}
-                      onBlur={finishEditing}
-                      onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                      autoFocus
-                    />
-                  ) : (
-                    employee.regularHours
-                  )}
-                </TableCell>
-                <TableCell onDoubleClick={() => startEditing(rowIndex, 'overtimeHours')}>
-                  {editingCell?.rowIndex === rowIndex && editingCell.columnName === 'overtimeHours' ? (
-                    <Input
-                      value={String(employee.overtimeHours)}
-                      type="number"
-                      min="0"
-                      step="0.5"
-                      onChange={(e) => handleCellChange(rowIndex, 'overtimeHours', e.target.value)}
-                      onBlur={finishEditing}
-                      onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                      autoFocus
-                    />
-                  ) : (
-                    employee.overtimeHours
-                  )}
-                </TableCell>
-                <TableCell className="font-medium">
-                  ${employee.netPay.toFixed(2)}
-                </TableCell>
-              </TableRow>
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white border">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border p-2">Name</th>
+              <th className="border p-2">Regular Hours</th>
+              <th className="border p-2">Overtime Hours</th>
+              <th className="border p-2">Net Pay</th>
+              <th className="border p-2">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map(emp => (
+              <tr key={emp.id}>
+                <td className="border p-2">
+                  <input 
+                    type="text"
+                    className="w-full p-1 border rounded"
+                    value={emp.name}
+                    onChange={e => updateEmployee(emp.id, 'name', e.target.value)}
+                  />
+                </td>
+                <td className="border p-2">
+                  <input 
+                    type="number"
+                    className="w-full p-1 border rounded"
+                    value={emp.regularHours}
+                    onChange={e => updateEmployee(emp.id, 'regularHours', Number(e.target.value))}
+                  />
+                </td>
+                <td className="border p-2">
+                  <input 
+                    type="number"
+                    className="w-full p-1 border rounded"
+                    value={emp.overtimeHours}
+                    onChange={e => updateEmployee(emp.id, 'overtimeHours', Number(e.target.value))}
+                  />
+                </td>
+                <td className="border p-2">
+                  ${emp.netPay.toFixed(2)}
+                </td>
+                <td className="border p-2">
+                  <button 
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                    onClick={() => removeEmployee(emp.id)}
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </div>
-      
-      <div className="text-sm text-gray-500 mt-2">
-        Double-click any cell to edit. Press Enter or click outside to save.
+          </tbody>
+        </table>
       </div>
     </div>
   )
