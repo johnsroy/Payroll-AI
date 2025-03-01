@@ -27,6 +27,10 @@ export const featuresDropdown = [
     href: "/features/analysis"
   },
   {
+    name: "Payroll Entry",
+    href: "/payroll-entry"
+  },
+  {
     name: "AI Assistant",
     href: "/ai-assistant"
   }

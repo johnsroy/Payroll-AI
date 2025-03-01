@@ -13,9 +13,11 @@ import {
   ArrowUpDown, 
   ChevronLeft, 
   ChevronRight,
-  Info
+  Info,
+  type LucideProps
 } from "lucide-react"
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface Employee {
   id: string
@@ -149,13 +151,13 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
       const updated = { ...employee }
       
       // Convert numeric fields
-      ;['regularHours', 'overtimeHours', 'deductions', 'bonuses'].forEach(field => {
-        if (typeof updated[field as keyof Employee] === 'string') {
-          const numValue = parseFloat(updated[field as keyof Employee] as string)
+      ;(['regularHours', 'overtimeHours', 'deductions', 'bonuses'] as const).forEach(field => {
+        if (typeof updated[field] === 'string') {
+          const numValue = parseFloat(updated[field] as string)
           if (!isNaN(numValue)) {
-            updated[field as keyof Employee] = numValue
+            updated[field] = numValue as any
           } else {
-            updated[field as keyof Employee] = 0
+            updated[field] = 0 as any
           }
         }
       })
@@ -450,10 +452,16 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                           ) : (
                             <>
                               <span>{employee.id}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.id}
-                              />
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Info className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>{tooltips.id}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
                             </>
                           )}
                           {hasError(actualRowIndex, 'id') && (
