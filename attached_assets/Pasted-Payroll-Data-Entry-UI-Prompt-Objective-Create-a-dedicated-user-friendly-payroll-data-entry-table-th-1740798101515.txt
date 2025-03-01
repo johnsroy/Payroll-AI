@@ -1,0 +1,24 @@
+Payroll Data Entry UI Prompt
+Objective:Create a dedicated, user-friendly payroll data entry table that allows HR personnel to manually input, review, and update employee payroll information. This component will be managed by the Payroll Input Agent.
+Design & Layout:
+- Clean, Responsive Table Layout:
+	- A header row with column titles such as Employee ID, Employee Name, Pay Period Start, Pay Period End, Regular Hours, Overtime Hours, Deductions, Bonuses, Taxes, Net Pay, and a Comments/Notes column.
+	- Each row represents one employee’s payroll entry.
+	- Use alternating row shading for clarity.
+	- Include inline editing capabilities where clicking on a cell transforms it into an input field.
+- Data Validation & Inline Feedback:
+	- Real-time validation (e.g., numeric fields for hours, deduction amounts) with visual cues (green checkmarks for valid entries, red highlights and error messages for incorrect values).
+	- Auto-calculation fields (for example, calculating Net Pay based on entered Regular Hours, Overtime, and Deductions).
+- Navigation & Usability Features:
+	- A “New Entry” button to add a blank row.
+	- Filters and search functionality to quickly locate an employee record.
+	- Pagination or infinite scroll if the employee list is extensive.
+	- A summary section at the bottom displaying totals for each numeric column (e.g., total hours, total deductions).
+User Interaction:
+- When a user hovers over a cell, a tooltip explains the required input.
+- On submitting the payroll data, a confirmation modal shows a summary of changes and potential errors before final saving.
+- The Payroll Input Agent provides suggestions or highlights anomalies (e.g., unusually high overtime) through inline notifications.
+Visual Inspiration:
+- Leverage Workday’s modern, minimalist design—clear typography, generous spacing, and intuitive icons.
+- Ensure the interface is accessible (high contrast, keyboard navigation, screen-reader support).
+Prompt Example for the Agent:"Build a payroll data entry interface modeled after Workday’s clean, table-based designs. The table should include columns for Employee ID, Name, Pay Period Start/End, Regular Hours, Overtime Hours, Deductions, Bonuses, Taxes, and Net Pay. Each row must allow inline editing with real-time validation and auto-calculation of Net Pay. Include a ‘New Entry’ button, search/filter capabilities, and a summary row for totals. Tooltips and error indicators should guide the user, and a confirmation modal should appear before final submission."
