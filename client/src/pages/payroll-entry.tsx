@@ -1,5 +1,5 @@
 import React from 'react'
-import { PayrollDataEntryTable } from '@/components/payroll/PayrollDataEntryTable'
+import { SimplePayrollTable } from '@/components/payroll/SimplePayrollTable'
 import { useToast } from '@/hooks/use-toast'
 
 export default function PayrollEntryPage() {
@@ -28,7 +28,7 @@ export default function PayrollEntryPage() {
       </div>
       
       <div className="mb-6 bg-white rounded-lg shadow">
-        <PayrollDataEntryTable onSave={handleSavePayroll} />
+        <SimplePayrollTable onSave={handleSavePayroll} />
       </div>
       
       <div className="bg-muted p-4 rounded-md mb-8">
@@ -36,10 +36,8 @@ export default function PayrollEntryPage() {
         <ul className="list-disc pl-5 space-y-1">
           <li>Double-click any cell to edit its contents</li>
           <li>Click outside or press Enter to save cell changes</li>
-          <li>Use the search box to quickly find employees</li>
           <li>Regular hours are calculated at $25/hour</li>
           <li>Overtime hours are calculated at $37.50/hour</li>
-          <li>Taxes are estimated at 20% of gross pay</li>
           <li>Net pay is automatically calculated</li>
         </ul>
       </div>
