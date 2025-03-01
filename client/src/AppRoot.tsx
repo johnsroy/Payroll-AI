@@ -3,6 +3,7 @@ import { Route, Switch, Link } from 'wouter';
 import FullLandingPage from './pages/FullLandingPage';
 import SimpleAgentPlayground from './pages/SimpleAgentPlayground';
 import DataConnectionPage from './pages/data-connection';
+import PayrollEntryPage from './pages/payroll-entry';
 
 const AppRoot: React.FC = () => {
   return (
@@ -15,6 +16,9 @@ const AppRoot: React.FC = () => {
           <nav className="hidden md:flex space-x-8">
             <Link href="/">
               <span className="text-gray-600 hover:text-blue-600 cursor-pointer">Home</span>
+            </Link>
+            <Link href="/payroll-entry">
+              <span className="text-gray-600 hover:text-blue-600 cursor-pointer">Payroll Entry</span>
             </Link>
             <Link href="/agents">
               <span className="text-gray-600 hover:text-blue-600 cursor-pointer">AI Playground</span>
@@ -39,6 +43,7 @@ const AppRoot: React.FC = () => {
         <Switch>
           <Route path="/agents" component={SimpleAgentPlayground} />
           <Route path="/data-connection" component={DataConnectionPage} />
+          <Route path="/payroll-entry" component={PayrollEntryPage} />
           <Route path="/" component={FullLandingPage} />
           <Route component={() => (
             <div className="flex flex-col items-center justify-center h-full py-20">
@@ -68,6 +73,7 @@ const AppRoot: React.FC = () => {
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#features" className="hover:text-white">Features</a></li>
                 <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
+                <li><Link href="/payroll-entry"><span className="hover:text-white cursor-pointer">Payroll Entry</span></Link></li>
                 <li><Link href="/agents"><span className="hover:text-white cursor-pointer">AI Playground</span></Link></li>
                 <li><Link href="/data-connection"><span className="hover:text-white cursor-pointer">Data Connection</span></Link></li>
               </ul>

@@ -549,21 +549,20 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
           </Button>
         </div>
         
-        <div className="flex items-center space-x-2">
-          {data.some(row => row.isEditing || row.isNew) && (
-            <Button 
-              variant="outline" 
-              onClick={() => setIsSaveDialogOpen(true)}
-              className="flex items-center gap-1"
-            >
-              <Check className="h-4 w-4" />
-              <span>Save All</span>
-            </Button>
-          )}
+        <div className="flex space-x-2">
+          <Button 
+            onClick={() => setIsSaveDialogOpen(true)} 
+            variant="default"
+            disabled={!data.some(row => row.isEditing || row.isNew)}
+            className="flex items-center gap-1"
+          >
+            <Check className="h-4 w-4" />
+            <span>Save All</span>
+          </Button>
           
           <Button 
-            variant="outline" 
-            onClick={exportToCSV}
+            onClick={exportToCSV} 
+            variant="outline"
             className="flex items-center gap-1"
           >
             <Download className="h-4 w-4" />
@@ -571,9 +570,9 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
           </Button>
         </div>
       </div>
-
-      {/* Table */}
-      <div className="rounded-md border overflow-hidden">
+      
+      {/* Data Table */}
+      <div className="border rounded-md">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -619,11 +618,10 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Standard working hours ($25/hr)</p>
+                          <p>Regular hours at $25/hour</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
                 <TableHead className="text-right">
@@ -640,11 +638,10 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Overtime hours (1.5x rate, $37.50/hr)</p>
+                          <p>Overtime hours at $37.50/hour (1.5x)</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
                 <TableHead className="text-right">
@@ -661,11 +658,10 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Total of all deductions (benefits, retirement, etc.)</p>
+                          <p>Total deductions (benefits, 401k, etc.)</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
                 <TableHead className="text-right">
@@ -682,11 +678,10 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Additional payments (commissions, special bonuses)</p>
+                          <p>Additional compensation (bonuses, commissions, etc.)</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
                 <TableHead className="text-right">
@@ -703,11 +698,10 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Total of all tax withholdings</p>
+                          <p>Income tax withholding and other tax deductions</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
                 <TableHead className="text-right">
@@ -724,198 +718,212 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                           </div>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Final pay amount after deductions and taxes</p>
+                          <p>Final amount paid to employee after all deductions and taxes</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead className="text-right">Comments</TableHead>
-                <TableHead className="w-[80px]">Actions</TableHead>
+                <TableHead>
+                  <div>Comments</div>
+                </TableHead>
+                <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSortedData.map((employee) => (
-                <TableRow key={employee.id} className={employee.isNew ? 'bg-blue-50' : ''}>
-                  <TableCell>
-                    {employee.isEditing ? (
-                      <Input
-                        className="w-24"
-                        value={employee.employee_id}
-                        onChange={(e) => updateField(employee.id, 'employee_id', e.target.value)}
-                      />
-                    ) : (
-                      employee.employee_id
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {employee.isEditing ? (
-                      <Input
-                        value={employee.employee_name}
-                        onChange={(e) => updateField(employee.id, 'employee_name', e.target.value)}
-                      />
-                    ) : (
-                      employee.employee_name
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {employee.isEditing ? (
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs">Start:</span>
-                          <Input
-                            type="date"
-                            className="w-32"
-                            value={employee.pay_period_start ? new Date(employee.pay_period_start).toISOString().split('T')[0] : ''}
-                            onChange={(e) => updateField(employee.id, 'pay_period_start', e.target.value)}
-                          />
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <span className="text-xs">End:</span>
-                          <Input
-                            type="date"
-                            className="w-32"
-                            value={employee.pay_period_end ? new Date(employee.pay_period_end).toISOString().split('T')[0] : ''}
-                            onChange={(e) => updateField(employee.id, 'pay_period_end', e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-sm">
-                        <div>{formatDate(employee.pay_period_start)}</div>
-                        <div className="text-gray-500">to</div>
-                        <div>{formatDate(employee.pay_period_end)}</div>
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {employee.isEditing ? (
-                      <Input
-                        type="number"
-                        className="w-20 text-right"
-                        value={employee.regular_hours}
-                        onChange={(e) => updateField(employee.id, 'regular_hours', parseFloat(e.target.value) || 0)}
-                      />
-                    ) : (
-                      employee.regular_hours
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {employee.isEditing ? (
-                      <Input
-                        type="number"
-                        className="w-20 text-right"
-                        value={employee.overtime_hours}
-                        onChange={(e) => updateField(employee.id, 'overtime_hours', parseFloat(e.target.value) || 0)}
-                      />
-                    ) : (
-                      employee.overtime_hours
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {employee.isEditing ? (
-                      <Input
-                        type="number"
-                        className="w-24 text-right"
-                        value={employee.deductions}
-                        onChange={(e) => updateField(employee.id, 'deductions', parseFloat(e.target.value) || 0)}
-                      />
-                    ) : (
-                      formatCurrency(employee.deductions)
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {employee.isEditing ? (
-                      <Input
-                        type="number"
-                        className="w-24 text-right"
-                        value={employee.bonuses}
-                        onChange={(e) => updateField(employee.id, 'bonuses', parseFloat(e.target.value) || 0)}
-                      />
-                    ) : (
-                      formatCurrency(employee.bonuses)
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {employee.isEditing ? (
-                      <Input
-                        type="number"
-                        className="w-24 text-right"
-                        value={employee.taxes}
-                        onChange={(e) => updateField(employee.id, 'taxes', parseFloat(e.target.value) || 0)}
-                      />
-                    ) : (
-                      formatCurrency(employee.taxes)
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    <Badge variant={employee.net_pay < 0 ? "destructive" : "default"} className="text-right w-auto">
-                      {formatCurrency(employee.net_pay)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {employee.isEditing ? (
-                      <Input
-                        value={employee.comments || ''}
-                        onChange={(e) => updateField(employee.id, 'comments', e.target.value)}
-                      />
-                    ) : (
-                      <div className="max-w-xs truncate">{employee.comments}</div>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end">
-                      {employee.isEditing ? (
-                        <div className="flex space-x-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => saveRow(employee.id)}
-                            aria-label="Save Changes"
-                          >
-                            <Check className="h-4 w-4 text-green-500" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => cancelEditing(employee.id)}
-                            aria-label="Cancel Editing"
-                          >
-                            <X className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => startEditing(employee.id)}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                setEmployeeToDelete(employee)
-                                setIsDeleteDialogOpen(true)
-                              }}
-                              className="text-red-600"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
-                    </div>
+              {filteredAndSortedData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    No payroll entries found. Click "New Entry" to add one.
                   </TableCell>
                 </TableRow>
-              ))}
-              
-              {/* Summary Row */}
+              ) : (
+                filteredAndSortedData.map((employee) => (
+                  <TableRow key={employee.id}>
+                    <TableCell>
+                      {employee.isEditing ? (
+                        <Input
+                          value={employee.employee_id}
+                          onChange={(e) => updateField(employee.id, 'employee_id', e.target.value)}
+                          className="w-full"
+                        />
+                      ) : (
+                        employee.employee_id
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {employee.isEditing ? (
+                        <Input
+                          value={employee.employee_name}
+                          onChange={(e) => updateField(employee.id, 'employee_name', e.target.value)}
+                          className="w-full"
+                        />
+                      ) : (
+                        employee.employee_name
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {employee.isEditing ? (
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            type="date"
+                            value={employee.pay_period_start.substring(0, 10)}
+                            onChange={(e) => updateField(employee.id, 'pay_period_start', e.target.value)}
+                            className="w-24 sm:w-32"
+                          />
+                          <span>to</span>
+                          <Input
+                            type="date"
+                            value={employee.pay_period_end.substring(0, 10)}
+                            onChange={(e) => updateField(employee.id, 'pay_period_end', e.target.value)}
+                            className="w-24 sm:w-32"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          {formatDate(employee.pay_period_start)} to {formatDate(employee.pay_period_end)}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {employee.isEditing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={employee.regular_hours}
+                          onChange={(e) => updateField(employee.id, 'regular_hours', Number(e.target.value))}
+                          className="w-20 text-right"
+                        />
+                      ) : (
+                        employee.regular_hours.toFixed(1)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {employee.isEditing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.5"
+                          value={employee.overtime_hours}
+                          onChange={(e) => updateField(employee.id, 'overtime_hours', Number(e.target.value))}
+                          className="w-20 text-right"
+                        />
+                      ) : (
+                        employee.overtime_hours.toFixed(1)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {employee.isEditing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={employee.deductions}
+                          onChange={(e) => updateField(employee.id, 'deductions', Number(e.target.value))}
+                          className="w-24 text-right"
+                          placeholder="0.00"
+                        />
+                      ) : (
+                        formatCurrency(employee.deductions)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {employee.isEditing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={employee.bonuses}
+                          onChange={(e) => updateField(employee.id, 'bonuses', Number(e.target.value))}
+                          className="w-24 text-right"
+                          placeholder="0.00"
+                        />
+                      ) : (
+                        formatCurrency(employee.bonuses)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {employee.isEditing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={employee.taxes}
+                          onChange={(e) => updateField(employee.id, 'taxes', Number(e.target.value))}
+                          className="w-24 text-right"
+                          placeholder="0.00"
+                        />
+                      ) : (
+                        formatCurrency(employee.taxes)
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      <Badge variant={employee.net_pay < 0 ? "destructive" : "default"} className="text-right w-auto">
+                        {formatCurrency(employee.net_pay)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {employee.isEditing ? (
+                        <Input
+                          value={employee.comments || ''}
+                          onChange={(e) => updateField(employee.id, 'comments', e.target.value)}
+                        />
+                      ) : (
+                        <div className="max-w-xs truncate">{employee.comments}</div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end">
+                        {employee.isEditing ? (
+                          <div className="flex space-x-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => saveRow(employee.id)}
+                              aria-label="Save Changes"
+                            >
+                              <Check className="h-4 w-4 text-green-500" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => cancelEditing(employee.id)}
+                              aria-label="Cancel Editing"
+                            >
+                              <X className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => startEditing(employee.id)}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setEmployeeToDelete(employee)
+                                  setIsDeleteDialogOpen(true)
+                                }}
+                                className="text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
               <TableRow className="bg-gray-50 font-medium">
                 <TableCell colSpan={3}>Summary / Totals</TableCell>
                 <TableCell className="text-right">{totals.regularHours.toFixed(2)}</TableCell>
@@ -938,10 +946,8 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
             <DialogTitle>Save All Changes</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <p>Are you sure you want to save all changes? This will update the database with all modifications.</p>
-            <p className="mt-2 text-gray-600">
-              • {data.filter(row => row.isNew).length} new entries will be created<br />
-              • {data.filter(row => row.isEditing && !row.isNew).length} existing entries will be updated
+            <p>
+              You're about to save all pending changes to the payroll data. This will update the database.
             </p>
           </div>
           <DialogFooter>
