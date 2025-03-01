@@ -371,8 +371,9 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
     
     // Sort data
     result.sort((a, b) => {
-      let aValue = a[sortColumn]
-      let bValue = b[sortColumn]
+      // Get values with default to handle undefined
+      let aValue = a[sortColumn] ?? ''
+      let bValue = b[sortColumn] ?? ''
       
       // Handle date sorting
       if (sortColumn === 'pay_period_start' || sortColumn === 'pay_period_end') {
@@ -380,8 +381,18 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
         bValue = new Date(bValue as string).getTime()
       }
       
-      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      // Handle numeric columns
+      if (['regular_hours', 'overtime_hours', 'deductions', 'bonuses', 'taxes', 'net_pay'].includes(sortColumn)) {
+        aValue = Number(aValue) || 0
+        bValue = Number(bValue) || 0
+      }
+      
+      // Type safety for comparison
+      const a = aValue as any;
+      const b = bValue as any;
+      
+      if (a < b) return sortDirection === 'asc' ? -1 : 1
+      if (a > b) return sortDirection === 'asc' ? 1 : -1
       return 0
     })
     
@@ -864,7 +875,7 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                             size="icon"
                             variant="ghost"
                             onClick={() => saveRow(employee.id)}
-                            title="Save Changes"
+                            aria-label="Save Changes"
                           >
                             <Check className="h-4 w-4 text-green-500" />
                           </Button>
@@ -872,7 +883,7 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
                             size="icon"
                             variant="ghost"
                             onClick={() => cancelEditing(employee.id)}
-                            title="Cancel Editing"
+                            aria-label="Cancel Editing"
                           >
                             <X className="h-4 w-4 text-red-500" />
                           </Button>

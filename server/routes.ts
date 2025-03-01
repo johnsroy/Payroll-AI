@@ -4,7 +4,6 @@ import { storage } from "./storage";
 import { getAgents, processQuery } from "./api/agent";
 import { getAvailableAgents, processAgentQuery, processMultiAgentQuery } from "./api/agent-brain";
 import { Pool } from '@neondatabase/serverless';
-import { config } from './config';
 
 // Create PostgreSQL pool for Supabase database connection
 const pool = new Pool({
