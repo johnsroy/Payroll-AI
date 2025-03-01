@@ -370,10 +370,10 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
     }
     
     // Sort data
-    result.sort((a, b) => {
+    result.sort((rowA, rowB) => {
       // Get values with default to handle undefined
-      let aValue = a[sortColumn] ?? ''
-      let bValue = b[sortColumn] ?? ''
+      let aValue = rowA[sortColumn] ?? ''
+      let bValue = rowB[sortColumn] ?? ''
       
       // Handle date sorting
       if (sortColumn === 'pay_period_start' || sortColumn === 'pay_period_end') {
@@ -387,12 +387,9 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
         bValue = Number(bValue) || 0
       }
       
-      // Type safety for comparison
-      const a = aValue as any;
-      const b = bValue as any;
-      
-      if (a < b) return sortDirection === 'asc' ? -1 : 1
-      if (a > b) return sortDirection === 'asc' ? 1 : -1
+      // Perform comparison
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
       return 0
     })
     
