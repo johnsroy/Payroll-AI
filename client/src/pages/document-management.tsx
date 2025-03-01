@@ -149,6 +149,23 @@ export default function DocumentManagementPage() {
           Create New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
         </button>
       </div>
+      
+      {/* Document Form */}
+      <DocumentForm
+        type={activeTab}
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        onSave={handleSaveDocument}
+      />
+      
+      {/* Document Preview */}
+      {selectedDocument && (
+        <DocumentPreview
+          document={selectedDocument}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+        />
+      )}
 
       <Tabs defaultValue={DocumentType.INVOICE} onValueChange={handleTabChange}>
         <TabsList className="grid grid-cols-4 mb-6">
@@ -188,9 +205,24 @@ export default function DocumentManagementPage() {
                           <span className="font-bold">${doc.amount.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-end mt-4">
-                          <button className="text-blue-600 hover:text-blue-800 mr-3">Edit</button>
-                          <button className="text-blue-600 hover:text-blue-800 mr-3">Preview</button>
-                          <button className="text-blue-600 hover:text-blue-800">Send</button>
+                          <button 
+                            className="text-blue-600 hover:text-blue-800 mr-3"
+                            onClick={() => {/* Implement edit functionality */}}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="text-blue-600 hover:text-blue-800 mr-3"
+                            onClick={() => handlePreviewDocument(doc)}
+                          >
+                            Preview
+                          </button>
+                          <button 
+                            className="text-blue-600 hover:text-blue-800"
+                            onClick={() => alert(`Sending ${doc.type} ${doc.id} to ${doc.client}`)}
+                          >
+                            Send
+                          </button>
                         </div>
                       </div>
                     </CardContent>
