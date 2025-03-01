@@ -560,190 +560,154 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
     if (!file) return
     
     const reader = new FileReader()
-    
     reader.onload = (e) => {
       try {
         const csvData = e.target?.result as string
         const rows = csvData.split('\n')
         
         // Skip header row
-        const dataRows = rows.slice(1)
+        const dataRows = rows.slice(1).filter(row => row.trim())
         
-        if (dataRows.length === 0) {
-          toast({
-            title: 'Error',
-            description: 'No data found in CSV file.',
-            variant: 'destructive',
-          })
-          return
-        }
-        
-        // Parse rows and create new entries
-        const newEntries: Employee[] = []
-        
-        dataRows.forEach((row, index) => {
-          if (!row.trim()) return // Skip empty rows
-          
-          // Split by comma, handling quoted values
-          const values: string[] = []
-          let inQuote = false
-          let currentValue = ''
+        const newEntries: Employee[] = dataRows.map((row, index) => {
+          // Split by comma but respect quoted values
+          const cells: string[] = []
+          let insideQuotes = false
+          let currentCell = ''
           
           for (let i = 0; i < row.length; i++) {
             const char = row[i]
             
             if (char === '"') {
-              inQuote = !inQuote
-            } else if (char === ',' && !inQuote) {
-              values.push(currentValue)
-              currentValue = ''
+              insideQuotes = !insideQuotes
+            } else if (char === ',' && !insideQuotes) {
+              cells.push(currentCell)
+              currentCell = ''
             } else {
-              currentValue += char
+              currentCell += char
             }
           }
           
-          // Add the last value
-          values.push(currentValue)
+          // Push the last cell
+          cells.push(currentCell)
           
-          // Check for minimum expected columns
-          if (values.length < 9) {
-            toast({
-              title: 'Error',
-              description: `Row ${index + 1} doesn't have enough columns.`,
-              variant: 'destructive',
-            })
-            return
-          }
-          
-          // Create new employee entry
-          const newEntry: Employee = {
-            id: `import-${Date.now()}-${index}`,
-            employee_id: values[0]?.replace(/"/g, '').trim() || '',
-            employee_name: values[1]?.replace(/"/g, '').trim() || '',
-            pay_period_start: values[2]?.trim() || format(new Date(), 'yyyy-MM-dd'),
-            pay_period_end: values[3]?.trim() || format(new Date(), 'yyyy-MM-dd'),
-            regular_hours: parseFloat(values[4]) || 0,
-            overtime_hours: parseFloat(values[5]) || 0,
-            deductions: parseFloat(values[6]) || 0,
-            bonuses: parseFloat(values[7]) || 0,
-            taxes: parseFloat(values[8]) || 0,
+          // Map to Employee object
+          return {
+            id: `temp-${Date.now()}-${index}`,
+            employee_id: cells[0]?.trim() || '',
+            employee_name: cells[1]?.replace(/"/g, '').trim() || '',
+            pay_period_start: cells[2]?.trim() || format(new Date(), 'yyyy-MM-dd'),
+            pay_period_end: cells[3]?.trim() || format(new Date(), 'yyyy-MM-dd'),
+            regular_hours: parseFloat(cells[4]?.trim() || '0'),
+            overtime_hours: parseFloat(cells[5]?.trim() || '0'),
+            deductions: parseFloat(cells[6]?.trim() || '0'),
+            bonuses: parseFloat(cells[7]?.trim() || '0'),
+            taxes: parseFloat(cells[8]?.trim() || '0'),
             net_pay: 0, // Will be calculated
-            comments: values[9]?.replace(/"/g, '').trim() || '',
+            comments: cells[9]?.replace(/"/g, '').trim() || '',
             isEditing: false,
             isNew: true
           }
-          
-          // Calculate net pay
-          const regularPay = newEntry.regular_hours * 25
-          const overtimePay = newEntry.overtime_hours * 37.5
-          const grossPay = regularPay + overtimePay + newEntry.bonuses
-          newEntry.net_pay = grossPay - newEntry.deductions - newEntry.taxes
-          
-          newEntries.push(newEntry)
         })
         
-        if (newEntries.length === 0) {
-          toast({
-            title: 'Error',
-            description: 'No valid entries found in CSV file.',
-            variant: 'destructive',
-          })
-          return
-        }
+        // Calculate net pay for each entry
+        newEntries.forEach(entry => {
+          const regularPay = entry.regular_hours * 25
+          const overtimePay = entry.overtime_hours * 37.5
+          const grossPay = regularPay + overtimePay + entry.bonuses
+          entry.net_pay = grossPay - entry.deductions - entry.taxes
+        })
         
-        // Add new entries to existing data
         setData([...newEntries, ...data])
         
         toast({
-          title: 'CSV Imported',
-          description: `Successfully imported ${newEntries.length} entries.`,
+          title: 'CSV Uploaded',
+          description: `${newEntries.length} entries added from CSV. Review and save to commit to database.`,
         })
-        
       } catch (error) {
         console.error('Error parsing CSV:', error)
         toast({
           title: 'Error',
-          description: 'Failed to parse CSV file.',
+          description: 'Failed to parse CSV file. Please check the format and try again.',
           variant: 'destructive',
         })
       }
     }
     
     reader.readAsText(file)
-  }
-
-  // Handle file input click
-  const handleFileInputClick = () => {
-    document.getElementById('csv-file-input')?.click()
+    
+    // Reset the input so the same file can be uploaded again
+    event.target.value = ''
   }
 
   return (
     <div className="space-y-4">
-      {/* Table toolbar */}
+      {/* Action Bar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input 
-            className="pl-8" 
-            placeholder="Search employees..." 
+            placeholder="Search employees..."
+            className="pl-8"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" onClick={addNewRow}>
-                  <Plus size={16} className="mr-1" />
-                  Add
+                <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                  <Download className="h-4 w-4 mr-1" />
+                  Template
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Add a new entry</p>
+                <p>Download CSV template</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => document.getElementById('csv-upload')?.click()}>
+                  <Upload className="h-4 w-4 mr-1" />
+                  Import
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Import from CSV</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          
+          <input 
+            type="file" 
+            accept=".csv" 
+            onChange={handleFileUpload}
+            className="hidden"
+            id="csv-upload"
+          />
           
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" onClick={exportToCSV}>
-                  <Download size={16} className="mr-1" />
+                  <Download className="h-4 w-4 mr-1" />
                   Export
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Export as CSV</p>
+                <p>Export to CSV</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Upload size={16} className="mr-1" />
-                Import
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={downloadTemplate}>
-                Download Template
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleFileInputClick}>
-                Import from CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <input 
-            type="file" 
-            id="csv-file-input" 
-            accept=".csv" 
-            className="hidden" 
-            onChange={handleFileUpload}
-          />
+          <Button variant="default" size="sm" onClick={addNewRow}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add Entry
+          </Button>
           
           <Button 
             variant="default" 
@@ -751,301 +715,352 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
             onClick={() => setIsSaveDialogOpen(true)}
             disabled={!data.some(item => item.isEditing || item.isNew)}
           >
+            <Check className="h-4 w-4 mr-1" />
             Save All
           </Button>
         </div>
       </div>
       
-      {/* Main table */}
-      <div className="border rounded-md">
+      {/* Data Table */}
+      <div className="border rounded-md overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[120px]">
-                <div className="flex items-center space-x-1" onClick={() => handleSort('employee_id')}>
-                  <span>Employee ID</span>
-                  <ArrowUpDown size={16} className="ml-1" />
+              <TableHead 
+                className="w-[100px] cursor-pointer"
+                onClick={() => handleSort('employee_id')}
+              >
+                <div className="flex items-center">
+                  Employee ID
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
                 </div>
               </TableHead>
+              
+              <TableHead 
+                className="cursor-pointer"
+                onClick={() => handleSort('employee_name')}
+              >
+                <div className="flex items-center">
+                  Name
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="cursor-pointer"
+                onClick={() => handleSort('pay_period_start')}
+              >
+                <div className="flex items-center">
+                  Period Start
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="cursor-pointer"
+                onClick={() => handleSort('pay_period_end')}
+              >
+                <div className="flex items-center">
+                  Period End
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="text-right cursor-pointer"
+                onClick={() => handleSort('regular_hours')}
+              >
+                <div className="flex items-center justify-end">
+                  Regular Hrs
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="text-right cursor-pointer"
+                onClick={() => handleSort('overtime_hours')}
+              >
+                <div className="flex items-center justify-end">
+                  OT Hrs
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="text-right cursor-pointer"
+                onClick={() => handleSort('deductions')}
+              >
+                <div className="flex items-center justify-end">
+                  Deductions
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="text-right cursor-pointer"
+                onClick={() => handleSort('bonuses')}
+              >
+                <div className="flex items-center justify-end">
+                  Bonuses
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="text-right cursor-pointer"
+                onClick={() => handleSort('taxes')}
+              >
+                <div className="flex items-center justify-end">
+                  Taxes
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
+              <TableHead 
+                className="text-right cursor-pointer"
+                onClick={() => handleSort('net_pay')}
+              >
+                <div className="flex items-center justify-end">
+                  Net Pay
+                  <ArrowUpDown className="ml-2 h-4 w-4" />
+                </div>
+              </TableHead>
+              
               <TableHead>
-                <div className="flex items-center space-x-1" onClick={() => handleSort('employee_name')}>
-                  <span>Name</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
+                Comments
               </TableHead>
-              <TableHead className="w-[120px]">
-                <div className="flex items-center space-x-1" onClick={() => handleSort('pay_period_start')}>
-                  <span>Period Start</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="w-[120px]">
-                <div className="flex items-center space-x-1" onClick={() => handleSort('pay_period_end')}>
-                  <span>Period End</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="text-right w-[100px]">
-                <div className="flex items-center justify-end space-x-1" onClick={() => handleSort('regular_hours')}>
-                  <span>Reg. Hours</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="text-right w-[100px]">
-                <div className="flex items-center justify-end space-x-1" onClick={() => handleSort('overtime_hours')}>
-                  <span>OT Hours</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="text-right w-[100px]">
-                <div className="flex items-center justify-end space-x-1" onClick={() => handleSort('deductions')}>
-                  <span>Deduct.</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="text-right w-[100px]">
-                <div className="flex items-center justify-end space-x-1" onClick={() => handleSort('bonuses')}>
-                  <span>Bonus</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="text-right w-[100px]">
-                <div className="flex items-center justify-end space-x-1" onClick={() => handleSort('taxes')}>
-                  <span>Taxes</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="text-right w-[120px]">
-                <div className="flex items-center justify-end space-x-1" onClick={() => handleSort('net_pay')}>
-                  <span>Net Pay</span>
-                  <ArrowUpDown size={16} className="ml-1" />
-                </div>
-              </TableHead>
-              <TableHead className="w-[150px]">
-                <span>Comments</span>
-              </TableHead>
+              
               <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
+          
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={12} className="h-24 text-center">
-                  Loading payroll data...
+                <TableCell colSpan={12} className="text-center h-24">
+                  Loading data...
                 </TableCell>
               </TableRow>
             ) : error ? (
               <TableRow>
-                <TableCell colSpan={12} className="h-24 text-center text-red-500">
-                  Error loading data: {error instanceof Error ? error.message : 'Unknown error'}
+                <TableCell colSpan={12} className="text-center h-24 text-red-500">
+                  Error loading data: {(error as Error).message}
                 </TableCell>
               </TableRow>
             ) : filteredAndSortedData.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="h-24 text-center">
-                  No payroll entries found. Add a new entry to get started.
+                <TableCell colSpan={12} className="text-center h-24">
+                  No payroll data found. Add a new entry to get started.
                 </TableCell>
               </TableRow>
             ) : (
               <>
-                {filteredAndSortedData.map((employee) => (
-                  <TableRow key={employee.id}>
+                {filteredAndSortedData.map((row) => (
+                  <TableRow key={row.id} className={row.isNew ? 'bg-green-50 dark:bg-green-950/20' : ''}>
+                    {/* Employee ID */}
                     <TableCell>
-                      {employee.isEditing ? (
-                        <Input 
-                          value={employee.employee_id} 
-                          onChange={(e) => updateField(employee.id, 'employee_id', e.target.value)}
+                      {row.isEditing ? (
+                        <Input
+                          value={row.employee_id}
+                          onChange={(e) => updateField(row.id, 'employee_id', e.target.value)}
+                          className="w-full h-8"
                         />
                       ) : (
-                        employee.employee_id
+                        row.employee_id
                       )}
                     </TableCell>
+                    
+                    {/* Employee Name */}
                     <TableCell>
-                      {employee.isEditing ? (
-                        <Input 
-                          value={employee.employee_name} 
-                          onChange={(e) => updateField(employee.id, 'employee_name', e.target.value)}
+                      {row.isEditing ? (
+                        <Input
+                          value={row.employee_name}
+                          onChange={(e) => updateField(row.id, 'employee_name', e.target.value)}
+                          className="w-full h-8"
                         />
                       ) : (
-                        employee.employee_name
+                        row.employee_name
                       )}
                     </TableCell>
+                    
+                    {/* Pay Period Start */}
                     <TableCell>
-                      {employee.isEditing ? (
-                        <Input 
+                      {row.isEditing ? (
+                        <Input
                           type="date"
-                          value={employee.pay_period_start} 
-                          onChange={(e) => updateField(employee.id, 'pay_period_start', e.target.value)}
+                          value={row.pay_period_start}
+                          onChange={(e) => updateField(row.id, 'pay_period_start', e.target.value)}
+                          className="w-full h-8"
                         />
                       ) : (
-                        formatDate(employee.pay_period_start)
+                        formatDate(row.pay_period_start)
                       )}
                     </TableCell>
+                    
+                    {/* Pay Period End */}
                     <TableCell>
-                      {employee.isEditing ? (
-                        <Input 
+                      {row.isEditing ? (
+                        <Input
                           type="date"
-                          value={employee.pay_period_end} 
-                          onChange={(e) => updateField(employee.id, 'pay_period_end', e.target.value)}
+                          value={row.pay_period_end}
+                          onChange={(e) => updateField(row.id, 'pay_period_end', e.target.value)}
+                          className="w-full h-8"
                         />
                       ) : (
-                        formatDate(employee.pay_period_end)
+                        formatDate(row.pay_period_end)
                       )}
                     </TableCell>
+                    
+                    {/* Regular Hours */}
                     <TableCell className="text-right">
-                      {employee.isEditing ? (
-                        <Input 
+                      {row.isEditing ? (
+                        <Input
                           type="number"
-                          className="text-right"
-                          value={employee.regular_hours} 
-                          onChange={(e) => updateField(employee.id, 'regular_hours', Number(e.target.value))}
+                          value={row.regular_hours}
+                          onChange={(e) => updateField(row.id, 'regular_hours', parseFloat(e.target.value) || 0)}
+                          className="w-full h-8 text-right"
                         />
                       ) : (
-                        employee.regular_hours
+                        row.regular_hours.toFixed(2)
                       )}
                     </TableCell>
+                    
+                    {/* Overtime Hours */}
                     <TableCell className="text-right">
-                      {employee.isEditing ? (
-                        <Input 
+                      {row.isEditing ? (
+                        <Input
                           type="number"
-                          className="text-right"
-                          value={employee.overtime_hours} 
-                          onChange={(e) => updateField(employee.id, 'overtime_hours', Number(e.target.value))}
+                          value={row.overtime_hours}
+                          onChange={(e) => updateField(row.id, 'overtime_hours', parseFloat(e.target.value) || 0)}
+                          className="w-full h-8 text-right"
                         />
                       ) : (
-                        employee.overtime_hours
+                        row.overtime_hours.toFixed(2)
                       )}
                     </TableCell>
+                    
+                    {/* Deductions */}
                     <TableCell className="text-right">
-                      {employee.isEditing ? (
-                        <Input 
+                      {row.isEditing ? (
+                        <Input
                           type="number"
-                          className="text-right"
-                          value={employee.deductions} 
-                          onChange={(e) => updateField(employee.id, 'deductions', Number(e.target.value))}
+                          value={row.deductions}
+                          onChange={(e) => updateField(row.id, 'deductions', parseFloat(e.target.value) || 0)}
+                          className="w-full h-8 text-right"
                         />
                       ) : (
-                        formatCurrency(employee.deductions)
+                        formatCurrency(row.deductions)
                       )}
                     </TableCell>
+                    
+                    {/* Bonuses */}
                     <TableCell className="text-right">
-                      {employee.isEditing ? (
-                        <Input 
+                      {row.isEditing ? (
+                        <Input
                           type="number"
-                          className="text-right"
-                          value={employee.bonuses} 
-                          onChange={(e) => updateField(employee.id, 'bonuses', Number(e.target.value))}
+                          value={row.bonuses}
+                          onChange={(e) => updateField(row.id, 'bonuses', parseFloat(e.target.value) || 0)}
+                          className="w-full h-8 text-right"
                         />
                       ) : (
-                        formatCurrency(employee.bonuses)
+                        formatCurrency(row.bonuses)
                       )}
                     </TableCell>
+                    
+                    {/* Taxes */}
                     <TableCell className="text-right">
-                      {employee.isEditing ? (
-                        <Input 
+                      {row.isEditing ? (
+                        <Input
                           type="number"
-                          className="text-right"
-                          value={employee.taxes} 
-                          onChange={(e) => updateField(employee.id, 'taxes', Number(e.target.value))}
+                          value={row.taxes}
+                          onChange={(e) => updateField(row.id, 'taxes', parseFloat(e.target.value) || 0)}
+                          className="w-full h-8 text-right"
                         />
                       ) : (
-                        formatCurrency(employee.taxes)
+                        formatCurrency(row.taxes)
                       )}
                     </TableCell>
+                    
+                    {/* Net Pay */}
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(employee.net_pay)}
+                      {formatCurrency(row.net_pay)}
                     </TableCell>
+                    
+                    {/* Comments */}
                     <TableCell>
-                      {employee.isEditing ? (
-                        <Input 
-                          value={employee.comments} 
-                          onChange={(e) => updateField(employee.id, 'comments', e.target.value)}
+                      {row.isEditing ? (
+                        <Input
+                          value={row.comments || ''}
+                          onChange={(e) => updateField(row.id, 'comments', e.target.value)}
+                          className="w-full h-8"
                         />
                       ) : (
-                        <div className="truncate max-w-[150px]" title={employee.comments}>
-                          {employee.comments}
+                        <div className="truncate max-w-[200px]" title={row.comments || ''}>
+                          {row.comments || '-'}
                         </div>
                       )}
                     </TableCell>
+                    
+                    {/* Actions */}
                     <TableCell>
-                      <div className="flex items-center justify-end space-x-1">
-                        {employee.isEditing ? (
-                          <>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => saveRow(employee.id)}
-                            >
-                              <Check size={16} className="text-green-500" />
+                      {row.isEditing ? (
+                        <div className="flex items-center justify-end space-x-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => saveRow(row.id)}
+                            className="h-8 w-8"
+                          >
+                            <Check className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => cancelEditing(row.id)}
+                            className="h-8 w-8"
+                          >
+                            <X className="h-4 w-4 text-red-600" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => cancelEditing(employee.id)}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => startEditing(row.id)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setEmployeeToDelete(row)
+                                setIsDeleteDialogOpen(true)
+                                setConfirmValue('')
+                              }}
+                              className="text-red-600"
                             >
-                              <X size={16} className="text-red-500" />
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => startEditing(employee.id)}
-                            >
-                              <Pencil size={16} />
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal size={16} />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => startEditing(employee.id)}>
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-red-600"
-                                  onClick={() => {
-                                    setEmployeeToDelete(employee)
-                                    setIsDeleteDialogOpen(true)
-                                  }}
-                                >
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </>
-                        )}
-                      </div>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
                 
-                {/* Summary row */}
-                <TableRow>
-                  <TableCell colSpan={4} className="font-medium">
-                    Totals ({filteredAndSortedData.length} entries)
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {totals.regularHours.toFixed(1)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {totals.overtimeHours.toFixed(1)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(totals.deductions)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(totals.bonuses)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(totals.taxes)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium">
-                    {formatCurrency(totals.netPay)}
-                  </TableCell>
+                {/* Summary Row */}
+                <TableRow className="bg-muted/50 font-medium">
+                  <TableCell colSpan={4} className="text-right">Totals:</TableCell>
+                  <TableCell className="text-right">{totals.regularHours.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{totals.overtimeHours.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totals.deductions)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totals.bonuses)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totals.taxes)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totals.netPay)}</TableCell>
                   <TableCell></TableCell>
                   <TableCell></TableCell>
                 </TableRow>
@@ -1055,57 +1070,61 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
         </Table>
       </div>
       
-      {/* Delete confirmation dialog */}
+      {/* Pagination would go here */}
+      
+      {/* Save Changes Dialog */}
+      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Changes</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>You have {data.filter(row => row.isEditing || row.isNew).length} unsaved changes. Would you like to save them now?</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSaveDialogOpen(false)}>Cancel</Button>
+            <Button variant="default" onClick={handleBulkSave}>Save All</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Payroll Entry</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
-          <p className="py-4">
-            Are you sure you want to delete the payroll entry for <span className="font-medium">{employeeToDelete?.employee_name}</span>? 
-            This action cannot be undone.
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            Type DELETE to confirm:
-          </p>
-          <Input 
-            value={confirmValue}
-            onChange={(e) => setConfirmValue(e.target.value)}
-            className="mt-2"
-          />
+          <div className="py-4">
+            {employeeToDelete && (
+              <div className="space-y-2">
+                <p><strong>Employee:</strong> {employeeToDelete.employee_name}</p>
+                <p><strong>ID:</strong> {employeeToDelete.employee_id}</p>
+                <p><strong>Pay Period:</strong> {formatDate(employeeToDelete.pay_period_start)} to {formatDate(employeeToDelete.pay_period_end)}</p>
+              </div>
+            )}
+            <div className="mt-4">
+              <p className="text-red-600">This action cannot be undone.</p>
+              <div className="mt-2">
+                <p className="text-sm text-muted-foreground">
+                  Type DELETE to confirm
+                </p>
+                <Input 
+                  value={confirmValue}
+                  onChange={(e) => setConfirmValue(e.target.value)}
+                  className="mt-1"
+                  placeholder="DELETE"
+                />
+              </div>
+            </div>
+          </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
             <Button 
               variant="destructive" 
               onClick={confirmDelete}
               disabled={confirmValue !== 'DELETE'}
             >
               Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* Save confirmation dialog */}
-      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Save Changes</DialogTitle>
-          </DialogHeader>
-          <p className="py-4">
-            Are you sure you want to save all changes? This will update the database with your modifications.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSaveDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant="default" 
-              onClick={handleBulkSave}
-            >
-              Save All Changes
             </Button>
           </DialogFooter>
         </DialogContent>
