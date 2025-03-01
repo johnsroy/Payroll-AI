@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { Dialog } from '@/components/ui/dialog';
-import { SimpleDocumentPreview } from '../components/documents/SimpleDocumentPreview';
 
 // Document types enum
-export enum DocumentType {
+enum DocumentType {
   INVOICE = 'invoice',
   ESTIMATE = 'estimate',
   BILL = 'bill',
@@ -21,7 +19,7 @@ interface Document {
   status: string;
 }
 
-export default function TestDocumentsPage() {
+export default function SimpleDocumentsPage() {
   // State for documents
   const [documents, setDocuments] = useState<Document[]>([]);
   
@@ -30,10 +28,6 @@ export default function TestDocumentsPage() {
   
   // State for the form dialog
   const [isFormOpen, setIsFormOpen] = useState(false);
-  
-  // State for the preview dialog
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -88,12 +82,6 @@ export default function TestDocumentsPage() {
     }
   };
   
-  // Handle viewing a document
-  const handleViewDocument = (doc: Document) => {
-    setSelectedDocument(doc);
-    setIsPreviewOpen(true);
-  };
-  
   // Filter documents by type
   const getDocumentsByType = (type: DocumentType) => {
     return documents.filter(doc => doc.type === type);
@@ -101,7 +89,7 @@ export default function TestDocumentsPage() {
   
   return (
     <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">Document Management</h1>
+      <h1 className="text-3xl font-bold mb-6">Simple Document Management</h1>
       <p className="text-gray-600 mb-6">Create and manage financial documents for your business.</p>
       
       {/* Document type cards */}
@@ -171,7 +159,6 @@ export default function TestDocumentsPage() {
                   <th className="px-4 py-2 text-left">Date</th>
                   <th className="px-4 py-2 text-right">Amount</th>
                   <th className="px-4 py-2 text-center">Status</th>
-                  <th className="px-4 py-2 text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -193,17 +180,6 @@ export default function TestDocumentsPage() {
                         {doc.status}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-center">
-                      <button 
-                        className="text-blue-600 hover:text-blue-800 mr-2"
-                        onClick={() => handleViewDocument(doc)}
-                      >
-                        View
-                      </button>
-                      <button className="text-gray-600 hover:text-gray-800">
-                        Edit
-                      </button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -216,8 +192,8 @@ export default function TestDocumentsPage() {
         )}
       </div>
       
-      {/* Form Dialog */}
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+      {/* Form Modal */}
+      {isFormOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
@@ -305,14 +281,7 @@ export default function TestDocumentsPage() {
             </div>
           </div>
         </div>
-      </Dialog>
-      
-      {/* Document Preview */}
-      <SimpleDocumentPreview 
-        document={selectedDocument}
-        open={isPreviewOpen}
-        onOpenChange={setIsPreviewOpen}
-      />
+      )}
     </div>
   );
 }
