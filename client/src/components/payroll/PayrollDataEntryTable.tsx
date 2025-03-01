@@ -1,36 +1,69 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { 
-  Search, 
-  PlusCircle, 
-  CheckCircle2, 
-  AlertCircle, 
+  Table, 
+  TableHeader, 
+  TableRow, 
+  TableHead, 
+  TableBody, 
+  TableCell 
+} from '@/components/ui/table'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogTrigger
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu'
+import { 
+  Tooltip, 
+  TooltipContent, 
+  TooltipProvider, 
+  TooltipTrigger 
+} from '@/components/ui/tooltip'
+import { useToast } from '@/hooks/use-toast'
+import { format, isValid, parseISO } from 'date-fns'
+import { 
   ArrowUpDown, 
-  ChevronLeft, 
-  ChevronRight,
+  ChevronsUpDown, 
+  Download, 
+  MoreHorizontal, 
+  Plus, 
+  Search, 
+  Trash2,
   Info,
-  type LucideProps
-} from "lucide-react"
-import { cn } from '@/lib/utils'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+  Check,
+  X,
+  Pencil
+} from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
+// Employee interface matching our database schema
 interface Employee {
   id: string
-  name: string
-  payPeriodStart: string
-  payPeriodEnd: string
-  regularHours: number
-  overtimeHours: number
+  employee_id: string
+  employee_name: string
+  pay_period_start: string
+  pay_period_end: string
+  regular_hours: number
+  overtime_hours: number
   deductions: number
   bonuses: number
   taxes: number
-  netPay: number
+  net_pay: number
   comments: string
+  isEditing?: boolean
   isNew?: boolean
 }
 
@@ -39,257 +72,332 @@ interface PayrollDataEntryTableProps {
   onSave?: (data: Employee[]) => void
 }
 
-export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataEntryTableProps) {
-  // State for employees, editing, and validation
-  const [employees, setEmployees] = useState<Employee[]>(initialData.length ? initialData : [createEmptyEmployee()])
-  const [editingCell, setEditingCell] = useState<{rowIndex: number, columnName: string} | null>(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [validationErrors, setValidationErrors] = useState<Record<string, Record<string, string>>>({})
-  const [sortConfig, setSortConfig] = useState<{key: keyof Employee, direction: 'asc' | 'desc'}>({
-    key: 'id',
-    direction: 'asc'
+// API functions for CRUD operations
+const fetchPayrollEntries = async (): Promise<Employee[]> => {
+  const response = await fetch('/api/payroll/entries')
+  if (!response.ok) {
+    throw new Error('Failed to fetch payroll entries')
+  }
+  return response.json()
+}
+
+const createPayrollEntry = async (entry: Omit<Employee, 'id'>): Promise<Employee> => {
+  const response = await fetch('/api/payroll/entries', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(entry),
   })
   
-  const ROWS_PER_PAGE = 5
-
-  // Calculate derived values for tax and net pay when inputs change
-  useEffect(() => {
-    const updatedEmployees = employees.map(employee => {
-      // Simple tax calculation (just for demonstration)
-      const grossPay = employee.regularHours * 25 + employee.overtimeHours * 37.5 + employee.bonuses
-      const taxes = grossPay * 0.2 // 20% tax rate for demo
-      const netPay = grossPay - taxes - employee.deductions
-      
-      return {
-        ...employee,
-        taxes: Number(taxes.toFixed(2)),
-        netPay: Number(netPay.toFixed(2))
-      }
-    })
-    
-    setEmployees(updatedEmployees)
-  }, [employees.map(e => [e.regularHours, e.overtimeHours, e.bonuses, e.deductions].join(','))])
+  if (!response.ok) {
+    throw new Error('Failed to create payroll entry')
+  }
   
-  // Create a new empty employee record
-  function createEmptyEmployee(): Employee {
-    return {
-      id: `EMP${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
-      name: '',
-      payPeriodStart: '',
-      payPeriodEnd: '',
-      regularHours: 0,
-      overtimeHours: 0,
+  return response.json()
+}
+
+const updatePayrollEntry = async (entry: Employee): Promise<Employee> => {
+  const response = await fetch(`/api/payroll/entries/${entry.id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(entry),
+  })
+  
+  if (!response.ok) {
+    throw new Error('Failed to update payroll entry')
+  }
+  
+  return response.json()
+}
+
+const deletePayrollEntry = async (id: string): Promise<void> => {
+  const response = await fetch(`/api/payroll/entries/${id}`, {
+    method: 'DELETE',
+  })
+  
+  if (!response.ok) {
+    throw new Error('Failed to delete payroll entry')
+  }
+}
+
+export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataEntryTableProps) {
+  const [data, setData] = useState<Employee[]>(initialData)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortColumn, setSortColumn] = useState<keyof Employee>('employee_name')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null)
+  const [confirmValue, setConfirmValue] = useState('')
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false)
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+
+  // Fetch data from API
+  const { data: fetchedData, isLoading, error } = useQuery({
+    queryKey: ['/api/payroll/entries'],
+    queryFn: fetchPayrollEntries,
+  })
+
+  // Add a new payroll entry
+  const createMutation = useMutation({
+    mutationFn: createPayrollEntry,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payroll/entries'] })
+      toast({
+        title: 'Entry created',
+        description: 'New payroll entry has been created successfully.',
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: `Failed to create entry: ${error.message}`,
+        variant: 'destructive',
+      })
+    }
+  })
+
+  // Update a payroll entry
+  const updateMutation = useMutation({
+    mutationFn: updatePayrollEntry,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payroll/entries'] })
+      toast({
+        title: 'Entry updated',
+        description: 'Payroll entry has been updated successfully.',
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: `Failed to update entry: ${error.message}`,
+        variant: 'destructive',
+      })
+    }
+  })
+
+  // Delete a payroll entry
+  const deleteMutation = useMutation({
+    mutationFn: deletePayrollEntry,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/payroll/entries'] })
+      toast({
+        title: 'Entry deleted',
+        description: 'Payroll entry has been removed successfully.',
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: `Failed to delete entry: ${error.message}`,
+        variant: 'destructive',
+      })
+    }
+  })
+
+  // Update local data when API data is fetched
+  useEffect(() => {
+    if (fetchedData) {
+      setData(fetchedData.map(item => ({
+        ...item,
+        isEditing: false,
+        isNew: false
+      })))
+    }
+  }, [fetchedData])
+
+  // Function to add a new row
+  const addNewRow = () => {
+    const newEmployee: Employee = {
+      id: `temp-${Date.now()}`,
+      employee_id: '',
+      employee_name: '',
+      pay_period_start: format(new Date(), 'yyyy-MM-dd'),
+      pay_period_end: format(new Date(), 'yyyy-MM-dd'),
+      regular_hours: 0,
+      overtime_hours: 0,
       deductions: 0,
       bonuses: 0,
       taxes: 0,
-      netPay: 0,
+      net_pay: 0,
       comments: '',
+      isEditing: true,
       isNew: true
     }
-  }
-  
-  // Add a new employee row
-  const addNewEmployee = () => {
-    setEmployees([...employees, createEmptyEmployee()])
-  }
-  
-  // Start editing a cell
-  const startEditing = (rowIndex: number, columnName: string) => {
-    setEditingCell({ rowIndex, columnName })
-  }
-  
-  // Handle cell value change
-  const handleCellChange = (rowIndex: number, columnName: string, value: string) => {
-    const updatedEmployees = [...employees]
     
-    // Type checking and validation
-    if (['regularHours', 'overtimeHours', 'deductions', 'bonuses'].includes(columnName)) {
-      const numValue = parseFloat(value)
-      
-      // Validate numeric inputs
-      if (isNaN(numValue) || numValue < 0) {
-        setValidationError(rowIndex, columnName, 'Must be a positive number')
-        updatedEmployees[rowIndex] = {
-          ...updatedEmployees[rowIndex],
-          [columnName]: value // Keep as string temporarily for editing
-        }
-      } else {
-        clearValidationError(rowIndex, columnName)
-        updatedEmployees[rowIndex] = {
-          ...updatedEmployees[rowIndex],
-          [columnName]: numValue
-        }
-      }
-    } else if (columnName === 'payPeriodStart' || columnName === 'payPeriodEnd') {
-      // Date validation
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-      if (!dateRegex.test(value) && value !== '') {
-        setValidationError(rowIndex, columnName, 'Use YYYY-MM-DD format')
-      } else {
-        clearValidationError(rowIndex, columnName)
-      }
-      updatedEmployees[rowIndex] = {
-        ...updatedEmployees[rowIndex],
-        [columnName]: value
-      }
-    } else {
-      // For text fields
-      updatedEmployees[rowIndex] = {
-        ...updatedEmployees[rowIndex],
-        [columnName]: value
-      }
-    }
-    
-    setEmployees(updatedEmployees)
+    setData([newEmployee, ...data])
   }
-  
-  // Finish editing a cell
-  const finishEditing = () => {
-    // Convert any string values back to numbers for numeric fields
-    const updatedEmployees = employees.map(employee => {
-      const updated = { ...employee }
-      
-      // Convert numeric fields
-      ;(['regularHours', 'overtimeHours', 'deductions', 'bonuses'] as const).forEach(field => {
-        if (typeof updated[field] === 'string') {
-          const numValue = parseFloat(updated[field] as string)
-          if (!isNaN(numValue)) {
-            updated[field] = numValue as any
-          } else {
-            updated[field] = 0 as any
-          }
+
+  // Function to start editing a row
+  const startEditing = (id: string) => {
+    setData(data.map(item => 
+      item.id === id ? { ...item, isEditing: true } : item
+    ))
+  }
+
+  // Function to cancel editing
+  const cancelEditing = (id: string) => {
+    setData(data.map(item => {
+      if (item.id === id) {
+        if (item.isNew) {
+          return null // Remove new rows that haven't been saved
         }
+        return { ...item, isEditing: false }
+      }
+      return item
+    }).filter(Boolean) as Employee[])
+  }
+
+  // Function to save changes to a row
+  const saveRow = async (id: string) => {
+    const rowToSave = data.find(row => row.id === id)
+    
+    if (!rowToSave) return
+    
+    // Validate required fields
+    if (!rowToSave.employee_id || !rowToSave.employee_name) {
+      toast({
+        title: 'Validation Error',
+        description: 'Employee ID and Name are required.',
+        variant: 'destructive',
       })
-      
-      return updated
-    })
-    
-    setEmployees(updatedEmployees)
-    setEditingCell(null)
-  }
-  
-  // Set validation error
-  const setValidationError = (rowIndex: number, columnName: string, message: string) => {
-    setValidationErrors(prev => ({
-      ...prev,
-      [rowIndex]: {
-        ...(prev[rowIndex] || {}),
-        [columnName]: message
-      }
-    }))
-  }
-  
-  // Clear validation error
-  const clearValidationError = (rowIndex: number, columnName: string) => {
-    if (validationErrors[rowIndex] && validationErrors[rowIndex][columnName]) {
-      const newErrors = { ...validationErrors }
-      delete newErrors[rowIndex][columnName]
-      
-      if (Object.keys(newErrors[rowIndex]).length === 0) {
-        delete newErrors[rowIndex]
-      }
-      
-      setValidationErrors(newErrors)
-    }
-  }
-  
-  // Check if a cell has validation errors
-  const hasError = (rowIndex: number, columnName: string): boolean => {
-    return !!(validationErrors[rowIndex] && validationErrors[rowIndex][columnName])
-  }
-  
-  // Get error message for a cell
-  const getErrorMessage = (rowIndex: number, columnName: string): string => {
-    return validationErrors[rowIndex]?.[columnName] || ''
-  }
-  
-  // Handle saving the data
-  const handleSave = () => {
-    // Check if there are any validation errors
-    if (Object.keys(validationErrors).length > 0) {
-      alert('Please fix validation errors before saving')
       return
     }
     
-    // Convert any remaining string values to numbers
-    const finalData = employees.map(employee => {
-      const newEmployee = { ...employee }
-      delete newEmployee.isNew
-      return newEmployee
-    })
-    
-    if (onSave) {
-      onSave(finalData)
-    }
-    
-    console.log('Saving payroll data:', finalData)
-    // Here you would typically make an API call to save the data
-  }
-  
-  // Sorting logic
-  const handleSort = (key: keyof Employee) => {
-    let direction: 'asc' | 'desc' = 'asc'
-    
-    if (sortConfig.key === key) {
-      direction = sortConfig.direction === 'asc' ? 'desc' : 'asc'
-    }
-    
-    setSortConfig({ key, direction })
-  }
-  
-  // Filter employees based on search term
-  const filteredEmployees = useMemo(() => {
-    if (!searchTerm) return employees
-    
-    return employees.filter(employee => 
-      employee.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employee.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [employees, searchTerm])
-  
-  // Sort employees
-  const sortedEmployees = useMemo(() => {
-    const sorted = [...filteredEmployees]
-    
-    sorted.sort((a, b) => {
-      // Different sorting logic based on column type
-      if (['regularHours', 'overtimeHours', 'deductions', 'bonuses', 'taxes', 'netPay'].includes(sortConfig.key)) {
-        return sortConfig.direction === 'asc' 
-          ? (a[sortConfig.key] as number) - (b[sortConfig.key] as number)
-          : (b[sortConfig.key] as number) - (a[sortConfig.key] as number)
+    try {
+      if (rowToSave.isNew) {
+        // Create new entry
+        const { isNew, isEditing, ...entryData } = rowToSave
+        await createMutation.mutateAsync(entryData as Omit<Employee, 'id'>)
+      } else {
+        // Update existing entry
+        const { isNew, isEditing, ...entryData } = rowToSave
+        await updateMutation.mutateAsync(entryData as Employee)
       }
       
-      // String comparison for other columns
-      const aValue = String(a[sortConfig.key] || '')
-      const bValue = String(b[sortConfig.key] || '')
+      // Update UI state
+      setData(data.map(item => 
+        item.id === id ? { ...item, isEditing: false, isNew: false } : item
+      ))
+    } catch (error) {
+      console.error('Error saving row:', error)
+    }
+  }
+
+  // Function to confirm deletion
+  const confirmDelete = () => {
+    if (employeeToDelete && confirmValue === 'DELETE') {
+      deleteMutation.mutate(employeeToDelete.id)
+      setIsDeleteDialogOpen(false)
+      setEmployeeToDelete(null)
+      setConfirmValue('')
+    }
+  }
+
+  // Function to update a field value
+  const updateField = (id: string, field: keyof Employee, value: any) => {
+    setData(data.map(item => {
+      if (item.id === id) {
+        const updatedItem = { ...item, [field]: value }
+        
+        // Auto-calculate net pay when relevant fields change
+        if (['regular_hours', 'overtime_hours', 'deductions', 'bonuses', 'taxes'].includes(field)) {
+          const regularHours = parseFloat(updatedItem.regular_hours.toString()) || 0
+          const overtimeHours = parseFloat(updatedItem.overtime_hours.toString()) || 0
+          const deductions = parseFloat(updatedItem.deductions.toString()) || 0
+          const bonuses = parseFloat(updatedItem.bonuses.toString()) || 0
+          const taxes = parseFloat(updatedItem.taxes.toString()) || 0
+          
+          // Assuming $25/hr for regular and $37.5/hr for overtime (1.5x)
+          const regularPay = regularHours * 25
+          const overtimePay = overtimeHours * 37.5
+          const grossPay = regularPay + overtimePay + bonuses
+          
+          updatedItem.net_pay = grossPay - deductions - taxes
+        }
+        
+        return updatedItem
+      }
+      return item
+    }))
+  }
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return ''
+    
+    const date = typeof dateString === 'string' 
+      ? (dateString.includes('T') ? parseISO(dateString) : new Date(dateString))
+      : new Date(dateString)
       
-      return sortConfig.direction === 'asc'
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue)
+    return isValid(date) ? format(date, 'MMM d, yyyy') : dateString
+  }
+
+  // Format currency for display
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(amount)
+  }
+
+  // Handle column sorting
+  const handleSort = (column: keyof Employee) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+  }
+
+  // Filter and sort data
+  const filteredAndSortedData = useMemo(() => {
+    let result = [...data]
+    
+    // Filter by search term
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase()
+      result = result.filter(item => 
+        item.employee_id.toLowerCase().includes(searchLower) ||
+        item.employee_name.toLowerCase().includes(searchLower) ||
+        (item.comments && item.comments.toLowerCase().includes(searchLower))
+      )
+    }
+    
+    // Sort data
+    result.sort((a, b) => {
+      let aValue = a[sortColumn]
+      let bValue = b[sortColumn]
+      
+      // Handle date sorting
+      if (sortColumn === 'pay_period_start' || sortColumn === 'pay_period_end') {
+        aValue = new Date(aValue as string).getTime()
+        bValue = new Date(bValue as string).getTime()
+      }
+      
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
     })
     
-    return sorted
-  }, [filteredEmployees, sortConfig])
-  
-  // Pagination
-  const paginatedEmployees = useMemo(() => {
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE
-    return sortedEmployees.slice(startIndex, startIndex + ROWS_PER_PAGE)
-  }, [sortedEmployees, currentPage])
-  
-  const totalPages = Math.ceil(sortedEmployees.length / ROWS_PER_PAGE)
-  
-  // Calculate totals for numeric columns
+    return result
+  }, [data, searchTerm, sortColumn, sortDirection])
+
+  // Calculate totals for the summary row
   const totals = useMemo(() => {
-    return employees.reduce((acc, employee) => {
+    return filteredAndSortedData.reduce((acc, curr) => {
       return {
-        regularHours: acc.regularHours + (employee.regularHours || 0),
-        overtimeHours: acc.overtimeHours + (employee.overtimeHours || 0),
-        deductions: acc.deductions + (employee.deductions || 0),
-        bonuses: acc.bonuses + (employee.bonuses || 0),
-        taxes: acc.taxes + (employee.taxes || 0),
-        netPay: acc.netPay + (employee.netPay || 0)
+        regularHours: acc.regularHours + (parseFloat(curr.regular_hours.toString()) || 0),
+        overtimeHours: acc.overtimeHours + (parseFloat(curr.overtime_hours.toString()) || 0),
+        deductions: acc.deductions + (parseFloat(curr.deductions.toString()) || 0),
+        bonuses: acc.bonuses + (parseFloat(curr.bonuses.toString()) || 0),
+        taxes: acc.taxes + (parseFloat(curr.taxes.toString()) || 0),
+        netPay: acc.netPay + (parseFloat(curr.net_pay.toString()) || 0)
       }
     }, {
       regularHours: 0,
@@ -299,523 +407,580 @@ export function PayrollDataEntryTable({ initialData = [], onSave }: PayrollDataE
       taxes: 0,
       netPay: 0
     })
-  }, [employees])
-  
-  // Tooltip content for each column
-  const tooltips = {
-    id: "Employee ID (auto-generated)",
-    name: "Employee's full name",
-    payPeriodStart: "Start date of pay period (YYYY-MM-DD)",
-    payPeriodEnd: "End date of pay period (YYYY-MM-DD)",
-    regularHours: "Regular hours worked during pay period",
-    overtimeHours: "Overtime hours worked during pay period",
-    deductions: "Total deductions (health insurance, 401k, etc.)",
-    bonuses: "Additional compensation (bonuses, commissions)",
-    taxes: "Calculated tax withholdings (auto-calculated)",
-    netPay: "Final pay amount after deductions and taxes (auto-calculated)",
-    comments: "Additional notes or comments about this payroll entry"
+  }, [filteredAndSortedData])
+
+  // Handle bulk save - submit all modified rows
+  const handleBulkSave = async () => {
+    const modifiedRows = data.filter(row => row.isEditing || row.isNew)
+    
+    if (modifiedRows.length === 0) {
+      toast({
+        title: 'No changes',
+        description: 'No changes to save.',
+      })
+      return
+    }
+    
+    setIsSaveDialogOpen(false)
+    
+    // Process each modified row
+    for (const row of modifiedRows) {
+      try {
+        if (row.isNew) {
+          const { isNew, isEditing, ...entryData } = row
+          await createMutation.mutateAsync(entryData as Omit<Employee, 'id'>)
+        } else {
+          const { isNew, isEditing, ...entryData } = row
+          await updateMutation.mutateAsync(entryData as Employee)
+        }
+      } catch (error) {
+        console.error('Error saving row:', error)
+      }
+    }
+    
+    // Update all rows to not be in edit mode
+    setData(data.map(item => ({ ...item, isEditing: false, isNew: false })))
+    
+    toast({
+      title: 'Changes saved',
+      description: `Successfully saved ${modifiedRows.length} entries.`,
+    })
+    
+    // Call the onSave callback if provided
+    if (onSave) {
+      onSave(data)
+    }
   }
-  
-  return (
-    <div className="w-full space-y-4 rounded-md border p-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-blue-700">Payroll Data Entry</h2>
-        <div className="flex items-center space-x-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              type="search"
-              placeholder="Search employees..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+
+  // Export to CSV
+  const exportToCSV = () => {
+    // Create CSV header
+    const headers = [
+      'Employee ID',
+      'Employee Name',
+      'Pay Period Start',
+      'Pay Period End',
+      'Regular Hours',
+      'Overtime Hours',
+      'Deductions',
+      'Bonuses',
+      'Taxes',
+      'Net Pay',
+      'Comments'
+    ].join(',')
+    
+    // Create CSV rows
+    const rows = filteredAndSortedData.map(item => [
+      item.employee_id,
+      `"${item.employee_name}"`, // Quote names to handle commas
+      item.pay_period_start,
+      item.pay_period_end,
+      item.regular_hours,
+      item.overtime_hours,
+      item.deductions,
+      item.bonuses,
+      item.taxes,
+      item.net_pay,
+      `"${item.comments || ''}"` // Quote comments to handle commas
+    ].join(','))
+    
+    // Combine header and rows
+    const csv = [headers, ...rows].join('\n')
+    
+    // Create download link
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `payroll_data_${format(new Date(), 'yyyy-MM-dd')}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // Handle loading and error states
+  if (isLoading) {
+    return <div className="flex justify-center p-6">Loading payroll data...</div>
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-md bg-red-50 p-4 my-4">
+        <div className="flex">
+          <X className="h-5 w-5 text-red-400" aria-hidden="true" />
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error loading payroll data</h3>
+            <div className="mt-2 text-sm text-red-700">
+              <p>{(error as Error).message || 'Unknown error occurred'}</p>
+            </div>
           </div>
-          <Button onClick={addNewEmployee} variant="outline" className="flex items-center gap-1">
-            <PlusCircle className="h-4 w-4" />
-            New Entry
-          </Button>
-          <Button onClick={handleSave} variant="default">Save Changes</Button>
         </div>
       </div>
-      
-      <div className="rounded-md border">
-        <div className="max-h-[600px] overflow-auto">
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6">
+        <div className="flex items-center space-x-2">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Search employees..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8"
+            />
+          </div>
+          
+          <Button onClick={addNewRow} size="sm" className="flex items-center gap-1">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New Entry</span>
+          </Button>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          {data.some(row => row.isEditing || row.isNew) && (
+            <Button 
+              variant="outline" 
+              onClick={() => setIsSaveDialogOpen(true)}
+              className="flex items-center gap-1"
+            >
+              <Check className="h-4 w-4" />
+              <span>Save All</span>
+            </Button>
+          )}
+          
+          <Button 
+            variant="outline" 
+            onClick={exportToCSV}
+            className="flex items-center gap-1"
+          >
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border overflow-hidden">
+        <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="sticky top-0 bg-white">
-              <TableRow>
-                <TableHead 
-                  className="w-24 cursor-pointer"
-                  onClick={() => handleSort('id')}
-                >
-                  <div className="flex items-center">
-                    ID
+            <TableHeader>
+              <TableRow className="bg-gray-50">
+                <TableHead className="w-[100px]">
+                  <div 
+                    className="flex items-center cursor-pointer"
+                    onClick={() => handleSort('employee_id')}
+                  >
+                    Employee ID
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead 
-                  className="cursor-pointer" 
-                  onClick={() => handleSort('name')}
-                >
-                  <div className="flex items-center">
-                    Employee Name
+                <TableHead>
+                  <div 
+                    className="flex items-center cursor-pointer"
+                    onClick={() => handleSort('employee_name')}
+                  >
+                    Name
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead>Pay Period Start</TableHead>
-                <TableHead>Pay Period End</TableHead>
-                <TableHead 
-                  className="cursor-pointer"
-                  onClick={() => handleSort('regularHours')}
-                >
-                  <div className="flex items-center">
-                    Regular Hours
+                <TableHead>
+                  <div 
+                    className="flex items-center cursor-pointer"
+                    onClick={() => handleSort('pay_period_start')}
+                  >
+                    Pay Period
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort('overtimeHours')}
-                >
-                  <div className="flex items-center">
-                    Overtime Hours
+                <TableHead className="text-right">
+                  <div 
+                    className="flex items-center justify-end cursor-pointer"
+                    onClick={() => handleSort('regular_hours')}
+                  >
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="flex items-center">
+                            Regular Hours
+                            <Info className="ml-1 h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Standard working hours ($25/hr)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort('deductions')}
-                >
-                  <div className="flex items-center">
-                    Deductions ($)
+                <TableHead className="text-right">
+                  <div 
+                    className="flex items-center justify-end cursor-pointer"
+                    onClick={() => handleSort('overtime_hours')}
+                  >
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="flex items-center">
+                            Overtime
+                            <Info className="ml-1 h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Overtime hours (1.5x rate, $37.50/hr)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort('bonuses')}
-                >
-                  <div className="flex items-center">
-                    Bonuses ($)
+                <TableHead className="text-right">
+                  <div 
+                    className="flex items-center justify-end cursor-pointer"
+                    onClick={() => handleSort('deductions')}
+                  >
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="flex items-center">
+                            Deductions
+                            <Info className="ml-1 h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Total of all deductions (benefits, retirement, etc.)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort('taxes')}
-                >
-                  <div className="flex items-center">
-                    Taxes ($)
+                <TableHead className="text-right">
+                  <div 
+                    className="flex items-center justify-end cursor-pointer"
+                    onClick={() => handleSort('bonuses')}
+                  >
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="flex items-center">
+                            Bonuses
+                            <Info className="ml-1 h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Additional payments (commissions, special bonuses)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead
-                  className="cursor-pointer"
-                  onClick={() => handleSort('netPay')}
-                >
-                  <div className="flex items-center">
-                    Net Pay ($)
+                <TableHead className="text-right">
+                  <div 
+                    className="flex items-center justify-end cursor-pointer"
+                    onClick={() => handleSort('taxes')}
+                  >
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="flex items-center">
+                            Taxes
+                            <Info className="ml-1 h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Total of all tax withholdings</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <ArrowUpDown className="ml-1 h-4 w-4" />
                   </div>
                 </TableHead>
-                <TableHead>Comments</TableHead>
+                <TableHead className="text-right">
+                  <div 
+                    className="flex items-center justify-end cursor-pointer"
+                    onClick={() => handleSort('net_pay')}
+                  >
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className="flex items-center">
+                            Net Pay
+                            <Info className="ml-1 h-4 w-4 text-muted-foreground" />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Final pay amount after deductions and taxes</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <ArrowUpDown className="ml-1 h-4 w-4" />
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Comments</TableHead>
+                <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedEmployees.length > 0 ? (
-                paginatedEmployees.map((employee, rowIndex) => {
-                  const actualRowIndex = employees.findIndex(e => e.id === employee.id)
-                  
-                  return (
-                    <TableRow 
-                      key={employee.id} 
-                      className={cn(
-                        rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50",
-                        employee.isNew ? "bg-blue-50" : ""
+              {filteredAndSortedData.map((employee) => (
+                <TableRow key={employee.id} className={employee.isNew ? 'bg-blue-50' : ''}>
+                  <TableCell>
+                    {employee.isEditing ? (
+                      <Input
+                        className="w-24"
+                        value={employee.employee_id}
+                        onChange={(e) => updateField(employee.id, 'employee_id', e.target.value)}
+                      />
+                    ) : (
+                      employee.employee_id
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {employee.isEditing ? (
+                      <Input
+                        value={employee.employee_name}
+                        onChange={(e) => updateField(employee.id, 'employee_name', e.target.value)}
+                      />
+                    ) : (
+                      employee.employee_name
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {employee.isEditing ? (
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs">Start:</span>
+                          <Input
+                            type="date"
+                            className="w-32"
+                            value={employee.pay_period_start ? new Date(employee.pay_period_start).toISOString().split('T')[0] : ''}
+                            onChange={(e) => updateField(employee.id, 'pay_period_start', e.target.value)}
+                          />
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span className="text-xs">End:</span>
+                          <Input
+                            type="date"
+                            className="w-32"
+                            value={employee.pay_period_end ? new Date(employee.pay_period_end).toISOString().split('T')[0] : ''}
+                            onChange={(e) => updateField(employee.id, 'pay_period_end', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm">
+                        <div>{formatDate(employee.pay_period_start)}</div>
+                        <div className="text-gray-500">to</div>
+                        <div>{formatDate(employee.pay_period_end)}</div>
+                      </div>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {employee.isEditing ? (
+                      <Input
+                        type="number"
+                        className="w-20 text-right"
+                        value={employee.regular_hours}
+                        onChange={(e) => updateField(employee.id, 'regular_hours', parseFloat(e.target.value) || 0)}
+                      />
+                    ) : (
+                      employee.regular_hours
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {employee.isEditing ? (
+                      <Input
+                        type="number"
+                        className="w-20 text-right"
+                        value={employee.overtime_hours}
+                        onChange={(e) => updateField(employee.id, 'overtime_hours', parseFloat(e.target.value) || 0)}
+                      />
+                    ) : (
+                      employee.overtime_hours
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {employee.isEditing ? (
+                      <Input
+                        type="number"
+                        className="w-24 text-right"
+                        value={employee.deductions}
+                        onChange={(e) => updateField(employee.id, 'deductions', parseFloat(e.target.value) || 0)}
+                      />
+                    ) : (
+                      formatCurrency(employee.deductions)
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {employee.isEditing ? (
+                      <Input
+                        type="number"
+                        className="w-24 text-right"
+                        value={employee.bonuses}
+                        onChange={(e) => updateField(employee.id, 'bonuses', parseFloat(e.target.value) || 0)}
+                      />
+                    ) : (
+                      formatCurrency(employee.bonuses)
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {employee.isEditing ? (
+                      <Input
+                        type="number"
+                        className="w-24 text-right"
+                        value={employee.taxes}
+                        onChange={(e) => updateField(employee.id, 'taxes', parseFloat(e.target.value) || 0)}
+                      />
+                    ) : (
+                      formatCurrency(employee.taxes)
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    <Badge variant={employee.net_pay < 0 ? "destructive" : "default"} className="text-right w-auto">
+                      {formatCurrency(employee.net_pay)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {employee.isEditing ? (
+                      <Input
+                        value={employee.comments || ''}
+                        onChange={(e) => updateField(employee.id, 'comments', e.target.value)}
+                      />
+                    ) : (
+                      <div className="max-w-xs truncate">{employee.comments}</div>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex justify-end">
+                      {employee.isEditing ? (
+                        <div className="flex space-x-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => saveRow(employee.id)}
+                            title="Save Changes"
+                          >
+                            <Check className="h-4 w-4 text-green-500" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => cancelEditing(employee.id)}
+                            title="Cancel Editing"
+                          >
+                            <X className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => startEditing(employee.id)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => {
+                                setEmployeeToDelete(employee)
+                                setIsDeleteDialogOpen(true)
+                              }}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
-                    >
-                      {/* Employee ID */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'id')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'id' ? (
-                            <Input
-                              value={employee.id}
-                              onChange={(e) => handleCellChange(actualRowIndex, 'id', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'id') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span>{employee.id}</span>
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Info className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{tooltips.id}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'id') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'id')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Employee Name */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'name')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'name' ? (
-                            <Input
-                              value={employee.name}
-                              onChange={(e) => handleCellChange(actualRowIndex, 'name', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'name') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span>{employee.name || <span className="text-gray-400 italic">Click to add name</span>}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.name}
-                              />
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'name') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'name')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Pay Period Start */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'payPeriodStart')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'payPeriodStart' ? (
-                            <Input
-                              value={employee.payPeriodStart}
-                              placeholder="YYYY-MM-DD"
-                              onChange={(e) => handleCellChange(actualRowIndex, 'payPeriodStart', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'payPeriodStart') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span>{employee.payPeriodStart || <span className="text-gray-400 italic">YYYY-MM-DD</span>}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.payPeriodStart}
-                              />
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'payPeriodStart') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'payPeriodStart')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Pay Period End */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'payPeriodEnd')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'payPeriodEnd' ? (
-                            <Input
-                              value={employee.payPeriodEnd}
-                              placeholder="YYYY-MM-DD"
-                              onChange={(e) => handleCellChange(actualRowIndex, 'payPeriodEnd', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'payPeriodEnd') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span>{employee.payPeriodEnd || <span className="text-gray-400 italic">YYYY-MM-DD</span>}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.payPeriodEnd}
-                              />
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'payPeriodEnd') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'payPeriodEnd')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Regular Hours */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'regularHours')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'regularHours' ? (
-                            <Input
-                              value={String(employee.regularHours)}
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              onChange={(e) => handleCellChange(actualRowIndex, 'regularHours', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'regularHours') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span className="tabular-nums">{employee.regularHours}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.regularHours}
-                              />
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'regularHours') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'regularHours')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Overtime Hours */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'overtimeHours')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'overtimeHours' ? (
-                            <Input
-                              value={String(employee.overtimeHours)}
-                              type="number"
-                              min="0"
-                              step="0.5"
-                              onChange={(e) => handleCellChange(actualRowIndex, 'overtimeHours', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'overtimeHours') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span className="tabular-nums">{employee.overtimeHours}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.overtimeHours}
-                              />
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'overtimeHours') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'overtimeHours')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Deductions */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'deductions')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'deductions' ? (
-                            <Input
-                              value={String(employee.deductions)}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              onChange={(e) => handleCellChange(actualRowIndex, 'deductions', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'deductions') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span className="tabular-nums">${employee.deductions.toFixed(2)}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.deductions}
-                              />
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'deductions') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'deductions')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Bonuses */}
-                      <TableCell 
-                        className="relative"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'bonuses')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'bonuses' ? (
-                            <Input
-                              value={String(employee.bonuses)}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              onChange={(e) => handleCellChange(actualRowIndex, 'bonuses', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                              className={hasError(actualRowIndex, 'bonuses') ? "border-red-500" : ""}
-                            />
-                          ) : (
-                            <>
-                              <span className="tabular-nums">${employee.bonuses.toFixed(2)}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.bonuses}
-                              />
-                            </>
-                          )}
-                          {hasError(actualRowIndex, 'bonuses') && (
-                            <span className="absolute -bottom-1 left-0 text-xs text-red-500">
-                              {getErrorMessage(actualRowIndex, 'bonuses')}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      
-                      {/* Taxes (auto-calculated) */}
-                      <TableCell className="group">
-                        <div className="flex items-center">
-                          <span className="tabular-nums">${employee.taxes.toFixed(2)}</span>
-                          <Badge variant="outline" className="ml-2 text-xs">Auto</Badge>
-                          <Info 
-                            className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                            title={tooltips.taxes}
-                          />
-                        </div>
-                      </TableCell>
-                      
-                      {/* Net Pay (auto-calculated) */}
-                      <TableCell className="group">
-                        <div className="flex items-center font-medium">
-                          <span className="tabular-nums">${employee.netPay.toFixed(2)}</span>
-                          <Badge variant="outline" className="ml-2 text-xs">Auto</Badge>
-                          <Info 
-                            className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                            title={tooltips.netPay}
-                          />
-                        </div>
-                      </TableCell>
-                      
-                      {/* Comments */}
-                      <TableCell 
-                        className="relative max-w-xs truncate"
-                        onDoubleClick={() => startEditing(actualRowIndex, 'comments')}
-                      >
-                        <div className="group flex items-center">
-                          {editingCell?.rowIndex === actualRowIndex && editingCell.columnName === 'comments' ? (
-                            <Input
-                              value={employee.comments}
-                              onChange={(e) => handleCellChange(actualRowIndex, 'comments', e.target.value)}
-                              onBlur={finishEditing}
-                              onKeyDown={(e) => e.key === 'Enter' && finishEditing()}
-                              autoFocus
-                            />
-                          ) : (
-                            <>
-                              <span>{employee.comments || <span className="text-gray-400 italic">Add comments</span>}</span>
-                              <Info 
-                                className="ml-1 h-4 w-4 opacity-0 group-hover:opacity-70 text-gray-400"
-                                title={tooltips.comments}
-                              />
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={11} className="h-24 text-center">
-                    No employees found. Add a new entry or clear your search.
+                    </div>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
               
-              {/* Totals row */}
-              <TableRow className="bg-gray-100 font-semibold">
-                <TableCell colSpan={4} className="text-right">Totals:</TableCell>
-                <TableCell className="tabular-nums">{totals.regularHours.toFixed(1)}</TableCell>
-                <TableCell className="tabular-nums">{totals.overtimeHours.toFixed(1)}</TableCell>
-                <TableCell className="tabular-nums">${totals.deductions.toFixed(2)}</TableCell>
-                <TableCell className="tabular-nums">${totals.bonuses.toFixed(2)}</TableCell>
-                <TableCell className="tabular-nums">${totals.taxes.toFixed(2)}</TableCell>
-                <TableCell className="tabular-nums">${totals.netPay.toFixed(2)}</TableCell>
-                <TableCell></TableCell>
+              {/* Summary Row */}
+              <TableRow className="bg-gray-50 font-medium">
+                <TableCell colSpan={3}>Summary / Totals</TableCell>
+                <TableCell className="text-right">{totals.regularHours.toFixed(2)}</TableCell>
+                <TableCell className="text-right">{totals.overtimeHours.toFixed(2)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(totals.deductions)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(totals.bonuses)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(totals.taxes)}</TableCell>
+                <TableCell className="text-right">{formatCurrency(totals.netPay)}</TableCell>
+                <TableCell colSpan={2}></TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </div>
       </div>
-      
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-end items-center space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-gray-600">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      
-      {/* Helper message */}
-      <div className="text-sm text-gray-500 mt-2 flex items-center">
-        <Info className="h-4 w-4 mr-1" />
-        <span>Double-click any cell to edit. Press Enter or click outside to save.</span>
-      </div>
+
+      {/* Save Confirmation Dialog */}
+      <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save All Changes</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>Are you sure you want to save all changes? This will update the database with all modifications.</p>
+            <p className="mt-2 text-gray-600">
+              • {data.filter(row => row.isNew).length} new entries will be created<br />
+              • {data.filter(row => row.isEditing && !row.isNew).length} existing entries will be updated
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsSaveDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleBulkSave}>Save All</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p>Are you sure you want to delete this payroll entry? This action cannot be undone.</p>
+            {employeeToDelete && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                <p><strong>Employee:</strong> {employeeToDelete.employee_name}</p>
+                <p><strong>ID:</strong> {employeeToDelete.employee_id}</p>
+                <p><strong>Pay Period:</strong> {formatDate(employeeToDelete.pay_period_start)} to {formatDate(employeeToDelete.pay_period_end)}</p>
+              </div>
+            )}
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-2">
+                Type DELETE to confirm
+              </label>
+              <Input 
+                value={confirmValue}
+                onChange={(e) => setConfirmValue(e.target.value)}
+                placeholder="DELETE"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>Cancel</Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={confirmValue !== 'DELETE'}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
