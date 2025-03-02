@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DocumentType } from './EnhancedDocumentForm';
 import { Download, Mail, Printer } from 'lucide-react';
 
-export interface DocumentData {
+interface DocumentData {
   id?: string;
   type: DocumentType;
   documentNumber: string;
@@ -26,12 +26,6 @@ export interface DocumentData {
   taxTotal: number;
   grandTotal: number;
   status: string;
-  
-  // For compatibility
-  title?: string;
-  client?: string;
-  amount?: number;
-  date?: string;
 }
 
 interface DocumentPreviewProps {
@@ -40,7 +34,7 @@ interface DocumentPreviewProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function DocumentPreview({ document, open, onOpenChange }: DocumentPreviewProps) {
+export function FixedDocumentPreview({ document, open, onOpenChange }: DocumentPreviewProps) {
   if (!document) return null;
 
   // Format date for display

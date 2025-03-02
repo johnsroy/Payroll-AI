@@ -5,6 +5,7 @@ import SimpleAgentPlayground from './pages/SimpleAgentPlayground';
 import DataConnectionPage from './pages/data-connection';
 import MinimalPayrollPage from './pages/minimal-payroll';
 import SimpleDocumentsPage from './pages/simple-documents';
+import MinimalDocumentManager from './pages/document-minimal';
 
 const AppRoot: React.FC = () => {
   return (
@@ -48,7 +49,7 @@ const AppRoot: React.FC = () => {
           <Route path="/agents" component={SimpleAgentPlayground} />
           <Route path="/data-connection" component={DataConnectionPage} />
           <Route path="/payroll-entry" component={MinimalPayrollPage} />
-          <Route path="/document-management" component={SimpleDocumentsPage} />
+          <Route path="/document-management" component={MinimalDocumentManager} />
           <Route path="/" component={FullLandingPage} />
           <Route component={() => (
             <div className="flex flex-col items-center justify-center h-full py-20">

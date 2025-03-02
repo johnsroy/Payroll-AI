@@ -1,274 +1,287 @@
 import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DocumentForm, DocumentType } from '../components/documents/DocumentForm';
-import { DocumentPreview } from '../components/documents/DocumentPreview';
 
-interface DocumentData {
+// Document types enum
+enum DocumentType {
+  INVOICE = 'invoice',
+  ESTIMATE = 'estimate',
+  BILL = 'bill',
+  BOOKKEEPING = 'bookkeeping'
+}
+
+// Interface for our documents
+interface Document {
   id: string;
   type: DocumentType;
   title: string;
-  date: string;
   client: string;
   amount: number;
+  date: string;
   status: string;
 }
 
-export default function DocumentManagementPage() {
-  const [activeTab, setActiveTab] = useState<DocumentType>(DocumentType.INVOICE);
-  const [documents, setDocuments] = useState<DocumentData[]>([
-    {
-      id: 'INV-001',
-      type: DocumentType.INVOICE,
-      title: 'Website Design Invoice',
-      date: '2025-03-01',
-      client: 'Acme Corporation',
-      amount: 1500,
-      status: 'Paid'
-    },
-    {
-      id: 'INV-002',
-      type: DocumentType.INVOICE,
-      title: 'Monthly Maintenance',
-      date: '2025-03-10',
-      client: 'TechStart Inc.',
-      amount: 750,
-      status: 'Pending'
-    },
-    {
-      id: 'EST-001',
-      type: DocumentType.ESTIMATE,
-      title: 'E-commerce Platform',
-      date: '2025-02-15',
-      client: 'Fashion Trends',
-      amount: 4500,
-      status: 'Sent'
-    },
-    {
-      id: 'BILL-001',
-      type: DocumentType.BILL,
-      title: 'Office Supplies',
-      date: '2025-02-28',
-      client: 'Office Depot',
-      amount: 350,
-      status: 'Unpaid'
-    },
-    {
-      id: 'BK-001',
-      type: DocumentType.BOOKKEEPING,
-      title: 'Q1 Expenses',
-      date: '2025-03-05',
-      client: 'Internal',
-      amount: 12750,
-      status: 'Recorded'
+export default function SimpleDocumentsPage() {
+  // State for documents
+  const [documents, setDocuments] = useState<Document[]>([]);
+  
+  // State for the currently selected document type
+  const [selectedType, setSelectedType] = useState<DocumentType | null>(null);
+  
+  // State for the form dialog
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    title: '',
+    client: '',
+    amount: 0,
+    date: new Date().toISOString().split('T')[0],
+  });
+  
+  // Handle creating a new document type
+  const handleCreateNew = (type: DocumentType) => {
+    setSelectedType(type);
+    setIsFormOpen(true);
+  };
+  
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: name === 'amount' ? parseFloat(value) || 0 : value,
+    });
+  };
+  
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (selectedType) {
+      // Create a new document
+      const newDoc: Document = {
+        id: `${selectedType.substring(0, 3).toUpperCase()}-${documents.length + 1}`,
+        type: selectedType,
+        title: formData.title,
+        client: formData.client,
+        amount: formData.amount,
+        date: formData.date,
+        status: 'Draft'
+      };
+      
+      // Add it to our list
+      setDocuments([...documents, newDoc]);
+      
+      // Close the form and reset
+      setIsFormOpen(false);
+      setFormData({
+        title: '',
+        client: '',
+        amount: 0,
+        date: new Date().toISOString().split('T')[0],
+      });
     }
-  ]);
-  
-  const [formOpen, setFormOpen] = useState(false);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<any>(null);
-
-  const filteredDocuments = documents.filter(doc => doc.type === activeTab);
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value as DocumentType);
-  };
-
-  const handleCreateNew = () => {
-    setFormOpen(true);
   };
   
-  const handleSaveDocument = (documentData: any) => {
-    // Generate an ID for the new document
-    const prefix = documentData.type.substring(0, 3).toUpperCase();
-    const nextNumber = documents.filter(d => d.type === documentData.type).length + 1;
-    const id = `${prefix}-${String(nextNumber).padStart(3, '0')}`;
-    
-    // Create a new document entry
-    const newDocument: DocumentData = {
-      id,
-      type: documentData.type,
-      title: documentData.clientName ? `${documentData.clientName} - ${documentData.type}` : `New ${documentData.type}`,
-      date: documentData.issueDate,
-      client: documentData.clientName || 'Unnamed Client',
-      amount: documentData.grandTotal,
-      status: documentData.type === DocumentType.INVOICE ? 'Pending' : 
-              documentData.type === DocumentType.ESTIMATE ? 'Draft' : 
-              documentData.type === DocumentType.BILL ? 'Unpaid' : 'Recorded'
-    };
-    
-    // Add the new document to the collection
-    setDocuments([...documents, newDocument]);
-    
-    // Close the form
-    setFormOpen(false);
+  // Filter documents by type
+  const getDocumentsByType = (type: DocumentType) => {
+    return documents.filter(doc => doc.type === type);
   };
   
-  const handlePreviewDocument = (document: DocumentData) => {
-    // For now, we'll just create a mock document data structure for the preview
-    // In a real implementation, you would fetch the full document data
-    const previewData = {
-      type: document.type,
-      documentNumber: document.id,
-      clientName: document.client,
-      clientEmail: 'client@example.com',
-      clientAddress: '123 Client Street\nClient City, ST 12345',
-      issueDate: document.date,
-      dueDate: new Date(new Date(document.date).setDate(new Date(document.date).getDate() + 30)).toISOString().split('T')[0],
-      notes: 'Thank you for your business!',
-      lineItems: [
-        {
-          id: '1',
-          description: document.title,
-          quantity: 1,
-          unitPrice: document.amount,
-          tax: 0,
-          total: document.amount
-        }
-      ],
-      subtotal: document.amount,
-      taxTotal: 0,
-      grandTotal: document.amount
-    };
-    
-    setSelectedDocument(previewData);
-    setPreviewOpen(true);
-  };
-
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Document Management</h1>
-        <button 
-          onClick={handleCreateNew}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v5H4a1 1 0 100 2h5v5a1 1 0 102 0v-5h5a1 1 0 100-2h-5V4a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          Create New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
-        </button>
+      <h1 className="text-3xl font-bold mb-6">Simple Document Management</h1>
+      <p className="text-gray-600 mb-6">Create and manage financial documents for your business.</p>
+      
+      {/* Document type cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-4 text-blue-600">Invoices</h2>
+          <p className="text-gray-600 mb-4">Create and manage your invoices</p>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">
+              {getDocumentsByType(DocumentType.INVOICE).length} invoices
+            </span>
+            <button 
+              onClick={() => handleCreateNew(DocumentType.INVOICE)}
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            >
+              Create Invoice
+            </button>
+          </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-4 text-green-600">Estimates</h2>
+          <p className="text-gray-600 mb-4">Create and manage your estimates</p>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">
+              {getDocumentsByType(DocumentType.ESTIMATE).length} estimates
+            </span>
+            <button 
+              onClick={() => handleCreateNew(DocumentType.ESTIMATE)}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Create Estimate
+            </button>
+          </div>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-4 text-purple-600">Bills</h2>
+          <p className="text-gray-600 mb-4">Create and manage your bills</p>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">
+              {getDocumentsByType(DocumentType.BILL).length} bills
+            </span>
+            <button 
+              onClick={() => handleCreateNew(DocumentType.BILL)}
+              className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+            >
+              Create Bill
+            </button>
+          </div>
+        </div>
       </div>
       
-      {/* Document Form */}
-      <DocumentForm
-        type={activeTab}
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        onSave={handleSaveDocument}
-      />
+      {/* Recent documents */}
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-bold mb-4">Recent Documents</h2>
+        
+        {documents.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="px-4 py-2 text-left">ID</th>
+                  <th className="px-4 py-2 text-left">Type</th>
+                  <th className="px-4 py-2 text-left">Title</th>
+                  <th className="px-4 py-2 text-left">Client</th>
+                  <th className="px-4 py-2 text-left">Date</th>
+                  <th className="px-4 py-2 text-right">Amount</th>
+                  <th className="px-4 py-2 text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {documents.map(doc => (
+                  <tr key={doc.id} className="border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-4 py-2">{doc.id}</td>
+                    <td className="px-4 py-2 capitalize">{doc.type}</td>
+                    <td className="px-4 py-2">{doc.title}</td>
+                    <td className="px-4 py-2">{doc.client}</td>
+                    <td className="px-4 py-2">{new Date(doc.date).toLocaleDateString()}</td>
+                    <td className="px-4 py-2 text-right">${doc.amount.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium
+                        ${doc.status === 'Draft' ? 'bg-yellow-100 text-yellow-800' : 
+                          doc.status === 'Sent' ? 'bg-blue-100 text-blue-800' : 
+                          doc.status === 'Paid' ? 'bg-green-100 text-green-800' : 
+                          'bg-gray-100 text-gray-800'}`}
+                      >
+                        {doc.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No documents created yet. Create your first document using the buttons above.</p>
+          </div>
+        )}
+      </div>
       
-      {/* Document Preview */}
-      {selectedDocument && (
-        <DocumentPreview
-          document={selectedDocument}
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-        />
-      )}
-
-      <Tabs defaultValue={DocumentType.INVOICE} onValueChange={handleTabChange}>
-        <TabsList className="grid grid-cols-4 mb-6">
-          <TabsTrigger value={DocumentType.INVOICE}>Invoices</TabsTrigger>
-          <TabsTrigger value={DocumentType.ESTIMATE}>Estimates</TabsTrigger>
-          <TabsTrigger value={DocumentType.BILL}>Bills</TabsTrigger>
-          <TabsTrigger value={DocumentType.BOOKKEEPING}>Bookkeeping</TabsTrigger>
-        </TabsList>
-
-        {Object.values(DocumentType).map((type) => (
-          <TabsContent key={type} value={type}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredDocuments.length > 0 ? (
-                filteredDocuments.map((doc) => (
-                  <Card key={doc.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-xl">{doc.title}</CardTitle>
-                        <span className={`text-sm px-2 py-1 rounded-full ${getStatusColor(doc.status)}`}>
-                          {doc.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500">#{doc.id}</p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Client:</span>
-                          <span className="font-medium">{doc.client}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Date:</span>
-                          <span>{formatDate(doc.date)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Amount:</span>
-                          <span className="font-bold">${doc.amount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-end mt-4">
-                          <button 
-                            className="text-blue-600 hover:text-blue-800 mr-3"
-                            onClick={() => {/* Implement edit functionality */}}
-                          >
-                            Edit
-                          </button>
-                          <button 
-                            className="text-blue-600 hover:text-blue-800 mr-3"
-                            onClick={() => handlePreviewDocument(doc)}
-                          >
-                            Preview
-                          </button>
-                          <button 
-                            className="text-blue-600 hover:text-blue-800"
-                            onClick={() => alert(`Sending ${doc.type} ${doc.id} to ${doc.client}`)}
-                          >
-                            Send
-                          </button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <h3 className="text-lg font-medium">No {type} documents found</h3>
-                  <p className="text-gray-500 max-w-md mt-2">
-                    Create your first {type} document by clicking the "Create New" button above.
-                  </p>
+      {/* Form Modal */}
+      {isFormOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4">
+                Create {selectedType && selectedType.charAt(0).toUpperCase() + selectedType.slice(1)}
+              </h2>
+              
+              <form onSubmit={handleSubmit}>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={formData.title}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Client
+                    </label>
+                    <input
+                      type="text"
+                      name="client"
+                      value={formData.client}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Amount
+                    </label>
+                    <input
+                      type="number"
+                      name="amount"
+                      value={formData.amount}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      min="0"
+                      step="0.01"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      name="date"
+                      value={formData.date}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      required
+                    />
+                  </div>
                 </div>
-              )}
+                
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                    onClick={() => setIsFormOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  >
+                    Create
+                  </button>
+                </div>
+              </form>
             </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-function getStatusColor(status: string): string {
-  switch (status.toLowerCase()) {
-    case 'paid':
-      return 'bg-green-100 text-green-800';
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'sent':
-      return 'bg-blue-100 text-blue-800';
-    case 'unpaid':
-      return 'bg-red-100 text-red-800';
-    case 'recorded':
-      return 'bg-purple-100 text-purple-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  });
 }
